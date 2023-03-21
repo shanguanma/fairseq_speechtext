@@ -61,8 +61,20 @@ def load_label(label_path, inds, tot):
         labels = [labels[i] for i in inds]
     return labels
 
+### in order to unpair text total utterances == length of .tsv file == total target kmeans code utterances
+def load_text_offset(text_path,inds, tot):
+    with open(text_path,inds, tot) as f:
+        text_code_lengths = [len(line.encode("utf-8")) for line in f]
+        assert len(text_code_lengths) == tot,f"number of text utterance does not match ({len(text_code_lengths)} != {tot})"
+        offsets = list(itertools.accumulate([0] + text_code_lengths))
+        offsets = [(offsets[i], offsets[i + 1]) for i in inds]
+    return offsets
+
 
 def load_label_offset(label_path, inds, tot):
+    ##logger.info(f"label_path: {label_path}\n") ## from .km file
+    ## logger.info(f"inds: {inds}\n") # from .tsv file from 0-base list, (e.g. [0,1,2,...]) # every int represenet utterance id
+    ## logger.info(f"tot: {tot}\n") ## tot is an int value, it is total utterances of dataset(e.g. dev_clean.tsv)
     with open(label_path) as f:
         code_lengths = [len(line.encode("utf-8")) for line in f]
         assert (
@@ -295,9 +307,9 @@ class StHubertDataset(FairseqDataset):
             rem_size = [len(t) - s for t, s in zip(targets, frm_starts)]
             frm_size = min(frm_size, *rem_size)
         targets = [t[s : s + frm_size] for t, s in zip(targets, frm_starts)]
-        logger.debug(f"audio_starts={audio_starts}")
-        logger.debug(f"frame_starts={frm_starts}")
-        logger.debug(f"frame_size={frm_size}")
+        logger.info(f"audio_starts={audio_starts}")
+        logger.info(f"frame_starts={frm_starts}")
+        logger.info(f"frame_size={frm_size}")
 
         lengths = torch.LongTensor([len(t) for t in targets])
         ntokens = lengths.sum().item()
