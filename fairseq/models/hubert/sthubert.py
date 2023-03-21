@@ -6,6 +6,7 @@
 import logging
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
+from torch import Tensor
 
 import numpy as np
 import torch
@@ -23,8 +24,12 @@ from fairseq.models.wav2vec.wav2vec2 import (
     LAYER_TYPE_CHOICES,
     ConvFeatureExtractionModel,
     TransformerEncoder,
+    TransformerSentenceEncoderLayer,
+    make_conv_pos,
 )
+
 from fairseq.modules import GradMultiply, LayerNorm
+from fairseq.modules import PositionalEmbedding
 from fairseq.tasks.sthubert_pretraining import (
     StHubertPretrainingConfig,
     StHubertPretrainingTask,
@@ -238,6 +243,68 @@ class StHubertConfig(FairseqDataclass):
     fp16: bool = field(default=False, metadata={"help": "If fp16 is being used"})
 
 
+@dataclass
+class TextModelConfig(FairseqDataclass):
+    max_source_positions: int = field(
+        default=512,
+        metadata={"help": "Maximum input length supported by the encoder"},
+    )
+    text_embed_dim: int = field(
+        default=768, metadata={"help": "text embedding dimension, it should be same as encoder_embed_dim"}
+    )
+    dropout: float = field(
+        default=0.1,
+        metadata={"help": "dropout probability for the TextModel embedding feature"},
+    )
+
+class TextModel(BaseFairseqModel):
+    def __init__(
+        self, 
+        cfg: TextModelConfig,
+        dictionary: List[Dictionary],
+    ):
+        super().__init__(dictionary)
+        self.padding_idx=1
+        self.max_source_positions = cfg.max_source_positions
+        self.embed_tokens = torch.nn.Embedding(len(dicionary),cfg.text_embed_dim,padding_idx=self.padding_idx) 
+        self.embed_positions = (
+            PositionalEmbedding(
+                cfg.max_source_positions,
+                cfg.text_embed_dim,
+                self.padding_idx,
+                learned=True,
+            )               
+        self.layernorm_embedding = torch.nn.LayerNorm(cfg.text_embed_dim)
+
+    def forward(
+        self,
+        src_tokens, 
+        src_tokens_lengths: Optional[torch.Tensor] = None):
+        '''
+        Args:
+            src_tokens (LongTensor): tokens in the source language of shape
+                `(batch, src_len)`
+            src_tokens_lengths (torch.LongTensor): lengths of each source sentence of
+                shape `(batch)` 
+        '''
+        # embed tokens and positions
+        token_embedding = self.embed_tokens(src_tokens)
+        x = embed =  token_embedding
+        if self.embed_positions is not None:
+            x = embed + self.embed_positions(src_tokens)
+        if self.layernorm_embedding is not None:
+            x = self.layernorm_embedding(x)
+        x = F.dropout(x,cfg.dropout)
+        # compute padding mask
+        encoder_padding_mask = src_tokens.eq(self.padding_idx)
+        # account for padding while computing the representation
+        x = x * (
+            1 - encoder_padding_mask.unsqueeze(-1).type_as(x)
+        ) 
+        
+        return x, embed 
+
+
 @register_model("sthubert", dataclass=StHubertConfig)
 class StHubertModel(BaseFairseqModel):
     def __init__(
@@ -266,7 +333,7 @@ class StHubertModel(BaseFairseqModel):
             if self.embed != cfg.encoder_embed_dim
             else None
         )
-
+        
         self.mask_prob = cfg.mask_prob
         self.mask_selection = cfg.mask_selection
         self.mask_other = cfg.mask_other
@@ -294,6 +361,10 @@ class StHubertModel(BaseFairseqModel):
         self.mask_emb = nn.Parameter(
             torch.FloatTensor(cfg.encoder_embed_dim).uniform_()
         )
+
+        ## add releated postion encoding layer for text and speech 
+        self.speech_branch_rel_pos=make_conv_pos(cfg.encoder_embed_dim,cfg.conv_pos,cfg.conv_pos_groups)
+        self.text_branch_rel_pos=make_conv_pos(text_embed_dim,cfg.conv_pos,cfg.conv_pos_groups) ## (TODO) add text embedding layer and its dimension
 
         self.encoder = TransformerEncoder(cfg)
         self.layer_norm = LayerNorm(self.embed)
@@ -329,10 +400,18 @@ class StHubertModel(BaseFairseqModel):
         return state_dict
 
     @classmethod
-    def build_model(cls, cfg: HubertConfig, task: HubertPretrainingTask):
+    def build_model(cls, cfg: StHubertConfig, task: StHubertPretrainingTask):
         """Build a new model instance."""
-
-        model = HubertModel(cfg, task.cfg, task.dictionaries)
+        pathss="/workspace2/maduo/dataset/format/librispeech"
+        import os 
+        with open(os.path.join(pathss,"hubert_iter2_dict_model.txt"),'w')as f:
+            for sym, num in task.dictionaries.indices.items():
+                f.write(f"{sym} {num}\n")
+        logger.info(f"dictionary bos index: {task.dictionaries.bos_index}")
+        logger.info(f"dictionary pad index: {task.dictionaries.pad_index}")
+        logger.info(f"dictionary eos index: {task.dictionaries.eos_index}")
+        logger.info(f"dictionary unk index: {task.dictionaries.unk_index}")
+        model = StHubertModel(cfg, task.cfg, task.dictionaries)
         return model
 
     def apply_mask(self, x, padding_mask, target_list):
@@ -386,7 +465,7 @@ class StHubertModel(BaseFairseqModel):
             logits[1:][neg_is_pos] = float("-inf")
         logits = logits.transpose(0, 1)  # (num_x, num_cls+1)
         return logits
-
+:
     def forward_features(self, source: torch.Tensor) -> torch.Tensor:
         if self.feature_grad_mult > 0:
             features = self.feature_extractor(source)
