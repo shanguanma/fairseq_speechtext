@@ -130,6 +130,7 @@ class StHubertDataset(FairseqDataset):
         manifest_path: str,
         sample_rate: float,
         label_paths: List[str],
+        text_paths: List[str],
         label_rates: Union[List[float], float],  # -1 for sequence labels
         pad_list: List[str],
         eos_list: List[str],
@@ -152,6 +153,7 @@ class StHubertDataset(FairseqDataset):
         self.random_crop = random_crop
 
         self.num_labels = len(label_paths)
+        self.num_texts = len(text_paths)
         self.pad_list = pad_list
         self.eos_list = eos_list
         self.label_processors = label_processors
@@ -169,6 +171,8 @@ class StHubertDataset(FairseqDataset):
             self.label_offsets_list = [
                 load_label_offset(p, inds, tot) for p in label_paths
             ]
+            self.text_offsets_list = [load_text_offset(p, inds, tot) for p in text_paths]
+
         assert label_processors is None or len(label_processors) == self.num_labels
         for label_path, label_rate in zip(label_paths, self.label_rates):
             verify_label_lengths(
@@ -217,10 +221,25 @@ class StHubertDataset(FairseqDataset):
     def get_labels(self, index):
         return [self.get_label(index, i) for i in range(self.num_labels)]
 
+    ## text part
+    def get_text(self, index, text_idx):
+        if self.store_labels:
+            text_code = self.label_list[text_idx][index]
+        else:
+            with open(self.label_paths[text_idx]) as f:
+                offset_s, offset_e = self.text_offsets_list[text_idx][index]
+                f.seek(offset_s)
+                text_code = f.read(offset_e - offset_s)
+        return text_code
+    def get_texts(self, index):
+        return [self.get_text(index, i) for i in range(self.num_texts)]
+
+
     def __getitem__(self, index):
         wav = self.get_audio(index)
         labels = self.get_labels(index)
-        return {"id": index, "source": wav, "label_list": labels}
+        texts = self.get_texts(index)
+        return {"id": index, "source": wav,"source_text_list": texts, "label_list": labels} ## sample contents ##(TODO): check if text need to pad
 
     def __len__(self):
         return len(self.sizes)
@@ -254,6 +273,14 @@ class StHubertDataset(FairseqDataset):
             audios, audio_size
         )
 
+        sources_by_text = [
+            [s["source_text_list"][i] for s in samples] for i in range(self.num_texts)
+        ]
+
+        sources_list, lengths_list, ntokens_list = self.collater_text(
+            sources_by_text, audio_size, audio_starts
+        )
+
         targets_by_label = [
             [s["label_list"][i] for s in samples] for i in range(self.num_labels)
         ]
@@ -261,7 +288,7 @@ class StHubertDataset(FairseqDataset):
             targets_by_label, audio_size, audio_starts
         )
 
-        net_input = {"source": collated_audios, "padding_mask": padding_mask}
+        net_input = {"source": collated_audios, "padding_mask": padding_mask, "source_text":sources_list}
         batch = {
             "id": torch.LongTensor([s["id"] for s in samples]),
             "net_input": net_input,
@@ -315,7 +342,26 @@ class StHubertDataset(FairseqDataset):
         ntokens = lengths.sum().item()
         targets = data_utils.collate_tokens(targets, pad_idx=pad, left_pad=False)
         return targets, lengths, ntokens
+    
+    def collater_frm_text(self, texts, audio_size, audio_starts, label_rate, pad):
+        assert label_rate > 0
+        s2f = label_rate / self.sample_rate
+        frm_starts = [int(round(s * s2f)) for s in audio_starts]
+        frm_size = int(round(audio_size * s2f))
+        if not self.pad_audio:
+            rem_size = [len(t) - s for t, s in zip(texts, frm_starts)]
+            frm_size = min(frm_size, *rem_size)
+        texts = [t[s : s + frm_size] for t, s in zip(texts, frm_starts)]
+        logger.info(f"audio_starts={audio_starts}")
+        logger.info(f"frame_starts={frm_starts}")
+        logger.info(f"frame_size={frm_size}")
 
+        lengths = torch.LongTensor([len(t) for t in targets])
+        ntokens = lengths.sum().item()
+        texts = data_utils.collate_tokens(texts, pad_idx=pad, left_pad=False)
+        return texts, lengths, ntokens
+
+   
     def collater_seq_label(self, targets, pad):
         lengths = torch.LongTensor([len(t) for t in targets])
         ntokens = lengths.sum().item()
@@ -336,6 +382,19 @@ class StHubertDataset(FairseqDataset):
             lengths_list.append(lengths)
             ntokens_list.append(ntokens)
         return targets_list, lengths_list, ntokens_list
+
+    def collater_text(self, sources_by_text, audio_size, audio_starts):
+        texts_list, lengths_list, ntokens_list = [], [], []
+        itr = zip(sources_by_text, self.label_rates, self.pad_list)
+        for sources, label_rate, pad in itr:
+            if label_rate != -1.0:
+                sources, lengths, ntokens = self.collater_frm_text(
+                    sources, audio_size, audio_starts, label_rate, pad
+                )
+            sources_list.append(sources)
+            lengths_list.append(lengths)
+            ntokens_list.append(ntokens)
+        return sources_list, lengths_list, ntokens_list
 
     def num_tokens(self, index):
         return self.size(index)
