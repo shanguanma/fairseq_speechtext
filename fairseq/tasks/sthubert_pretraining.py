@@ -49,6 +49,16 @@ class StHubertPretrainingConfig(FairseqDataclass):
             )
         },
     )
+
+##    texts_type: List[str] = field(
+##        default_factory=lambda: ["phn"],
+##        metadata={
+##            "help": (
+##                "extension of the phoneme text files to load, frame-level labels for"
+##                " pre-training, and sequence-level label for fine-tuning"
+##            )
+##        },
+##    )
     label_dir: Optional[str] = field(
         default=None,
         metadata={
@@ -105,7 +115,7 @@ class StHubertPretrainingConfig(FairseqDataclass):
 @register_task("sthubert_pretraining", dataclass=StHubertPretrainingConfig)
 class StHubertPretrainingTask(FairseqTask):
 
-    cfg: HubertPretrainingConfig
+    cfg: StHubertPretrainingConfig
 
     def __init__(
         self,
@@ -123,7 +133,7 @@ class StHubertPretrainingTask(FairseqTask):
             self.state.add_factory("target_dictionary", self.load_dictionaries)
         else:
             self.state.add_factory("dictionaries", self.load_dictionaries)
-
+            
         self.blank_symbol = "<s>"
 
     @property
@@ -140,8 +150,8 @@ class StHubertPretrainingTask(FairseqTask):
 
     @classmethod
     def setup_task(
-        cls, cfg: HubertPretrainingConfig, **kwargs
-    ) -> "HubertPretrainingTask":
+        cls, cfg: StHubertPretrainingConfig, **kwargs
+    ) -> "StHubertPretrainingTask":
         return cls(cfg)
 
     def load_dictionaries(self):
@@ -164,12 +174,13 @@ class StHubertPretrainingTask(FairseqTask):
         eos_list = [dict.eos() for dict in dicts]
         procs = [LabelEncoder(dict) for dict in dicts]
         paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
-
+        #text_paths=[f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.texts_type]
         # hubert v1: pad_audio=True, random_crop=False;
         self.datasets[split] = StHubertDataset(
             manifest,
             sample_rate=self.cfg.sample_rate,
-            label_paths=paths,
+            label_paths=[paths[0]],
+            text_paths=[paths[1]],
             label_rates=self.cfg.label_rate,
             pad_list=pad_list,
             eos_list=eos_list,
