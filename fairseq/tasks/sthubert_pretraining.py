@@ -50,15 +50,6 @@ class StHubertPretrainingConfig(FairseqDataclass):
         },
     )
 
-##    texts_type: List[str] = field(
-##        default_factory=lambda: ["phn"],
-##        metadata={
-##            "help": (
-##                "extension of the phoneme text files to load, frame-level labels for"
-##                " pre-training, and sequence-level label for fine-tuning"
-##            )
-##        },
-##    )
     label_dir: Optional[str] = field(
         default=None,
         metadata={
