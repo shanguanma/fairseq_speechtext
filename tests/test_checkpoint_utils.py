@@ -109,7 +109,6 @@ class TestCheckpointUtils(unittest.TestCase):
         with patch(f"{checkpoint_utils.__name__}.PathManager.open") as mock_open, patch(
             f"{checkpoint_utils.__name__}.torch.load"
         ) as mock_load:
-
             mock_load.return_value = {"extra_state": {"ema": dummy_state}}
             filename = "ema_checkpoint.pt"
             state = checkpoint_utils.load_ema_from_checkpoint(filename)

@@ -286,7 +286,6 @@ class NATransformerDecoder(FairseqNATDecoder):
             )
 
         else:
-
             x, decoder_padding_mask = self.forward_embedding(prev_output_tokens)
 
         # B x T x C -> T x B x C
@@ -296,7 +295,6 @@ class NATransformerDecoder(FairseqNATDecoder):
 
         # decoder layers
         for i, layer in enumerate(self.layers):
-
             # early exit from the decoder.
             if (early_exit is not None) and (i >= early_exit):
                 break

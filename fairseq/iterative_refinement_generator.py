@@ -197,7 +197,6 @@ class IterativeRefinementGenerator(object):
             }
 
         for step in range(self.max_iter + 1):
-
             decoder_options = {
                 "eos_penalty": self.eos_penalty,
                 "max_ratio": self.max_ratio,

@@ -17,7 +17,6 @@ from tests.utils import build_vocab, make_data
 class TestMultilingualDenoising(unittest.TestCase):
     def test_multilingual_denoising(self):
         with TemporaryDirectory() as dirname:
-
             # prep input file
             lang_dir = os.path.join(dirname, "en")
             os.mkdir(lang_dir)

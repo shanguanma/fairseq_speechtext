@@ -55,7 +55,6 @@ class MultilingualDenoisingConfig(DenoisingConfig):
 
 @register_task("multilingual_denoising", dataclass=MultilingualDenoisingConfig)
 class MultilingualDenoisingTask(DenoisingTask):
-
     cfg: MultilingualDenoisingConfig
 
     @classmethod

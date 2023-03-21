@@ -42,7 +42,6 @@ def mk_dataset(num_samples: int, max_len: int, output: Path):
 
 
 class OnlineBacktranslationTest(unittest.TestCase):
-
     tmp_dir = Path(tempfile.mkdtemp(suffix="OnlineBacktranslationTest"))
 
     @classmethod

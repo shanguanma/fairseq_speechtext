@@ -15,7 +15,6 @@ from fairseq.modules import GradMultiply, LayerNorm, SamePad, TransformerEncoder
 #       use wav input
 #       use trained position embedding so it is easier to match with text input
 class SpeechWavTransformerEncoder(FairseqEncoder):
-
     # extra parameters for speech encoder besides those defined in transformermodel
     @staticmethod
     def add_args(parser):
@@ -448,7 +447,6 @@ class StackedSpeechWavTransformerEncoder(FairseqEncoder):
         padding_mask=None,
         features_only=True,
     ):
-
         out = self.speech_encoder.forward(
             src_tokens,
             src_lengths,

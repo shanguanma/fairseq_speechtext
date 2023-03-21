@@ -15,7 +15,6 @@ from tests.utils import build_vocab, make_data
 class TestMaskedLM(unittest.TestCase):
     def test_masks_tokens(self):
         with TemporaryDirectory() as dirname:
-
             # prep input file
             raw_file = os.path.join(dirname, "raw")
             data = make_data(out_file=raw_file)

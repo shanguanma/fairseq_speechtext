@@ -69,7 +69,6 @@ class CMLMNATransformerModel(NATransformerModel):
         }
 
     def forward_decoder(self, decoder_out, encoder_out, decoding_format=None, **kwargs):
-
         step = decoder_out.step
         max_step = decoder_out.max_step
 

@@ -26,7 +26,6 @@ from fairseq.logging.meters import StopwatchMeter, TimeMeter
 
 
 def main(cfg: DictConfig):
-
     if isinstance(cfg, Namespace):
         cfg = convert_namespace_to_omegaconf(cfg)
 

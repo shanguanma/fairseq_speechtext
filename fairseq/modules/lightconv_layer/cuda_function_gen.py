@@ -5,7 +5,6 @@
 
 
 def gen_forward():
-
     kernels = [3, 5, 7, 15, 31, 63, 127, 255]
     seqs = [32 * x for x in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]]
 
@@ -114,7 +113,6 @@ std::vector<at::Tensor> lightconv_cuda_forward(at::Tensor input, at::Tensor filt
 
 
 def gen_backward():
-
     head = """
 /**
  * Copyright (c) Facebook, Inc. and its affiliates.
@@ -263,7 +261,7 @@ std::vector<at::Tensor> lightconv_cuda_backward(
 
     with open("lightconv_cuda_backward.cu", "w") as backward:
         backward.write(head)
-        for (k, t, mem) in zip(kernels, thresh, max_mem):
+        for k, t, mem in zip(kernels, thresh, max_mem):
             backward.write(case_k.format(k=k))
             for seq in seqs:
                 if (t == -1 or seq <= t) and (mem == -1 or seq < mem):

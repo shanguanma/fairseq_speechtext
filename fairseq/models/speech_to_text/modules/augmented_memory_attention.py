@@ -126,7 +126,6 @@ class AugmentedMemoryTransformerEncoderLayer(TransformerEncoderLayer):
         self.right_context = args.right_context // args.encoder_stride
 
     def forward(self, x, state):
-
         length, batch_size, x_dim = x.size()
 
         residual = x
@@ -394,7 +393,6 @@ class SequenceEncoder(FairseqEncoder):
         src_lengths: Tensor,
         states=None,
     ):
-
         seg_src_tokens_lengths = sequence_to_segments(
             sequence=src_tokens,
             time_axis=self.input_time_axis,

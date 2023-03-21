@@ -55,7 +55,6 @@ class ActivationQuantizer:
     def register_hook(self):
         # forward hook
         def quantize_hook(module, x, y):
-
             # update parameters every 1000 iterations
             if self.counter % self.update_step == 0:
                 self.scale = None

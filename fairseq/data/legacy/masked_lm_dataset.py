@@ -196,7 +196,6 @@ class MaskedLMDataset(FairseqDataset):
         # TODO: Can we add deteminism without this constraint?
         with data_utils.numpy_seed(self.seed + samples[0]["id"]):
             for s in samples:
-
                 # token range is needed for replacing with random token during
                 # masking
                 token_range = (self.vocab.nspecial, len(self.vocab))

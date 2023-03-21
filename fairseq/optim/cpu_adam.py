@@ -83,7 +83,6 @@ class FairseqCPUAdam(FairseqOptimizer):
 
 
 class CPUAdam(torch.optim.Optimizer):
-
     optimizer_id = 0
 
     def __init__(

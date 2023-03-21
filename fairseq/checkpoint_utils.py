@@ -327,7 +327,6 @@ def load_checkpoint_to_cpu(path, arg_overrides=None, load_on_all_ranks=False):
             setattr(args, arg_name, arg_val)
 
     if "cfg" in state and state["cfg"] is not None:
-
         # hack to be able to set Namespace in dict config. this should be removed when we update to newer
         # omegaconf version that supports object flags, or when we migrate all existing models
         from omegaconf import __version__ as oc_version

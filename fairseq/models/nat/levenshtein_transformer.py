@@ -71,7 +71,6 @@ class LevenshteinTransformerModel(FairseqNATModel):
     def forward(
         self, src_tokens, src_lengths, prev_output_tokens, tgt_tokens, **kwargs
     ):
-
         assert tgt_tokens is not None, "forward function only supports training."
 
         # encoding
@@ -140,7 +139,6 @@ class LevenshteinTransformerModel(FairseqNATModel):
     def forward_decoder(
         self, decoder_out, encoder_out, eos_penalty=0.0, max_ratio=None, **kwargs
     ):
-
         output_tokens = decoder_out.output_tokens
         output_scores = decoder_out.output_scores
         attn = decoder_out.attn

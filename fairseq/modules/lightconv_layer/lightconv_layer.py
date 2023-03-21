@@ -73,7 +73,6 @@ class LightconvLayer(nn.Module):
             nn.init.constant_(self.bias, 0.0)
 
     def forward(self, x, incremental_state=None):
-
         # during inference time, incremental BMM is faster
         if incremental_state is not None:
             T, B, C = x.size()

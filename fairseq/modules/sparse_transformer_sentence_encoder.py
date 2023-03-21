@@ -43,7 +43,6 @@ class SparseTransformerSentenceEncoder(TransformerSentenceEncoder):
         stride: int = 32,
         expressivity: int = 8,
     ) -> None:
-
         super().__init__(
             padding_idx,
             vocab_size,

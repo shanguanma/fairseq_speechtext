@@ -514,7 +514,6 @@ class SpeechDLMTask(LegacyFairseqTask):
         return self.output_dicts
 
     def build_generator(self, models, args, extra_gen_cls_kwargs=None):
-
         from fairseq.models.speech_dlm.sequence_generator import (
             multichannel_search,
             MultichannelSequenceGenerator,

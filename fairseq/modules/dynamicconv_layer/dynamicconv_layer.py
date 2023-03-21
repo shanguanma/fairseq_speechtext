@@ -47,7 +47,6 @@ class DynamicconvLayer(nn.Module):
         conv_bias=False,
         query_size=None,
     ):
-
         super(DynamicconvLayer, self).__init__()
         self.input_size = input_size
         self.query_size = input_size if query_size is None else query_size
@@ -75,7 +74,6 @@ class DynamicconvLayer(nn.Module):
             nn.init.constant_(self.weight_linaer.bias, 0.0)
 
     def forward(self, x, incremental_state=None, query=None, unfold=None):
-
         T, B, C = x.size()
         K, H = self.kernel_size, self.num_heads
         # R = C // H

@@ -104,7 +104,6 @@ class HubertPretrainingConfig(FairseqDataclass):
 
 @register_task("hubert_pretraining", dataclass=HubertPretrainingConfig)
 class HubertPretrainingTask(FairseqTask):
-
     cfg: HubertPretrainingConfig
 
     def __init__(

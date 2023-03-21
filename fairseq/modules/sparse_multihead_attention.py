@@ -37,7 +37,6 @@ class SparseMultiheadAttention(MultiheadAttention):
         expressivity=8,
         is_bidirectional=True,
     ):
-
         super().__init__(
             embed_dim,
             num_heads,

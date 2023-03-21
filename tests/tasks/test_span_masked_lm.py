@@ -17,7 +17,6 @@ from tests.utils import build_vocab, make_data
 class TestSpanMaskedLM(unittest.TestCase):
     def test_masks_token_spans(self):
         with TemporaryDirectory() as dirname:
-
             # prep input file
             raw_file = os.path.join(dirname, "raw")
             data = make_data(out_file=raw_file)

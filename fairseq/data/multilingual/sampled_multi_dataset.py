@@ -256,7 +256,7 @@ class SampledMultiDataset(FairseqDataset):
             return None
         if self.collate_format == "ordered_dict":
             collect_samples = [[] for _ in range(len(self.datasets))]
-            for (i, sample) in samples:
+            for i, sample in samples:
                 collect_samples[i].append(sample)
             batch = OrderedDict(
                 [

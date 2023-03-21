@@ -547,7 +547,6 @@ class Wav2VecEncoder(FairseqEncoder):
         self.num_updates = num_updates
 
     def forward(self, source, padding_mask, **kwargs):
-
         w2v_args = {
             "source": source,
             "padding_mask": padding_mask,
@@ -711,7 +710,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
             tmp = torch.zeros(
                 [len(prev_output_tokens), max_len], device=prev_output_tokens[0].device
             )
-            for (i, p) in enumerate(prev_output_tokens):
+            for i, p in enumerate(prev_output_tokens):
                 tmp[i, : len(p)] = p
             prev_output_tokens = tmp
 

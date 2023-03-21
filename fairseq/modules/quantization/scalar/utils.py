@@ -35,7 +35,6 @@ def quantize_model_(
     quantized_layers = get_layers(model, "(.*?)", remove_weights=remove_weights)
 
     for layer in quantized_layers:
-
         # book-keeping
         is_master_process = (not dist.is_initialized()) or (
             dist.is_initialized() and dist.get_rank() == 0

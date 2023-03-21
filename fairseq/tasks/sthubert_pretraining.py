@@ -105,7 +105,6 @@ class StHubertPretrainingConfig(FairseqDataclass):
 
 @register_task("sthubert_pretraining", dataclass=StHubertPretrainingConfig)
 class StHubertPretrainingTask(FairseqTask):
-
     cfg: StHubertPretrainingConfig
 
     def __init__(
@@ -124,7 +123,7 @@ class StHubertPretrainingTask(FairseqTask):
             self.state.add_factory("target_dictionary", self.load_dictionaries)
         else:
             self.state.add_factory("dictionaries", self.load_dictionaries)
-            
+
         self.blank_symbol = "<s>"
 
     @property
@@ -165,7 +164,7 @@ class StHubertPretrainingTask(FairseqTask):
         eos_list = [dict.eos() for dict in dicts]
         procs = [LabelEncoder(dict) for dict in dicts]
         paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
-        #text_paths=[f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.texts_type]
+        # text_paths=[f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.texts_type]
         # hubert v1: pad_audio=True, random_crop=False;
         self.datasets[split] = StHubertDataset(
             manifest,

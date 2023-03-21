@@ -87,7 +87,6 @@ class IterNATransformerModel(NATransformerModel):
     def forward(
         self, src_tokens, src_lengths, prev_output_tokens, tgt_tokens, **kwargs
     ):
-
         B, T = prev_output_tokens.size()
 
         # encoding

@@ -5,7 +5,6 @@ from argparse import Namespace  # noqa
 
 
 def main():
-
     ns1 = eval(input("Namespace 1: "))
     ns2 = eval(input("Namespace 2: "))
 

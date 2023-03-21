@@ -393,7 +393,6 @@ class SpeechToSpeechTask(LegacyFairseqTask):
         seq_gen_cls=None,
         extra_gen_cls_kwargs=None,
     ):
-
         if not self.args.target_is_code or self.args.eval_inference:
             from fairseq.models.text_to_speech.vocoder import get_vocoder
 

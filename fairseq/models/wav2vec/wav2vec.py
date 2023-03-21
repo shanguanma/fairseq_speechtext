@@ -573,7 +573,6 @@ class Wav2VecPredictionsModel(nn.Module):
         return negs
 
     def forward(self, x, y):
-
         x = x.unsqueeze(-1)
         x = self.project_to_steps(x)  # BxCxTxS
         x = self.dropout(x)

@@ -155,7 +155,6 @@ def _get_del_targets(in_tokens, out_tokens, padding_idx):
 def _apply_ins_masks(
     in_tokens, in_scores, mask_ins_pred, padding_idx, unk_idx, eos_idx
 ):
-
     in_masks = in_tokens.ne(padding_idx)
     in_lengths = in_masks.sum(1)
 

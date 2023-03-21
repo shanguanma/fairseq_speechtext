@@ -42,7 +42,6 @@ class EvaluationTokenizer(object):
         punctuation_removal: bool = False,
         character_tokenization: bool = False,
     ):
-
         assert (
             tokenizer_type in self._ALL_TOKENIZER_TYPES
         ), f"{tokenizer_type}, {self._ALL_TOKENIZER_TYPES}"

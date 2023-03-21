@@ -131,7 +131,6 @@ def _make_binary_dataset(
 def _make_binary_alignment_dataset(
     input_prefix: str, output_prefix: str, num_workers: int, args: Namespace
 ):
-
     binarizer = AlignmentDatasetBinarizer(utils.parse_alignment)
 
     input_file = input_prefix

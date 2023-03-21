@@ -13,7 +13,6 @@ from examples.speech_recognition.data.collaters import Seq2SeqCollater
 
 class TestSeq2SeqCollator(unittest.TestCase):
     def test_collate(self):
-
         eos_idx = 1
         pad_idx = 0
         collater = Seq2SeqCollater(

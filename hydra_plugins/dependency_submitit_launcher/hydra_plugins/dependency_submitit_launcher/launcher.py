@@ -21,7 +21,6 @@ class DependencySubmititLauncher(BaseSubmititLauncher):
     def launch(
         self, job_overrides: Sequence[Sequence[str]], initial_job_idx: int
     ) -> Sequence[JobReturn]:
-
         # lazy import to ensure plugin discovery remains fast
         import submitit
 

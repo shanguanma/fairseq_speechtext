@@ -127,7 +127,6 @@ def move_to_cpu(sample):
 
 
 def move_to_tpu(sample):
-
     import torch_xla.core.xla_model as xm
 
     device = xm.xla_device()

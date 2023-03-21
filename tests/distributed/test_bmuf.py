@@ -58,7 +58,6 @@ def train_step(input, target, model, loss_fn, optimizer, **unused):
 
 
 def single_gpu_training(cfg, args, rank, iterations, shared_results):
-
     is_cuda = torch.cuda.is_available()
     if is_cuda:
         torch.cuda.set_device(rank)

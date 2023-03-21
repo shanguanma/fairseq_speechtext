@@ -45,7 +45,6 @@ def benchmark_multihead_attention(
     seq_len=SEQ,
     num_heads=HEADS,
 ):
-
     results = []
     # device = torch.device("cuda")
 

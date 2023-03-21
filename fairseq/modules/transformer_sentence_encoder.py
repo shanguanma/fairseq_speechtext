@@ -103,7 +103,6 @@ class TransformerSentenceEncoder(nn.Module):
         q_noise: float = 0.0,
         qn_block_size: int = 8,
     ) -> None:
-
         super().__init__()
         self.padding_idx = padding_idx
         self.vocab_size = vocab_size

@@ -599,7 +599,6 @@ def compute_block_mask_2d(
     mask_dropout: float = 0,
     non_overlapping: bool = False,
 ) -> torch.Tensor:
-
     assert mask_length > 1
 
     B, L = shape
@@ -734,7 +733,6 @@ def compute_block_mask_1d(
     mask_dropout: float = 0,
     non_overlapping: bool = False,
 ) -> torch.Tensor:
-
     B, L = shape
 
     if inverse_mask:

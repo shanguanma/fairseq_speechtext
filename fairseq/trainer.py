@@ -44,7 +44,6 @@ class Trainer(object):
     """
 
     def __init__(self, cfg: FairseqConfig, task, model, criterion, quantizer=None):
-
         if isinstance(cfg, Namespace):
             logger.warning(
                 "argparse.Namespace configuration is deprecated! Automatically converting to OmegaConf"
@@ -287,7 +286,6 @@ class Trainer(object):
         return self._lr_scheduler
 
     def _build_optimizer(self):
-
         if (
             self.cfg.optimization.debug_param_names
             and self.cfg.common.fp16_no_flatten_grads
@@ -447,7 +445,6 @@ class Trainer(object):
     def save_checkpoint(self, filename, extra_state):
         """Save all training state in a checkpoint file."""
         if self.should_save_checkpoint_on_current_rank:
-
             logger.info(f"Saving checkpoint to {os.path.abspath(filename)}")
             # call state_dict on all ranks in case it needs internal communication
             state_dict = utils.move_to_cpu(self.state_dict())
@@ -985,7 +982,6 @@ class Trainer(object):
                         )  # recursion to feed in same batch
 
         except FloatingPointError:
-
             self.consolidate_optimizer()
             self.save_checkpoint(
                 os.path.join(self.cfg.checkpoint.save_dir, "crash.pt"), {}

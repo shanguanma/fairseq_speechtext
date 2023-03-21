@@ -54,7 +54,6 @@ __all__ = [
 
 
 def build_model(cfg: FairseqDataclass, task, from_checkpoint=False):
-
     model = None
     model_type = getattr(cfg, "_name", None) or getattr(cfg, "arch", None)
 

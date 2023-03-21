@@ -26,7 +26,6 @@ class SparseTransformerSentenceEncoderLayer(TransformerSentenceEncoderLayer):
         stride: int = 32,
         expressivity: int = 8,
     ) -> None:
-
         super().__init__(
             embedding_dim,
             ffn_embedding_dim,

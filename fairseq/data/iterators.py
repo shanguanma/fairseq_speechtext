@@ -533,7 +533,6 @@ class EpochBatchIterator(EpochBatchIterating):
     def ordered_batches(self, epoch, fix_batches_to_gpus, shuffle):
         def shuffle_batches(batches, seed):
             with data_utils.numpy_seed(seed):
-
                 if self.grouped_shuffling:
                     grouped_batches = [
                         batches[(i * self.num_shards) : ((i + 1) * self.num_shards)]

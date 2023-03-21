@@ -839,7 +839,6 @@ class NoSegAugmentedMemoryTransformer(nn.Module):
         right_context_blocks: Tensor,
         rpe: Optional[Tensor],
     ) -> Tuple[Tensor, Tensor, Tensor, Tensor, Tensor]:
-
         results = self.pre_attention_ops(input, right_context_blocks)
         rc_length, input_length, residual_input, query_input, rc_and_input = results
 
@@ -882,7 +881,6 @@ class NoSegAugmentedMemoryTransformer(nn.Module):
         left_context_val,
         rpe,
     ):
-
         results = self.pre_attention_ops(input, right_context_blocks)
         rc_length, input_length, residual_input, query_input, rc_and_input = results
         if self.use_mem:

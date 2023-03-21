@@ -48,7 +48,6 @@ class CompositeOptimizerConfig(FairseqDataclass):
 
 @register_optimizer("composite", dataclass=CompositeOptimizerConfig)
 class FairseqCompositeOptimizer(FairseqOptimizer):
-
     optimizers: Dict[str, FairseqOptimizer] = {}
     lr_schedulers: Dict[str, FairseqLRScheduler] = {}
     lr_scheduler: FairseqLRScheduler = None

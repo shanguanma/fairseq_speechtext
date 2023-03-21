@@ -21,7 +21,6 @@ def get_phrase(words, index, length):
 
 
 def main(args):
-
     if args.seed:
         random.seed(args.seed)
 

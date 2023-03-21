@@ -20,7 +20,6 @@ from fairseq.utils import new_arange
 
 class NegativeDistanceScore(object):
     def __init__(self):
-
         # pre-compute some values
         self.scores = {}
 
@@ -100,7 +99,6 @@ def _get_ins_targets(in_tokens, out_tokens, padding_idx, unk_idx, vocab_size, ta
 
 
 def _apply_ins_words(in_tokens, in_scores, word_ins_pred, word_ins_scores, padding_idx):
-
     padding_masks = in_tokens[:, 1:].eq(padding_idx)
     word_ins_scores.masked_fill_(padding_masks, 0.0)
     word_ins_pred.masked_fill_(padding_masks, padding_idx)
@@ -137,7 +135,6 @@ class InsertionTransformerModel(LevenshteinTransformerModel):
     def forward(
         self, src_tokens, src_lengths, prev_output_tokens, tgt_tokens, **kwargs
     ):
-
         assert tgt_tokens is not None, "forward function only supports training."
 
         # encoding
@@ -173,7 +170,6 @@ class InsertionTransformerModel(LevenshteinTransformerModel):
     def forward_decoder(
         self, decoder_out, encoder_out, eos_penalty=0.0, max_ratio=None, **kwargs
     ):
-
         output_tokens = decoder_out.output_tokens
         output_scores = decoder_out.output_scores
         history = decoder_out.history
