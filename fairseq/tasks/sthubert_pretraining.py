@@ -159,7 +159,7 @@ class StHubertPretrainingTask(FairseqTask):
             Dictionary.load(f"{label_dir}/dict.{label}.txt")
             for label in self.cfg.labels
         ]
-        return dictionaries[1] if self.cfg.fine_tuning 
+        return dictionaries[1] 
 
     def get_label_dir(self) -> str:
         if self.cfg.label_dir is None:

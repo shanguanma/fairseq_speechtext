@@ -7,7 +7,7 @@ common:
   log_file: null
   aim_repo: null
   aim_run_hash: null
-  tensorboard_logdir: /workspace2/maduo/exp/pretrain/pretrain_on_hubert_4gpu_8update_960h_mfcc_250k_update
+  tensorboard_logdir: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update
   wandb_project: null
   azureml_logging: false
   seed: 1337
@@ -28,7 +28,7 @@ common:
   amp_batch_retries: 2
   amp_init_scale: 128
   amp_scale_window: null
-  user_dir: /workspace2/maduo/fairseq/examples/hubert
+  user_dir: /workspace2/maduo/fairseq_speechtext/examples/sthubert
   empty_cache_freq: 0
   all_gather_list_size: 16384
   model_parallel_size: 1
@@ -132,7 +132,7 @@ optimization:
   debug_param_names: false
 checkpoint:
   _name: null
-  save_dir: /workspace2/maduo/exp/pretrain/pretrain_on_hubert_4gpu_8update_960h_mfcc_250k_update
+  save_dir: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update
   restore_file: checkpoint_last.pt
   continue_once: null
   finetune_from_model: null
@@ -224,7 +224,7 @@ interactive:
   buffer_size: 0
   input: '-'
 model:
-  _name: hubert
+  _name: sthubert
   label_rate: 100
   skip_masked: false
   skip_nomask: false
@@ -241,11 +241,12 @@ model:
   untie_final_proj: true
   activation_dropout: 0.0
 task:
-  _name: hubert_pretraining
+  _name: sthubert_pretraining
   data: /workspace2/maduo/dataset/format/librispeech
-  label_dir: /workspace2/maduo/dataset/format/librispeech/mfcc/mfcc_lab
+  label_dir: /workspace2/maduo/dataset/format/librispeech/unpair_phncode_unpair_mfcc_km_code
   labels:
   - km
+  - phncode
   label_rate: ${model.label_rate}
   sample_rate: 16000
   max_sample_size: 250000
@@ -254,7 +255,7 @@ task:
   random_crop: true
   normalize: false
 criterion:
-  _name: hubert
+  _name: sthubert
   pred_masked_weight: 1.0
   pred_nomask_weight: 0.0
   loss_weights:
