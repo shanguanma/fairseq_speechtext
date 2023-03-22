@@ -123,12 +123,13 @@ class StHubertPretrainingTask(FairseqTask):
             self.state.add_factory("target_dictionary", self.load_dictionaries)
         else:
             self.state.add_factory("dictionaries", self.load_dictionaries)
+            self.state.add_factory("text_dictionary",self.load_text_dictionaries)
 
         self.blank_symbol = "<s>"
 
     @property
     def source_dictionary(self) -> Optional[Dictionary]:
-        return None
+        return self.state.text_dictionary
 
     @property
     def target_dictionary(self) -> Optional[Dictionary]:
@@ -136,7 +137,8 @@ class StHubertPretrainingTask(FairseqTask):
 
     @property
     def dictionaries(self) -> List[Dictionary]:
-        return self.state.dictionaries
+        dict_list=[self.state.dictionaries,self.state.text_dictionaries]
+        return dict_list
 
     @classmethod
     def setup_task(
@@ -151,6 +153,13 @@ class StHubertPretrainingTask(FairseqTask):
             for label in self.cfg.labels
         ]
         return dictionaries[0] if self.cfg.fine_tuning else dictionaries
+    def load_text_dictionaries(self):
+        label_dir = self.cfg.data if self.cfg.label_dir is None else self.cfg.label_dir
+        dictionaries = [
+            Dictionary.load(f"{label_dir}/dict.{label}.txt")
+            for label in self.cfg.labels
+        ]
+        return dictionaries[1] if self.cfg.fine_tuning 
 
     def get_label_dir(self) -> str:
         if self.cfg.label_dir is None:

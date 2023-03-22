@@ -268,12 +268,12 @@ class TextModel(BaseFairseqModel):
         cfg: TextModelConfig,
         dictionary: List[Dictionary],
     ):
-        super().__init__(dictionary)
-
+        super().__init__()
+        self.dictionary = dictionary
         self.padding_idx = 1
         self.max_source_positions = cfg.max_source_positions
         self.embed_tokens = torch.nn.Embedding(
-            len(dicionary), cfg.text_embed_dim, padding_idx=self.padding_idx
+            len(self.dictionary), cfg.text_embed_dim, padding_idx=self.padding_idx
         )
         self.embed_positions = PositionalEmbedding(
             cfg.max_source_positions,
@@ -313,6 +313,7 @@ class StHubertModel(BaseFairseqModel):
         self,
         cfg: StHubertConfig,
         task_cfg: StHubertPretrainingConfig,
+        text_cfg: TextModelConfig,
         dictionaries: List[Dictionary],
     ) -> None:
         super().__init__()
@@ -363,7 +364,7 @@ class StHubertModel(BaseFairseqModel):
         self.mask_emb = nn.Parameter(
             torch.FloatTensor(cfg.encoder_embed_dim).uniform_()
         )
-
+        self.text_feature_extractor = TextModel(text_cfg,task.text_dictionary)
         ## add releated postion encoding layer for text and speech
         self.speech_branch_rel_pos = make_conv_pos(
             cfg.encoder_embed_dim, cfg.conv_pos, cfg.conv_pos_groups
@@ -482,7 +483,8 @@ class StHubertModel(BaseFairseqModel):
             with torch.no_grad():
                 features = self.feature_extractor(source)
         return features
-
+    def forward_text(self, source_text: torch.Tensor) ->Tuple[torch.Tensor, torch.Tensor]:
+        text_output =  
     def forward_targets(
         self,
         features: torch.Tensor,
