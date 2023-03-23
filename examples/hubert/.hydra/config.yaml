@@ -238,7 +238,7 @@ model:
   dropout: 0.1
   attention_dropout: 0.1
   feature_grad_mult: 0.1
-  untie_final_proj: true
+  untie_final_proj: false
   activation_dropout: 0.0
 task:
   _name: sthubert_pretraining
@@ -255,7 +255,7 @@ task:
   random_crop: true
   normalize: false
 criterion:
-  _name: sthubert
+  _name: hubert
   pred_masked_weight: 1.0
   pred_nomask_weight: 0.0
   loss_weights:
