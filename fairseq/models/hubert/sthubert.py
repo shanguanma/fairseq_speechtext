@@ -243,7 +243,7 @@ class StHubertConfig(FairseqDataclass):
     )
     fp16: bool = field(default=False, metadata={"help": "If fp16 is being used"})
     # text net part
-    max_source_positions: int = field(default=1024, metadata={"help": "Maximum input length supported by the transformer encoder"})
+    max_source_positions: int = field(default=512, metadata={"help": "Maximum input length supported by the transformer encoder"})
     text_dropout: float = field(default=0.1, metadata={"help": "dropout probability for the TextModel embedding feature"})
     text_embed_dim: int = field(
         default=768, metadata={"help": "text net part embedding dimension"}
@@ -474,14 +474,15 @@ class StHubertModel(BaseFairseqModel):
             source_text_lengths (torch.LongTensor): lengths of each source sentence of
                 shape `(batch)`
         """
+        """
         # embed tokens and positions
         #logger.info(f"in the forward_text: source_text: {source_text}")
         x = source_text
         ###  remove full 1 utterance in batch
         x_list = torch.split(source_text,1)
-        a = [torch.equal(i,torch.ones(i.size(0),i.size(1))) for i in x_list]
-
-        if not torch.any(a):
+        a = [torch.equal(i,torch.ones(i.size(0),i.size(1),device=source_text.device)) for i in x_list]
+        if not torch.any(torch.tensor(a)):
+            logger.info(f"in forward_text, source_text:  {source_text}, source_text shape : {source_text.shape}")
             token_embedding = self.embed_tokens(source_text)
             x = embed = token_embedding
             if self.embed_positions is not None:
@@ -493,6 +494,15 @@ class StHubertModel(BaseFairseqModel):
             encoder_padding_mask = source_text.eq(self.padding_idx)
             # account for padding while computing the representation
             x = x * (1 - encoder_padding_mask.unsqueeze(-1).type_as(x))
+        """
+        logger.info(f"in forward_text, source_text:  {source_text}, source_text shape : {source_text.shape}")
+        token_embedding = self.embed_tokens(source_text)
+        x = embed = token_embedding
+        #if self.embed_positions is not None:
+        #    x = embed + self.embed_positions(source_text)
+        if self.layernorm_embedding is not None:
+            x = self.layernorm_embedding(x)
+        x = F.dropout(x, self.cfg.text_dropout)
 
         return x
 
@@ -523,6 +533,9 @@ class StHubertModel(BaseFairseqModel):
         padding_mask = padding_mask.view(padding_mask.size(0), features.size(1), -1)
         padding_mask = padding_mask.all(-1)
         return padding_mask
+
+
+
     def forward_frontend(
         self,
         source: torch.Tensor,
@@ -583,28 +596,33 @@ class StHubertModel(BaseFairseqModel):
         ### text feature and mask speech feature will be cancat on time axis.
         ## (B,T, D),float
         x = self.speech_pos(x.transpose(1, 2)).transpose(1, 2)   
-        features_concat = x.new_zeros((x.size(0),x.size(1),x.size(2)))              
+        features_concat = x.new_zeros((x.size(0),x.size(1),x.size(2)))   
+        padding_mask2 = None           
         if features_text is None:
             ### only for fine-tuning without text
             features_concat = x + self.speech_modality_bias
             padding_mask2 = padding_mask
         else:
-            ### pretrain case
-            if features_text.size(1)!=0: ## empty text
-              
+            if features_text.size(1) !=0:
+                logger.info(f"features_text shape : {features_text.shape}")
                 x_text = self.text_pos(features_text.transpose(1, 2)).transpose(1, 2)
+                #x_text = self.text_pos(features_text.transpose(1, 2))
+            
+                #x_text = features_text
+                logger.info(f"x_text shape : {x_text.shape}")
                 # (B, T' + T, D), float
+                x_text_all = x_text + self.text_modality_bias
+                x_speech_all = x + self.speech_modality_bias
+                logger.info(f"x_text_all shape : {x_text_all.shape}")
+                logger.info(f"x_speech_all shape : {x_speech_all.shape}")
                 features_concat = torch.cat(
-                    [x_text + self.text_modality_bias, x + self.speech_modality_bias], dim=1
+                    [x_text_all, x_speech_all], dim=1
                 )
                 # (B, T' + T), bool
                 if padding_mask is not None:
                     padding_mask2 = nn.functional.pad(padding_mask, (x_text.size(1), 0))
                 else:
                     padding_mask2 = None
-            else:
-                features_concat = x + self.speech_modality_bias
-                padding_mask2 = padding_mask
         # feature_concat: (B, T'+T, D), float
         # target: (B, T), long
         # padding_mask2: (B, T'+T), bool

@@ -301,6 +301,11 @@ class StHubertDataset(FairseqDataset):
         sources_list, lengths_list, ntokens_list = self.collater_text(
             sources_by_text, audio_size, audio_starts
         )
+        
+        #a = torch.split(sources_list[0],1)
+        #b = [torch.equal(i,torch.ones(i.size(0),i.size(1),device=sources_list[0].device)) for i in a]
+        #net_input={}
+        #if not torch.any(torch.tensor(b)):        
         net_input = {
             "source": collated_audios,
             "padding_mask": padding_mask,
@@ -413,6 +418,7 @@ class StHubertDataset(FairseqDataset):
             texts_list.append(texts)
             lengths_list.append(lengths)
             ntokens_list.append(ntokens)
+        
         return texts_list, lengths_list, ntokens_list
 
     def num_tokens(self, index):
