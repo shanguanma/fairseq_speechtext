@@ -243,7 +243,7 @@ class StHubertConfig(FairseqDataclass):
     )
     fp16: bool = field(default=False, metadata={"help": "If fp16 is being used"})
     # text net part
-    max_source_positions: int = field(default=512, metadata={"help": "Maximum input length supported by the transformer encoder"})
+    max_source_positions: int = field(default=1024, metadata={"help": "Maximum input length supported by the transformer encoder"})
     text_dropout: float = field(default=0.1, metadata={"help": "dropout probability for the TextModel embedding feature"})
     text_embed_dim: int = field(
         default=768, metadata={"help": "text net part embedding dimension"}
@@ -475,18 +475,24 @@ class StHubertModel(BaseFairseqModel):
                 shape `(batch)`
         """
         # embed tokens and positions
-        logger.info(f"in the forward_text: source_text: {source_text}")
-        token_embedding = self.embed_tokens(source_text)
-        x = embed = token_embedding
-        if self.embed_positions is not None:
-            x = embed + self.embed_positions(source_text)
-        if self.layernorm_embedding is not None:
-            x = self.layernorm_embedding(x)
-        x = F.dropout(x, self.cfg.text_dropout)
-        # compute padding mask
-        encoder_padding_mask = source_text.eq(self.padding_idx)
-        # account for padding while computing the representation
-        x = x * (1 - encoder_padding_mask.unsqueeze(-1).type_as(x))
+        #logger.info(f"in the forward_text: source_text: {source_text}")
+        x = source_text
+        ###  remove full 1 utterance in batch
+        x_list = torch.split(source_text,1)
+        a = [torch.equal(i,torch.ones(i.size(0),i.size(1))) for i in x_list]
+
+        if not torch.any(a):
+            token_embedding = self.embed_tokens(source_text)
+            x = embed = token_embedding
+            if self.embed_positions is not None:
+                x = embed + self.embed_positions(source_text)
+            if self.layernorm_embedding is not None:
+                x = self.layernorm_embedding(x)
+            x = F.dropout(x, self.cfg.text_dropout)
+            # compute padding mask
+            encoder_padding_mask = source_text.eq(self.padding_idx)
+            # account for padding while computing the representation
+            x = x * (1 - encoder_padding_mask.unsqueeze(-1).type_as(x))
 
         return x
 
