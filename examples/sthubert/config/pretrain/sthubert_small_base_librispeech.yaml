@@ -72,6 +72,7 @@ model:
   conv_feature_layers: '[(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2'
   final_dim: 256
   encoder_embed_dim: 384
+  text_embed_dim: 384
   encoder_ffn_embed_dim: 1536
   encoder_attention_heads: 6
   encoder_layerdrop: 0.05

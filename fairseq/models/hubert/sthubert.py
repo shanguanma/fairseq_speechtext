@@ -495,7 +495,7 @@ class StHubertModel(BaseFairseqModel):
             # account for padding while computing the representation
             x = x * (1 - encoder_padding_mask.unsqueeze(-1).type_as(x))
         """
-        logger.info(f"in forward_text, source_text:  {source_text}, source_text shape : {source_text.shape}")
+        #logger.info(f"in forward_text, source_text:  {source_text}, source_text shape : {source_text.shape}")
         token_embedding = self.embed_tokens(source_text)
         x = embed = token_embedding
         #if self.embed_positions is not None:
@@ -604,17 +604,16 @@ class StHubertModel(BaseFairseqModel):
             padding_mask2 = padding_mask
         else:
             if features_text.size(1) !=0:
-                logger.info(f"features_text shape : {features_text.shape}")
+                #logger.info(f"features_text shape : {features_text.shape}")
                 x_text = self.text_pos(features_text.transpose(1, 2)).transpose(1, 2)
-                #x_text = self.text_pos(features_text.transpose(1, 2))
             
-                #x_text = features_text
-                logger.info(f"x_text shape : {x_text.shape}")
+                
+                #logger.info(f"x_text shape : {x_text.shape}")
                 # (B, T' + T, D), float
                 x_text_all = x_text + self.text_modality_bias
                 x_speech_all = x + self.speech_modality_bias
-                logger.info(f"x_text_all shape : {x_text_all.shape}")
-                logger.info(f"x_speech_all shape : {x_speech_all.shape}")
+                #logger.info(f"x_text_all shape : {x_text_all.shape}")
+                #logger.info(f"x_speech_all shape : {x_speech_all.shape}")
                 features_concat = torch.cat(
                     [x_text_all, x_speech_all], dim=1
                 )
