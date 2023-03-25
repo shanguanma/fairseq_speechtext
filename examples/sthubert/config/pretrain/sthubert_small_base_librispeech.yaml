@@ -14,7 +14,7 @@ checkpoint:
 
 
 distributed_training:
-  ddp_backend: no_c10d
+  ddp_backend: no_c10d  
   distributed_backend: 'nccl'
   distributed_world_size: 32
   distributed_port: 29671
@@ -36,7 +36,7 @@ task:
 
 dataset:
   num_workers: 6
-  max_tokens: 1400000
+  max_tokens: 1200000 # default 1400000
   skip_invalid_size_inputs_valid_test: true
   validate_interval: 5
   validate_interval_updates: 10000

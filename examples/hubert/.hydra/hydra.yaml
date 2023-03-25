@@ -115,6 +115,7 @@ hydra:
     - common.user_dir=/workspace2/maduo/fairseq_speechtext/examples/sthubert
     - dataset.train_subset=train-960
     - dataset.valid_subset='dev-other,dev-clean'
+    - dataset.max_tokens=1100000
     - distributed_training.distributed_world_size=4
     - distributed_training.distributed_port=-1
     - distributed_training.ddp_backend=legacy_ddp
@@ -123,7 +124,7 @@ hydra:
     - checkpoint.save_dir=/workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update
   job:
     name: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update/pretrain
-    override_dirname: checkpoint.save_dir-/workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update__common.tensorboard_logdir-/workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update__common.user_dir-/workspace2/maduo/fairseq_speechtext/examples/sthubert__dataset.train_subset-train-960__dataset.valid_subset-'dev-other,dev-clean'__distributed_training.ddp_backend-legacy_ddp__distributed_training.distributed_port--1__distributed_training.distributed_world_size-4__model.label_rate-100__optimization.update_freq-[8]__task.labels-["km","phncode"]
+    override_dirname: checkpoint.save_dir-/workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update__common.tensorboard_logdir-/workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update__common.user_dir-/workspace2/maduo/fairseq_speechtext/examples/sthubert__dataset.max_tokens-1100000__dataset.train_subset-train-960__dataset.valid_subset-'dev-other,dev-clean'__distributed_training.ddp_backend-legacy_ddp__distributed_training.distributed_port--1__distributed_training.distributed_world_size-4__model.label_rate-100__optimization.update_freq-[8]__task.labels-["km","phncode"]
     id: ???
     num: ???
     config_name: sthubert_small_base_librispeech

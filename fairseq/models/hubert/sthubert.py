@@ -696,7 +696,7 @@ class StHubertModel(BaseFairseqModel):
     def forward(
         self,
         source: torch.Tensor,
-        source_text: torch.Tensor,
+        source_text: Optional[torch.Tensor] = None,
         target_list: Optional[List[torch.Tensor]] = None,
         padding_mask: Optional[torch.Tensor] = None,
         mask: bool = True,
@@ -725,6 +725,7 @@ class StHubertModel(BaseFairseqModel):
     def extract_features(
         self,
         source: torch.Tensor,
+        source_text: Optional[torch.Tensor] = None,
         padding_mask: Optional[torch.Tensor] = None,
         mask: bool = False,
         ret_conv: bool = False,
@@ -732,6 +733,7 @@ class StHubertModel(BaseFairseqModel):
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         res = self.forward(
             source,
+            source_text=source_text,
             padding_mask=padding_mask,
             mask=mask,
             features_only=True,
@@ -766,3 +768,8 @@ class StHubertModel(BaseFairseqModel):
     def remove_pretraining_modules(self):
         self.target_glu = None
         self.final_proj = None
+        self.text_modality_bias=None
+        self.text_pos=None
+        self.embed_tokens=None
+        self.embed_positions=None
+        self.layernorm_embedding=None 
