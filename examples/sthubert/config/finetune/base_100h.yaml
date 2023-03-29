@@ -21,7 +21,7 @@ distributed_training:
   #nprocs_per_node: 8
 
 task:
-  _name: hubert_pretraining
+  _name: sthubert_pretraining
   data: ???
   fine_tuning: true
   label_dir: ???
