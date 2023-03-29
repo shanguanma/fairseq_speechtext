@@ -1,0 +1,148 @@
+hydra:
+  run:
+    dir: /workspace2/maduo/fairseq_speechtext/examples/sthubert
+  sweep:
+    dir: ???
+    subdir: ${hydra.job.config_name}__${hydra.job.override_dirname}
+  hydra_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(asctime)s][HYDRA] %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+    root:
+      level: INFO
+      handlers:
+      - console
+    loggers:
+      logging_example:
+        level: DEBUG
+    disable_existing_loggers: false
+  job_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+      file:
+        class: logging.FileHandler
+        formatter: simple
+        filename: ${hydra.job.name}.log
+    root:
+      level: INFO
+      handlers:
+      - console
+      - file
+    disable_existing_loggers: false
+  sweeper:
+    _target_: hydra._internal.core_plugins.basic_sweeper.BasicSweeper
+    max_batch_size: null
+  launcher:
+    _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
+  help:
+    app_name: ${hydra.job.name}
+    header: '${hydra.help.app_name} is powered by Hydra.
+
+      '
+    footer: 'Powered by Hydra (https://hydra.cc)
+
+      Use --hydra-help to view Hydra specific help
+
+      '
+    template: '${hydra.help.header}
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (group=option)
+
+
+      $APP_CONFIG_GROUPS
+
+
+      == Config ==
+
+      Override anything in the config (foo.bar=value)
+
+
+      $CONFIG
+
+
+      ${hydra.help.footer}
+
+      '
+  hydra_help:
+    hydra_help: ???
+    template: 'Hydra (${hydra.runtime.version})
+
+      See https://hydra.cc for more info.
+
+
+      == Flags ==
+
+      $FLAGS_HELP
+
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (For example, append hydra/job_logging=disabled
+      to command line)
+
+
+      $HYDRA_CONFIG_GROUPS
+
+
+      Use ''--cfg hydra'' to Show the Hydra config.
+
+      '
+  output_subdir: .hydra
+  overrides:
+    hydra:
+    - hydra.run.dir=/workspace2/maduo/fairseq_speechtext/examples/sthubert
+    - hydra.job.name=/workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update/finetune
+    task:
+    - task.data=/workspace2/maduo/dataset/format/librispeech
+    - task.label_dir=/workspace2/maduo/dataset/format/librispeech
+    - task.labels=["ltr"]
+    - model.w2v_path=/workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update/checkpoint_226_400000.pt
+    - common.user_dir=/workspace2/maduo/fairseq_speechtext/examples/sthubert
+    - dataset.train_subset=train-clean-100
+    - dataset.valid_subset=dev-other
+    - distributed_training.distributed_world_size=4
+    - distributed_training.distributed_port=-1
+    - distributed_training.ddp_backend=legacy_ddp
+    - optimization.update_freq=[2]
+    - common.tensorboard_logdir=/workspace2/maduo/exp/finetune/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update_100h_asr_finetune
+    - checkpoint.save_dir=/workspace2/maduo/exp/finetune/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update_100h_asr_finetune
+  job:
+    name: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update/finetune
+    override_dirname: checkpoint.save_dir-/workspace2/maduo/exp/finetune/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update_100h_asr_finetune__common.tensorboard_logdir-/workspace2/maduo/exp/finetune/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update_100h_asr_finetune__common.user_dir-/workspace2/maduo/fairseq_speechtext/examples/sthubert__distributed_training.ddp_backend-legacy_ddp__distributed_training.distributed_port--1__distributed_training.distributed_world_size-4__optimization.update_freq-[2]__task.labels-["ltr"]
+    id: ???
+    num: ???
+    config_name: sthubert_base_100h
+    env_set: {}
+    env_copy: []
+    config:
+      override_dirname:
+        kv_sep: '-'
+        item_sep: __
+        exclude_keys:
+        - run
+        - task.data
+        - task.label_dir
+        - model.w2v_path
+        - dataset.train_subset
+        - dataset.valid_subset
+        - criterion.wer_kenlm_model
+        - criterion.wer_lexicon
+  runtime:
+    version: 1.0.7
+    cwd: /workspace2/maduo
+  verbose: false

@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from dataclasses import dataclass, field
-from fairseq.data import Dictionary, StHubertDataset
+from fairseq.data import Dictionary, StHubertDataset, HubertDataset
 from fairseq.dataclass.configs import FairseqDataclass
 from fairseq.tasks import register_task
 from fairseq.tasks.fairseq_task import FairseqTask
@@ -186,24 +186,43 @@ class StHubertPretrainingTask(FairseqTask):
         logger.info(f"paths: {paths}")
         # text_paths=[f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.texts_type]
         # hubert v1: pad_audio=True, random_crop=False;
-        self.datasets[split] = StHubertDataset(
-            manifest,
-            sample_rate=self.cfg.sample_rate,
-            label_paths=[paths[0]],
-            text_paths=[paths[1]],
-            label_rates=self.cfg.label_rate,
-            pad_list=pad_list,
-            eos_list=eos_list,
-            label_processors=procs,
-            max_keep_sample_size=self.cfg.max_keep_size,
-            min_keep_sample_size=self.cfg.min_sample_size,
-            max_sample_size=self.cfg.max_sample_size,
-            pad_audio=self.cfg.pad_audio,
-            normalize=self.cfg.normalize,
-            store_labels=False,
-            random_crop=self.cfg.random_crop,
-            single_target=self.cfg.single_target,
-        )
+        if len(paths) !=2: ## fintune case
+            self.datasets[split] = HubertDataset(
+                manifest,
+                sample_rate=self.cfg.sample_rate,
+                label_paths=paths,
+                label_rates=self.cfg.label_rate,
+                pad_list=pad_list,
+                eos_list=eos_list,
+                label_processors=procs,
+                max_keep_sample_size=self.cfg.max_keep_size,
+                min_keep_sample_size=self.cfg.min_sample_size,
+                max_sample_size=self.cfg.max_sample_size,
+                pad_audio=self.cfg.pad_audio,
+                normalize=self.cfg.normalize,
+                store_labels=False,
+                random_crop=self.cfg.random_crop,
+                single_target=self.cfg.single_target,
+            )
+        else:
+            self.datasets[split] = StHubertDataset(
+                manifest,
+                sample_rate=self.cfg.sample_rate,
+                label_paths=[paths[0]],
+                text_paths=[paths[1]],
+                label_rates=self.cfg.label_rate,
+                pad_list=pad_list,
+                eos_list=eos_list,
+                label_processors=procs,
+                max_keep_sample_size=self.cfg.max_keep_size,
+                min_keep_sample_size=self.cfg.min_sample_size,
+                max_sample_size=self.cfg.max_sample_size,
+                pad_audio=self.cfg.pad_audio,
+                normalize=self.cfg.normalize,
+                store_labels=False,
+                random_crop=self.cfg.random_crop,
+                single_target=self.cfg.single_target,
+            )
 
     def max_positions(self) -> Tuple[int, int]:
         return (sys.maxsize, sys.maxsize)

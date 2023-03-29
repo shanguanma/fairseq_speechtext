@@ -6,3 +6,4 @@
 from .hubert import *  # noqa
 from .hubert_asr import *  # noqa
 from .sthubert import *  # noqa
+from .sthubert_asr import *  # noqa

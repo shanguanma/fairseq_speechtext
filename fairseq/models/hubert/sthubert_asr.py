@@ -29,8 +29,8 @@ from fairseq.modules import LayerNorm, PositionalEmbedding, TransformerDecoderLa
 from fairseq.tasks import FairseqTask
 
 
-ACTIVATION_CHOICES = ChoiceEnum(["relu", "gelu", "gelu_accurate", "tanh", "linear"])
-TEXTBRANCH_TYPE_CHOICES = ChoiceEnum(["none", "zero", "same"])
+#ACTIVATION_CHOICES = ChoiceEnum(["relu", "gelu", "gelu_accurate", "tanh", "linear"])
+#TEXTBRANCH_TYPE_CHOICES = ChoiceEnum(["none", "zero", "same"])
 
 logger = logging.getLogger(__name__)
 
@@ -143,7 +143,7 @@ class StHubertAsrConfig(FairseqDataclass):
     w2v_args: Any = None
     
     # no extra unpair text in fine-tuning
-    textbranch_type: TEXTBRANCH_TYPE_CHOICES = field(
+    textbranch_type: str = field(
         default="none", metadata={"help": "Determines how to get the fake enrollment"}
     )
 
@@ -189,7 +189,8 @@ class HubertCtc(BaseFairseqModel):
         return logits
 
     def forward(self, **kwargs):
-        x = self.w2v_encoder(**kwargs)
+        #print("in forward: **kwargs is ", **kwargs)        
+        x = self.w2v_encoder(source_text=None,**kwargs)
         return x
 
 
@@ -261,13 +262,13 @@ class StHubertEncoder(FairseqEncoder):
         self.freeze_finetune_updates = cfg.freeze_finetune_updates
         self.num_updates = 0
 
-        if task.target_dictionary is not None and not cfg.autoregressive:
+        if task.target_dictionary is not None:
             self.proj = Linear(d, len(task.target_dictionary))
         else:
             self.proj = None
         
         self.textbranch_type = getattr(cfg, "textbranch_type", "none")
-        logging.info("Using fake enrollment type: %s", self.enroll_type)
+        logger.info(f"Using fake enrollment type: {self.textbranch_type}")
 
 
     def set_num_updates(self, num_updates):
@@ -276,7 +277,7 @@ class StHubertEncoder(FairseqEncoder):
         self.num_updates = num_updates
 
     def forward(self, source,source_text, padding_mask, tbc=True, **kwargs):
-        if self.textbranch_type == None:
+        if self.textbranch_type == "none":
             source_text=None
         w2v_args = {
             "source": source,

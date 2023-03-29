@@ -704,12 +704,20 @@ class StHubertModel(BaseFairseqModel):
         output_layer: Optional[int] = None,
     ) -> Dict[str, torch.Tensor]:
         """output layer is 1-based"""
-        feats, feats_text, feats_pen, target_list, padding_mask = self.forward_frontend(
-            source,
-            source_text=source_text[0],
-            target_list=target_list,
-            padding_mask=padding_mask,
-        )
+        if source_text is None: ## finetune case
+            feats, feats_text, feats_pen, target_list, padding_mask = self.forward_frontend(
+                source,
+                source_text=None,
+                target_list=target_list,
+                padding_mask=padding_mask,
+            )      
+        else: 
+            feats, feats_text, feats_pen, target_list, padding_mask = self.forward_frontend(
+                source,
+                source_text=source_text[0],
+                target_list=target_list,
+                padding_mask=padding_mask,
+            )
         return self.forward_transformer(
             feats,
             feats_text,
