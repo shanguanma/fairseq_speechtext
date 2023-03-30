@@ -21,7 +21,7 @@ distributed_training:
   #nprocs_per_node: 8
 
 task:
-  _name: sthubert_pretraining
+  _name: hubert_pretraining
   data: ???
   fine_tuning: true
   label_dir: ???
@@ -59,7 +59,7 @@ lr_scheduler:
   final_lr_scale: 0.05
 
 model:
-  _name: sthubert_ctc
+  _name: hubert_ctc
   w2v_path: ???
   apply_mask: true
   mask_selection: static

@@ -17,12 +17,12 @@ distributed_training:
   ddp_backend: no_c10d
   distributed_backend: 'nccl'
   distributed_world_size: 32
-  distributed_port: 29671
+  distributed_port: -1
   nprocs_per_node: 8
   find_unused_parameters: true
 
 task:
-  _name: sthubert_pretraining
+  _name: hubert_pretraining
   data: ???
   label_dir: ???
   labels: ???
@@ -48,10 +48,10 @@ criterion:
   loss_weights: [10,]
 
 optimization:
-  max_update: 400000
+  max_update: 250000
   lr: [0.0005]
   clip_norm: 10.0
-  #update_freq: [4]
+
 optimizer:
   _name: adam
   adam_betas: (0.9,0.98)
@@ -63,7 +63,7 @@ lr_scheduler:
   warmup_updates: 32000
 
 model:
-  _name: sthubert
+  _name: hubert
   label_rate: ???
   skip_masked: false
   skip_nomask: false
@@ -71,17 +71,16 @@ model:
   extractor_mode: default
   conv_feature_layers: '[(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2'
   final_dim: 256
-  encoder_embed_dim: 768
-  text_embed_dim: 768
-  encoder_ffn_embed_dim: 3072
   encoder_attention_heads: 12
+  encoder_embed_dim: 768
+  encoder_ffn_embed_dim: 3072
   encoder_layerdrop: 0.05
   dropout_input: 0.1
   dropout_features: 0.1
   dropout: 0.1
   attention_dropout: 0.1
   feature_grad_mult: 0.1
-  untie_final_proj: False
+  untie_final_proj: true
   activation_dropout: 0.0
 
 hydra:
