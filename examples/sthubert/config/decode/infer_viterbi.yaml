@@ -11,7 +11,7 @@ hydra:
     subdir: viterbi
 
 task:
-  _name: hubert_pretraining
+  _name: sthubert_pretraining
   single_target: true
   fine_tuning: true
   data: ???

@@ -40,7 +40,18 @@ try:
     )
 except:
     warnings.warn(
-        "flashlight python bindings are required to use this functionality. Please install from https://github.com/facebookresearch/flashlight/tree/master/bindings/python"
+       '''Flashlight python bindings are required to use this functionality. 
+        Please install from https://github.com/flashlight/text/#readme 
+        or you can `pip install flashlight-text  -i https://pypi.tuna.tsinghua.edu.cn/simple `
+        if you want to enable optional KenLM support in Python with the decoder
+        you can `pip install https://github.com/kpu/kenlm/archive/master.zip`
+
+        and https://github.com/flashlight/sequence#readme
+        or if  want to use gpu to decode,  you can `export USE_CUDA=1
+        git clone https://github.com/flashlight/sequence && cd sequence 
+        pip install .`   
+        otherwise you can  `git clone https://github.com/flashlight/sequence && cd sequence && pip install .`
+       '''
     )
     LM = object
     LMState = object
