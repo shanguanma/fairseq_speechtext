@@ -68,7 +68,7 @@ def load_text(manifest_text_path, max_keep, min_keep):
                 text_uttids.append(i)
                 text_contents.append(items)
     logger.info(f"max_keep={max_keep}, min_keep={min_keep},"
-                f"loaded {len(text_uttids)}, skipped {n_short} short and {n_long} long"
+                f"loaded {len(text_uttids)} texts, skipped {n_short} short and {n_long} long"
     )
     return text_uttids, text_contents
 def load_label(label_path, inds, tot):
@@ -159,7 +159,7 @@ class StHubertDataset2(FairseqDataset):
         self.audio_root, self.audio_names, inds, tot, self.sizes = load_audio(
             manifest_path, max_keep_sample_size, min_keep_sample_size
         )
-        text_uttids, text_contents = load_text(manifest_path, max_keep_phone_size, min_keep_phone_size) 
+        text_uttids, text_contents = load_text(manifest_text_path, max_keep_phone_size, min_keep_phone_size) 
         self.text_uttids = text_uttids
         self.text_contents = text_contents
         self.sample_rate = sample_rate
@@ -242,7 +242,7 @@ class StHubertDataset2(FairseqDataset):
     def __getitem__(self, index):
         wav = self.get_audio(index)
         # choose text
-        list_id = np.arange(len(self.uttids))
+        list_id = np.arange(len(self.text_uttids))
         idx = np.random.choice(list_id)
         while idx == index and len(list_id) > 1:
             idx = np.random.choice(list_id)
