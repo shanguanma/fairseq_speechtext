@@ -31,7 +31,7 @@ task:
   max_sample_size: 250000
   min_sample_size: 32000
   max_phone_size: 5000
-  max_phone_size: 5  
+  min_phone_size: 5  
   pad_audio: false
   random_crop: true
   normalize: false # must be consistent with extractor

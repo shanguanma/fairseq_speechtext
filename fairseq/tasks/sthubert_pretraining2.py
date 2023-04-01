@@ -41,7 +41,7 @@ class TextEncoder(object):
             label,
             append_eos=False,
             add_if_not_exist=False,
-
+        )
 
 @dataclass
 class StHubertPretrainingConfig2(FairseqDataclass):
@@ -104,7 +104,7 @@ class StHubertPretrainingConfig2(FairseqDataclass):
         default=None,
         metadata={"help": "min phone sequeuce size to crop to for batching"},
     )
-
+   
     single_target: Optional[bool] = field(
         default=False,
         metadata={
@@ -118,6 +118,19 @@ class StHubertPretrainingConfig2(FairseqDataclass):
     pad_audio: Optional[bool] = field(
         default=False,
         metadata={"help": "pad audio to the longest one in the batch if true"},
+    )
+    ### sthubert text part
+    max_phone_size: Optional[int] = field(
+        default=None,
+        metadata={"help": "max phone sequeuce size to crop to for batching"},
+    )
+    min_phone_size: Optional[int] = field(
+        default=None,
+        metadata={"help": "min phone sequeuce size to crop to for batching"},
+    )
+    text_seq: Optional[bool] = field(
+        default=True,
+        metadata={"help": "## if it is true,  it will used colletor_seq_text independent audio, otherwise, will colletor_frm_text"},
     )
 
 
@@ -201,7 +214,7 @@ class StHubertPretrainingTask2(FairseqTask):
         pad_list = [dict.pad() for dict in dicts_km ]
         eos_list = [dict.eos() for dict in dicts_km]
         procs = [LabelEncoder(dict) for dict in dicts_km]
-        texts_procs = [ TextEncoder(dict) for dict in dicts_phncode]
+        text_procs = [ TextEncoder(dict) for dict in dicts_phncode]
         paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
         logger.info(f"paths: {paths}")
         # text_paths=[f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.texts_type]
@@ -227,12 +240,13 @@ class StHubertPretrainingTask2(FairseqTask):
         else:
             self.datasets[split] = StHubertDataset2(
                 manifest, 
-                manifest_text_path=[paths[1]],
+                manifest_text_path=paths[1],
                 sample_rate=self.cfg.sample_rate,
                 label_paths=[paths[0]],
                 label_rates=self.cfg.label_rate,
                 pad_list=pad_list,
                 eos_list=eos_list,
+                text_seq=self.cfg.text_seq,
                 label_processors=procs,
                 text_processors=text_procs,
                 max_keep_sample_size=self.cfg.max_keep_size,

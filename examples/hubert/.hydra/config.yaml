@@ -7,7 +7,7 @@ common:
   log_file: null
   aim_repo: null
   aim_run_hash: null
-  tensorboard_logdir: /workspace2/maduo/exp/pretrain/pretrain_on_small_hubert_4gpu_8update_960h_mfcc_250k_update
+  tensorboard_logdir: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update2
   wandb_project: null
   azureml_logging: false
   seed: 1337
@@ -28,7 +28,7 @@ common:
   amp_batch_retries: 2
   amp_init_scale: 128
   amp_scale_window: null
-  user_dir: /workspace2/maduo/fairseq_speechtext/examples/hubert
+  user_dir: /workspace2/maduo/fairseq_speechtext/examples/sthubert
   empty_cache_freq: 0
   all_gather_list_size: 16384
   model_parallel_size: 1
@@ -90,7 +90,7 @@ dataset:
   _name: null
   num_workers: 6
   skip_invalid_size_inputs_valid_test: true
-  max_tokens: 1400000
+  max_tokens: 1100000
   batch_size: null
   required_batch_size_multiple: 8
   required_seq_len_multiple: 1
@@ -118,7 +118,7 @@ dataset:
 optimization:
   _name: null
   max_epoch: 0
-  max_update: 250000
+  max_update: 400000
   stop_time_hours: 0.0
   clip_norm: 10.0
   sentence_avg: false
@@ -132,7 +132,7 @@ optimization:
   debug_param_names: false
 checkpoint:
   _name: null
-  save_dir: /workspace2/maduo/exp/pretrain/pretrain_on_small_hubert_4gpu_8update_960h_mfcc_250k_update
+  save_dir: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update2
   restore_file: checkpoint_last.pt
   continue_once: null
   finetune_from_model: null
@@ -224,7 +224,7 @@ interactive:
   buffer_size: 0
   input: '-'
 model:
-  _name: hubert
+  _name: sthubert
   label_rate: 100
   skip_masked: false
   skip_nomask: false
@@ -232,27 +232,31 @@ model:
   extractor_mode: default
   conv_feature_layers: '[(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2'
   final_dim: 256
-  encoder_attention_heads: 6
   encoder_embed_dim: 384
+  text_embed_dim: 384
   encoder_ffn_embed_dim: 1536
+  encoder_attention_heads: 6
   encoder_layerdrop: 0.05
   dropout_input: 0.1
   dropout_features: 0.1
   dropout: 0.1
   attention_dropout: 0.1
   feature_grad_mult: 0.1
-  untie_final_proj: true
+  untie_final_proj: false
   activation_dropout: 0.0
 task:
-  _name: hubert_pretraining
+  _name: sthubert_pretraining2
   data: /workspace2/maduo/dataset/format/librispeech
-  label_dir: /workspace2/maduo/dataset/format/librispeech/mfcc/mfcc_lab
+  label_dir: /workspace2/maduo/dataset/format/librispeech/unpair_phncode_unpair_mfcc_km_code
   labels:
   - km
+  - phncode
   label_rate: ${model.label_rate}
   sample_rate: 16000
   max_sample_size: 250000
   min_sample_size: 32000
+  max_phone_size: 5000
+  min_phone_size: 5
   pad_audio: false
   random_crop: true
   normalize: false

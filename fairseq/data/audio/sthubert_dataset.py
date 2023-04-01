@@ -230,13 +230,11 @@ class StHubertDataset(FairseqDataset):
 
     ## text part
     def get_text(self, index, text_idx):
-        if self.store_labels:
-            text_code = self.label_list[text_idx][index]
-        else:
-            with open(self.text_paths[text_idx]) as f:
-                offset_s, offset_e = self.text_offsets_list[text_idx][index]
-                f.seek(offset_s)
-                text_code = f.read(offset_e - offset_s)
+        
+        with open(self.text_paths[text_idx]) as f:
+            offset_s, offset_e = self.text_offsets_list[text_idx][index]
+            f.seek(offset_s)
+            text_code = f.read(offset_e - offset_s)
         if self.label_processors is not None:
             text_code = self.label_processors[text_idx](text_code) ## its function is encode utterance into 1-dimtensor
         return text_code

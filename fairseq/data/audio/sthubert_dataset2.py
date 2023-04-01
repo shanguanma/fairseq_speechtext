@@ -51,12 +51,16 @@ def load_audio(manifest_path, max_keep, min_keep):
     )
     return root, names, inds, tot, sizes
 
+
+
 def load_text(manifest_text_path, max_keep, min_keep):
+    logger.info(f"manifest_text_path: {manifest_text_path}")
     text_contents = []
     text_uttids = []
+    sizes = []
     n_long = 0
     n_short = 0
-    with open(manifest_text_path,'r')as f
+    with open(manifest_text_path,'r')as f:
         for i, line in enumerate(f):
             items = line.strip()
             sz = len(items.split())
@@ -67,8 +71,10 @@ def load_text(manifest_text_path, max_keep, min_keep):
             else:
                 text_uttids.append(i)
                 text_contents.append(items)
+                sizes.append(sz)
     logger.info(f"max_keep={max_keep}, min_keep={min_keep},"
                 f"loaded {len(text_uttids)} texts, skipped {n_short} short and {n_long} long"
+                f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}"       
     )
     return text_uttids, text_contents
 def load_label(label_path, inds, tot):
@@ -149,6 +155,7 @@ class StHubertDataset2(FairseqDataset):
         max_keep_phone_size: Optional[int] = None,
         min_keep_phone_size: Optional[int] = None,
         max_sample_size: Optional[int] = None,
+        text_seq: bool = True, ## if it is true,  it will used colletor_seq_text independent audio, otherwise, will colletor_frm_text  
         shuffle: bool = True,
         pad_audio: bool = False,
         normalize: bool = False,
@@ -165,7 +172,7 @@ class StHubertDataset2(FairseqDataset):
         self.sample_rate = sample_rate
         self.shuffle = shuffle
         self.random_crop = random_crop
-       
+        self.text_seq = text_seq
         self.num_labels = len(label_paths)
         self.pad_list = pad_list
         self.eos_list = eos_list
@@ -248,7 +255,8 @@ class StHubertDataset2(FairseqDataset):
             idx = np.random.choice(list_id)
         text = self.get_text(idx)
         labels = self.get_labels(index)
-        return {"id": index, "source": wav, "source_text": text, "label_list": labels}
+        #logger.info(f"in __getitem__: text: {text}")
+        return {"id": index, "source": wav, "text": text, "label_list": labels}
 
     def __len__(self):
         return len(self.sizes)
@@ -281,8 +289,9 @@ class StHubertDataset2(FairseqDataset):
         collated_audios, padding_mask, audio_starts = self.collater_audio(
             audios, audio_size
         )
-        texts = [s["source_text"] for s in samples]  
-        collated_texts, lengths_list, ntokens_list = self.collater_text(texts,self.pad_list[0])
+        texts = [[s["text"] for s in samples]] 
+        #logger.info(f"in collater, texts lengths : {len(texts)}, texts : {texts}") 
+        collated_texts, lengths_list, ntokens_list = self.collater_text(texts,audio_size, audio_starts)
 
        
         targets_by_label = [
@@ -292,7 +301,7 @@ class StHubertDataset2(FairseqDataset):
             targets_by_label, audio_size, audio_starts
         )
 
-        net_input = {"source": collated_audios, "source_texts": collated_texts,"padding_mask": padding_mask}
+        net_input = {"source": collated_audios, "source_text": collated_texts,"padding_mask": padding_mask}
         batch = {
             "id": torch.LongTensor([s["id"] for s in samples]),
             "net_input": net_input,
@@ -352,11 +361,48 @@ class StHubertDataset2(FairseqDataset):
         ntokens = lengths.sum().item()
         targets = data_utils.collate_tokens(targets, pad_idx=pad, left_pad=False)
         return targets, lengths, ntokens
-    def collater_text(self, texts, pad):
+    def collater_frm_text(self, texts, audio_size, audio_starts, label_rate, pad):
+        assert label_rate > 0
+        s2f = label_rate / self.sample_rate
+        frm_starts = [int(round(s * s2f)) for s in audio_starts]
+        frm_size = int(round(audio_size * s2f))
+        if not self.pad_audio:
+            rem_size = [len(t) - s for t, s in zip(texts, frm_starts)]
+            frm_size = min(frm_size, *rem_size)
+        texts = [t[s : s + frm_size] for t, s in zip(texts, frm_starts)]
+        logger.info(f"in collater_frm_text audio_starts={audio_starts}")
+        logger.info(f"in collater_frm_text frame_starts={frm_starts}")
+        logger.info(f"in collater_frm_text frame_size={frm_size}")
+
         lengths = torch.LongTensor([len(t) for t in texts])
+        #logger.info(f"in collater_frm_text , texts: {texts}")
         ntokens = lengths.sum().item()
         texts = data_utils.collate_tokens(texts, pad_idx=pad, left_pad=False)
         return texts, lengths, ntokens
+
+    def collater_seq_text(self, texts, pad):
+        #logger.info(f"in collater_seq_text, texts lengths : {len(texts)}, texts: {texts}")
+        lengths = torch.LongTensor([len(t) for t in texts])
+        ntokens = lengths.sum().item()
+        texts = data_utils.collate_tokens(texts, pad_idx=pad, left_pad=False)
+        #logger.info(f"after collect_token func : texts : {texts}")
+        return texts, lengths, ntokens
+    
+    def collater_text(self, texts_by_text, audio_size, audio_starts):
+        texts_list, lengths_list, ntokens_list = [], [], []
+        itr = zip(texts_by_text, self.label_rates, self.pad_list)
+        for texts, label_rate, pad in itr:
+            if self.text_seq:
+                texts, lengths, ntokens = self.collater_seq_text(texts, pad)
+            else:
+                texts, lengths, ntokens = self.collater_frm_text(
+                    texts, audio_size, audio_starts, label_rate, pad 
+                )   
+            texts_list.append(texts)
+            lengths_list.append(lengths)
+            ntokens_list.append(ntokens)
+        return texts_list, lengths_list, ntokens_list 
+
 
     def collater_label(self, targets_by_label, audio_size, audio_starts):
         targets_list, lengths_list, ntokens_list = [], [], []

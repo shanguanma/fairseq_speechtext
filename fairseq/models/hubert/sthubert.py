@@ -544,6 +544,8 @@ class StHubertModel(BaseFairseqModel):
         padding_mask: Optional[torch.Tensor] = None,
     ):
         """output layer is 1-based"""
+        #logger.info(f"source shape: {source.shape}")
+        #logger.info(f"source_text shape: {source_text.shape}")
         features = self.forward_features(source)
         if target_list is not None:
             features, target_list = self.forward_targets(features, target_list)
