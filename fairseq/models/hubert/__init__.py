@@ -7,3 +7,5 @@ from .hubert import *  # noqa
 from .hubert_asr import *  # noqa
 from .sthubert import *  # noqa
 from .sthubert_asr import *  # noqa
+from .hubert2 import *  # noqa
+from .ils_hubert import *  # noqa

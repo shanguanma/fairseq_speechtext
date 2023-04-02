@@ -1,0 +1,143 @@
+hydra:
+  run:
+    dir: /workspace2/maduo/fairseq_speechtext/examples/ILS-SSL
+  sweep:
+    dir: ???
+    subdir: ${hydra.job.config_name}__${hydra.job.override_dirname}
+  hydra_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(asctime)s][HYDRA] %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+    root:
+      level: INFO
+      handlers:
+      - console
+    loggers:
+      logging_example:
+        level: DEBUG
+    disable_existing_loggers: false
+  job_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+      file:
+        class: logging.FileHandler
+        formatter: simple
+        filename: ${hydra.job.name}.log
+    root:
+      level: INFO
+      handlers:
+      - console
+      - file
+    disable_existing_loggers: false
+  sweeper:
+    _target_: hydra._internal.core_plugins.basic_sweeper.BasicSweeper
+    max_batch_size: null
+  launcher:
+    _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
+  help:
+    app_name: ${hydra.job.name}
+    header: '${hydra.help.app_name} is powered by Hydra.
+
+      '
+    footer: 'Powered by Hydra (https://hydra.cc)
+
+      Use --hydra-help to view Hydra specific help
+
+      '
+    template: '${hydra.help.header}
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (group=option)
+
+
+      $APP_CONFIG_GROUPS
+
+
+      == Config ==
+
+      Override anything in the config (foo.bar=value)
+
+
+      $CONFIG
+
+
+      ${hydra.help.footer}
+
+      '
+  hydra_help:
+    hydra_help: ???
+    template: 'Hydra (${hydra.runtime.version})
+
+      See https://hydra.cc for more info.
+
+
+      == Flags ==
+
+      $FLAGS_HELP
+
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (For example, append hydra/job_logging=disabled
+      to command line)
+
+
+      $HYDRA_CONFIG_GROUPS
+
+
+      Use ''--cfg hydra'' to Show the Hydra config.
+
+      '
+  output_subdir: .hydra
+  overrides:
+    hydra:
+    - hydra.run.dir=/workspace2/maduo/fairseq_speechtext/examples/ILS-SSL
+    - hydra.job.name=/workspace2/maduo/exp/pretrain/pretrain_on_small_ils-ssl_4gpu_8update_960h_mfcc_250k_update/pretrain
+    task:
+    - task.data=/workspace2/maduo/dataset/format/librispeech
+    - task.label_dir=/workspace2/maduo/dataset/format/librispeech/mfcc/mfcc_lab
+    - task.labels=["km"]
+    - model.label_rate=100
+    - common.user_dir=/workspace2/maduo/fairseq_speechtext/examples/ILS-SSL
+    - dataset.train_subset=train-960
+    - dataset.valid_subset='dev-other,dev-clean'
+    - distributed_training.distributed_world_size=4
+    - distributed_training.distributed_port=-1
+    - distributed_training.ddp_backend=legacy_ddp
+    - optimization.update_freq=[8]
+    - common.tensorboard_logdir=/workspace2/maduo/exp/pretrain/pretrain_on_small_ils-ssl_4gpu_8update_960h_mfcc_250k_update
+    - checkpoint.save_dir=/workspace2/maduo/exp/pretrain/pretrain_on_small_ils-ssl_4gpu_8update_960h_mfcc_250k_update
+  job:
+    name: /workspace2/maduo/exp/pretrain/pretrain_on_small_ils-ssl_4gpu_8update_960h_mfcc_250k_update/pretrain
+    override_dirname: checkpoint.save_dir-/workspace2/maduo/exp/pretrain/pretrain_on_small_ils-ssl_4gpu_8update_960h_mfcc_250k_update__common.tensorboard_logdir-/workspace2/maduo/exp/pretrain/pretrain_on_small_ils-ssl_4gpu_8update_960h_mfcc_250k_update__common.user_dir-/workspace2/maduo/fairseq_speechtext/examples/ILS-SSL__dataset.train_subset-train-960__dataset.valid_subset-'dev-other,dev-clean'__distributed_training.ddp_backend-legacy_ddp__distributed_training.distributed_port--1__distributed_training.distributed_world_size-4__model.label_rate-100__optimization.update_freq-[8]__task.labels-["km"]
+    id: ???
+    num: ???
+    config_name: ILS-SSL_small_base_librispeech
+    env_set: {}
+    env_copy: []
+    config:
+      override_dirname:
+        kv_sep: '-'
+        item_sep: __
+        exclude_keys:
+        - run
+        - task.data
+        - task.label_dir
+  runtime:
+    version: 1.0.7
+    cwd: /workspace2/maduo
+  verbose: false
