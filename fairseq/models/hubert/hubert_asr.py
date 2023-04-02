@@ -139,7 +139,10 @@ class HubertAsrConfig(FairseqDataclass):
 
     # this holds the loaded hubert args
     w2v_args: Any = None
-
+    autoregressive: bool = field(
+        default=False,
+        metadata={"help": "when hubertctc, it will add last linear layer." }
+    )  
 
 @dataclass
 class HubertCtcConfig(HubertAsrConfig):
