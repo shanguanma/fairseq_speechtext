@@ -68,7 +68,7 @@ class UnsupGenerateConfig(FairseqDataclass):
         default=None,
         metadata={"help": "path to language model (kenlm or fairseq)"},
     )
-    decode_stride: Optional[float] = field(
+    decode_stride: Optional[int] = field(
         default=None,
         metadata={"help": "changing the decoding frequency of the generator"},
     )

@@ -7,7 +7,7 @@ common:
   log_file: null
   aim_repo: null
   aim_run_hash: null
-  tensorboard_logdir: /workspace2/maduo/exp/finetune/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update_100h_asr_finetune
+  tensorboard_logdir: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update2
   wandb_project: null
   azureml_logging: false
   seed: 1337
@@ -67,7 +67,7 @@ distributed_training:
   slowmo_momentum: null
   slowmo_base_algorithm: localsgd
   localsgd_frequency: 3
-  nprocs_per_node: 4
+  nprocs_per_node: 8
   pipeline_model_parallel: false
   pipeline_balance: null
   pipeline_devices: null
@@ -89,19 +89,19 @@ distributed_training:
 dataset:
   _name: null
   num_workers: 6
-  skip_invalid_size_inputs_valid_test: false
-  max_tokens: 3200000
+  skip_invalid_size_inputs_valid_test: true
+  max_tokens: 1100000
   batch_size: null
   required_batch_size_multiple: 8
   required_seq_len_multiple: 1
   dataset_impl: null
   data_buffer_size: 10
-  train_subset: train-clean-100
-  valid_subset: dev-other
+  train_subset: train-960
+  valid_subset: dev-other,dev-clean
   combine_valid_subsets: null
   ignore_unused_valid_subsets: false
-  validate_interval: 1
-  validate_interval_updates: 0
+  validate_interval: 5
+  validate_interval_updates: 10000
   validate_after_updates: 0
   fixed_validation_seed: null
   disable_validation: false
@@ -118,21 +118,21 @@ dataset:
 optimization:
   _name: null
   max_epoch: 0
-  max_update: 80000
+  max_update: 250000
   stop_time_hours: 0.0
-  clip_norm: 0.0
-  sentence_avg: true
+  clip_norm: 10.0
+  sentence_avg: false
   update_freq:
-  - 2
+  - 8
   lr:
-  - 3.0e-05
+  - 0.0005
   stop_min_lr: -1.0
   use_bmuf: false
   skip_remainder_batch: false
   debug_param_names: false
 checkpoint:
   _name: null
-  save_dir: /workspace2/maduo/exp/finetune/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update_100h_asr_finetune
+  save_dir: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update2
   restore_file: checkpoint_last.pt
   continue_once: null
   finetune_from_model: null
@@ -141,8 +141,8 @@ checkpoint:
   reset_meters: false
   reset_optimizer: false
   optimizer_overrides: '{}'
-  save_interval: 5
-  save_interval_updates: 0
+  save_interval: 1
+  save_interval_updates: 25000
   keep_interval_updates: 1
   keep_interval_updates_pattern: -1
   keep_last_epochs: -1
@@ -151,7 +151,7 @@ checkpoint:
   no_epoch_checkpoints: true
   no_last_checkpoints: false
   no_save_optimizer_state: false
-  best_checkpoint_metric: wer
+  best_checkpoint_metric: loss
   maximize_best_checkpoint_metric: false
   patience: -1
   checkpoint_suffix: ''
@@ -224,46 +224,56 @@ interactive:
   buffer_size: 0
   input: '-'
 model:
-  _name: sthubert_ctc
-  w2v_path: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update/checkpoint_226_400000.pt
-  apply_mask: true
-  mask_selection: static
-  mask_length: 10
-  mask_other: 0
-  mask_prob: 0.75
-  mask_channel_selection: static
-  mask_channel_length: 64
-  mask_channel_other: 0
-  mask_channel_prob: 0.5
-  layerdrop: 0.1
-  dropout: 0.0
-  activation_dropout: 0.1
-  attention_dropout: 0.0
-  feature_grad_mult: 0.0
-  freeze_finetune_updates: 0
+  _name: sthubert
+  label_rate: 100
+  skip_masked: false
+  skip_nomask: false
+  mask_prob: 0.8
+  extractor_mode: default
+  conv_feature_layers: '[(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2'
+  final_dim: 256
+  encoder_embed_dim: 384
+  text_embed_dim: 384
+  encoder_ffn_embed_dim: 1536
+  encoder_attention_heads: 6
+  encoder_layerdrop: 0.05
+  dropout_input: 0.1
+  dropout_features: 0.1
+  dropout: 0.1
+  attention_dropout: 0.1
+  feature_grad_mult: 0.1
+  untie_final_proj: false
+  activation_dropout: 0.0
 task:
-  _name: sthubert_pretraining
+  _name: sthubert_pretraining2
   data: /workspace2/maduo/dataset/format/librispeech
-  fine_tuning: true
-  label_dir: /workspace2/maduo/dataset/format/librispeech
-  normalize: false
+  label_dir: /workspace2/maduo/dataset/format/librispeech/unpair_phncode_unpair_mfcc_km_code
   labels:
-  - ltr
-  single_target: true
+  - km
+  - phncode
+  label_rate: ${model.label_rate}
+  sample_rate: 16000
+  max_sample_size: 250000
+  min_sample_size: 32000
+  max_phone_size: 5000
+  min_phone_size: 5
+  pad_audio: false
+  random_crop: true
+  normalize: false
 criterion:
-  _name: ctc
-  zero_infinity: true
+  _name: hubert
+  pred_masked_weight: 1.0
+  pred_nomask_weight: 0.0
+  loss_weights:
+  - 10
 optimizer:
   _name: adam
   adam_betas: (0.9,0.98)
-  adam_eps: 1.0e-08
+  adam_eps: 1.0e-06
+  weight_decay: 0.01
 lr_scheduler:
-  _name: tri_stage
-  phase_ratio:
-  - 0.1
-  - 0.4
-  - 0.5
-  final_lr_scale: 0.05
+  _name: polynomial_decay
+  warmup_updates: 32000
 scoring: null
 bpe: null
 tokenizer: null
