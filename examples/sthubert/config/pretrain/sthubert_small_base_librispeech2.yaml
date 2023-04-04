@@ -28,9 +28,9 @@ task:
   labels: ???
   label_rate: ${model.label_rate}
   sample_rate: 16000
-  max_sample_size: 250000
+  max_sample_size: 208000 ##250000/160=1562 
   min_sample_size: 32000
-  max_phone_size: 5000
+  max_phone_size: 350
   min_phone_size: 5  
   pad_audio: false
   random_crop: true

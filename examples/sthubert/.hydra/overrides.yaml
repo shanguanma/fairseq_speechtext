@@ -5,7 +5,7 @@
 - common.user_dir=/workspace2/maduo/fairseq_speechtext/examples/sthubert
 - dataset.train_subset=train-960
 - dataset.valid_subset='dev-other,dev-clean'
-- dataset.max_tokens=1100000
+- dataset.max_tokens=1400000
 - distributed_training.distributed_world_size=4
 - distributed_training.distributed_port=-1
 - distributed_training.ddp_backend=legacy_ddp
