@@ -10,5 +10,5 @@
 - distributed_training.distributed_port=-1
 - distributed_training.ddp_backend=legacy_ddp
 - optimization.update_freq=[8]
-- common.tensorboard_logdir=/workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update2
-- checkpoint.save_dir=/workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update2
+- common.tensorboard_logdir=/workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update2_1
+- checkpoint.save_dir=/workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update2_1

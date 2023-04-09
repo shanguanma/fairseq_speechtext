@@ -7,7 +7,7 @@ common:
   log_file: null
   aim_repo: null
   aim_run_hash: null
-  tensorboard_logdir: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update2
+  tensorboard_logdir: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update2_1
   wandb_project: null
   azureml_logging: false
   seed: 1337
@@ -132,7 +132,7 @@ optimization:
   debug_param_names: false
 checkpoint:
   _name: null
-  save_dir: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update2
+  save_dir: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update2_1
   restore_file: checkpoint_last.pt
   continue_once: null
   finetune_from_model: null
@@ -253,7 +253,7 @@ task:
   - phncode
   label_rate: ${model.label_rate}
   sample_rate: 16000
-  max_sample_size: 208000
+  max_sample_size: 25000
   min_sample_size: 32000
   max_phone_size: 350
   min_phone_size: 5

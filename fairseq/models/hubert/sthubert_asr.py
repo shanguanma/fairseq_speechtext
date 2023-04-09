@@ -268,7 +268,7 @@ class StHubertEncoder(FairseqEncoder):
             self.proj = None
         
         self.textbranch_type = getattr(cfg, "textbranch_type", "none")
-        logger.info(f"Using fake enrollment type: {self.textbranch_type}")
+        logger.info(f"Using fake textbranch type: {self.textbranch_type}")
 
 
     def set_num_updates(self, num_updates):

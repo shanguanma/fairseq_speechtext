@@ -16,6 +16,7 @@ from .audio.raw_audio_dataset import BinarizedAudioDataset, FileAudioDataset
 from .audio.hubert_dataset import HubertDataset
 from .audio.sthubert_dataset import StHubertDataset  ## md add
 from .audio.sthubert_dataset2 import StHubertDataset2  ## md add
+from .audio.sthubert_dataset3 import StHubertDataset3  ## md add
 from .audio.utterance_mixing_dataset import UtteranceMixingDataset ## md add  
 from .backtranslation_dataset import BacktranslationDataset
 from .bucket_pad_length_dataset import BucketPadLengthDataset
@@ -98,6 +99,7 @@ __all__ = [
     "HubertDataset",
     "StHubertDataset",  # md add
     "StHubertDataset2",  # md add
+    "StHubertDataset3",  # md add
     "UtteranceMixingDataset", ## md add
     "IdDataset",
     "IndexedCachedDataset",
