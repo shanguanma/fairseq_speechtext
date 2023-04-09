@@ -46,7 +46,7 @@ def load_audio(manifest_path, max_keep, min_keep):
         (
             f"max_keep={max_keep}, min_keep={min_keep}, "
             f"loaded {len(names)}, skipped {n_short} short and {n_long} long, "
-            f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}"
+            f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}, total useful samples {len(names)}"
         )
     )
     return root, names, inds, tot, sizes
@@ -74,7 +74,7 @@ def load_text(manifest_text_path, max_keep, min_keep):
                 sizes.append(sz)
     logger.info(f"max_keep={max_keep}, min_keep={min_keep},"
                 f"loaded {len(text_uttids)} texts, skipped {n_short} short and {n_long} long"
-                f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}"       
+                f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}, total useful samples {len(text_contents)}"       
     )
     return text_uttids, text_contents
 def load_label(label_path, inds, tot):
@@ -207,10 +207,18 @@ class StHubertDataset3(FairseqDataset):
             f"pad_audio={pad_audio}, random_crop={random_crop}, "
             f"normalize={normalize}, max_sample_size={self.max_sample_size}"
         )
-
+        
+        ## align speech and text 
+        self.lengths = min(len(self.audio_names), len(text_contents)) 
+        logger.info(f"final useful sample number: {self.lengths}")     
+        self.audio_names = self.audio_names[:self.lengths]
+        self.text_contents = self.text_contents[:self.lengths] 
+        self.sizes = self.sizes[:self.lengths]  
+        logger.info(f"text samples: {len(self.text_contents)}, speech samples : {len(self.audio_names)}")
     def get_audio(self, index):
         import soundfile as sf
-
+        #logger.info(f"self.audio_names[:self.lengths], self.audio_names lenghts : {len(self.audio_names)}, index is {index}")
+        #self.audio_names = self.audio_names[:self.lengths]
         wav_path = os.path.join(self.audio_root, self.audio_names[index])
         _path, slice_ptr = parse_path(wav_path)
         if len(slice_ptr) == 0:
@@ -225,6 +233,8 @@ class StHubertDataset3(FairseqDataset):
         return wav
     def get_text(self, index):
         ## encode every utterances into tensor
+        #logger.info(f"self.text_contents[:self.lengths],index: {index}")
+        #self.text_contents = self.text_contents[:self.lengths]
         utt = self.text_contents[index]
         if self.text_processors is not None:
             utt = self.text_processors[0](utt)             
@@ -253,7 +263,7 @@ class StHubertDataset3(FairseqDataset):
         #idx = np.random.choice(list_id)
         #while idx == index and len(list_id) > 1:
         #    idx = np.random.choice(list_id)
-        text = self.get_text(idx)
+        text = self.get_text(index)
         labels = self.get_labels(index)
         #logger.info(f"in __getitem__: text: {text}")
         return {"id": index, "source": wav, "text": text, "label_list": labels}

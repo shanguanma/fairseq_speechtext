@@ -22,16 +22,15 @@ distributed_training:
   find_unused_parameters: true
 
 task:
-  _name: sthubert_pretraining2
+  _name: sthubert_pretraining3  # fixed order text utterances and (keep speech length)
   data: ???
   label_dir: ???
   labels: ???
   label_rate: ${model.label_rate}
   sample_rate: 16000
-  #max_sample_size: 250000 ##250000/160=1562 
-  #max_sample_size: None  ## max_sample_size default None,it means that it doesn't remove long utterance
+  max_sample_size: 250000 ##250000/160=1562 
   min_sample_size: 32000
-  max_phone_size: 350
+  max_phone_size: 360  # 350
   min_phone_size: 5  
   pad_audio: false
   random_crop: true

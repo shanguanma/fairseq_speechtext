@@ -7,7 +7,7 @@ common:
   log_file: null
   aim_repo: null
   aim_run_hash: null
-  tensorboard_logdir: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update2_1
+  tensorboard_logdir: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update3
   wandb_project: null
   azureml_logging: false
   seed: 1337
@@ -132,7 +132,7 @@ optimization:
   debug_param_names: false
 checkpoint:
   _name: null
-  save_dir: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update2_1
+  save_dir: /workspace2/maduo/exp/pretrain/pretrain_on_sthubert_4gpu_8update_960h_mfcc_250k_update3
   restore_file: checkpoint_last.pt
   continue_once: null
   finetune_from_model: null
@@ -245,7 +245,7 @@ model:
   untie_final_proj: false
   activation_dropout: 0.0
 task:
-  _name: sthubert_pretraining2
+  _name: sthubert_pretraining3
   data: /workspace2/maduo/dataset/format/librispeech
   label_dir: /workspace2/maduo/dataset/format/librispeech/unpair_phncode_unpair_mfcc_km_code
   labels:
@@ -253,9 +253,9 @@ task:
   - phncode
   label_rate: ${model.label_rate}
   sample_rate: 16000
-  max_sample_size: 25000
+  max_sample_size: 250000
   min_sample_size: 32000
-  max_phone_size: 350
+  max_phone_size: 360
   min_phone_size: 5
   pad_audio: false
   random_crop: true

@@ -84,10 +84,10 @@ class StHubertPretrainingConfig2(FairseqDataclass):
         default=False,
         metadata={"help": "pad shorter samples instead of cropping"},
     )
-    max_keep_size: Optional[int] = field(
-        default=None,
-        metadata={"help": "exclude sample longer than this"},
-    )
+    #max_keep_size: Optional[int] = field(
+    #    default=None,
+    #    metadata={"help": "exclude sample longer than this"},
+    #)
     max_sample_size: Optional[int] = field(
         default=None,
         metadata={"help": "max sample size to crop to for batching"},
@@ -228,7 +228,7 @@ class StHubertPretrainingTask2(FairseqTask):
                 pad_list=pad_list,
                 eos_list=eos_list,
                 label_processors=procs,
-                max_keep_sample_size=self.cfg.max_keep_size,
+                max_keep_sample_size=self.cfg.max_sample_size,
                 min_keep_sample_size=self.cfg.min_sample_size,
                 max_sample_size=self.cfg.max_sample_size,
                 pad_audio=self.cfg.pad_audio,
@@ -249,7 +249,7 @@ class StHubertPretrainingTask2(FairseqTask):
                 text_seq=self.cfg.text_seq,
                 label_processors=procs,
                 text_processors=text_procs,
-                max_keep_sample_size=self.cfg.max_keep_size,
+                max_keep_sample_size=self.cfg.max_sample_size,
                 min_keep_sample_size=self.cfg.min_sample_size,
                 max_sample_size=self.cfg.max_sample_size,
                 max_keep_phone_size=self.cfg.max_phone_size,
