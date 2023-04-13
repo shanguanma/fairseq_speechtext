@@ -1,3 +1,6 @@
-!fairseq.egg-info
-!__pycache__
-!*.so
+*.egg-info
+__pycache__
+*.so
+*.pyc
+
+
