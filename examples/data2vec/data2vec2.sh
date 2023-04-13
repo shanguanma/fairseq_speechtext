@@ -3,24 +3,29 @@
 stage=0
 stop_stage=1000
 . utils/parse_options.sh
+. path_for_fairseq_speechtext.sh
+
+export HYDRA_FULL_ERROR=1
+export CUDA_LAUNCH_BLOCKING=1
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ];then
    echo "pretrain base data2vec2.0  model for speech (e.g. librispeech)"
-   tsv_dir=dataset/format/librispeech
-   fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   tsv_dir=/mntnfs/lee_data1/maduo/datasets/librispeech/tsv_files
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
    config_dir=$fairseq_dir/examples/data2vec/config/v2
-   dir=/workspace2/maduo/exp
+   dir=/mntnfs/lee_data1/maduo/exp
    model_name=pretrain_on_data2vec2_4gpu_8update_960h_400k_update_offical_setting
    exp_dir=$dir/pretrain/${model_name}
    mkdir -p $exp_dir
    world_size=4
-   update_freq=8
-   CUDA_VISIBLE_DEVICES=0,5,6,7 python $fairseq_dir/fairseq_cli/hydra_train.py -m \
+   update_freq=8  ## in data2vec2 paper. its setting 32 A100 40GB on 400k steps.
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   python  $fairseq_dir/fairseq_cli/hydra_train.py  \
             --config-dir $config_dir \
             --config-name base_audio_only_task_librispeech \
             task.data=$tsv_dir\
             common.user_dir=$fairseq_dir/examples/data2vec\
-            dataset.train_subset=train-960\
+            dataset.train_subset=train\
             dataset.valid_subset=\'dev-other,dev-clean\'\
             distributed_training.distributed_world_size=${world_size}\
             distributed_training.distributed_port=-1\
@@ -30,7 +35,9 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ];then
             checkpoint.save_dir=$exp_dir\
             hydra.run.dir=$fairseq_dir/examples/data2vec\
             hydra.job.name=$exp_dir/pretrain
-             
+## 4 V100 32GB, training 400k steps: about 20.8 days
+##              every 200 steps: about 15 mins 
+
 fi
 
 #(TODO) check pretrain model name
