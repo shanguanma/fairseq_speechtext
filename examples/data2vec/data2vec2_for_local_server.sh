@@ -15,7 +15,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ];then
    mkdir -p $exp_dir
    world_size=4
    update_freq=8
-   CUDA_VISIBLE_DEVICES=0,5,6,7 python $fairseq_dir/fairseq_cli/hydra_train.py -m \
+   CUDA_VISIBLE_DEVICES=0,5,6,7 python $fairseq_dir/fairseq_cli/hydra_train.py \
             --config-dir $config_dir \
             --config-name base_audio_only_task_librispeech \
             task.data=$tsv_dir\
