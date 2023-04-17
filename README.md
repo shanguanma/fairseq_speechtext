@@ -20,7 +20,7 @@ pip install --editable ./   -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip uninstall pytorch
 conda install pytorch  torchaudio pytorch-cuda=11.7  -c pytorch -c nvidia -y -c https://mirrors.bfsu.edu.cn/anaconda/cloud/pytorch/linux-64/
 pip install soundfile editdistance  tensorboardX   -i https://pypi.tuna.tsinghua.edu.cn/simple
-
+pip install  timm  torchvision==0.15.1 -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 
 ## for pytorch 1.* version(e.g. pytorch=1.11.0)
