@@ -1,0 +1,13 @@
+- task.data=/workspace2/maduo/dataset/format/librispeech
+- task.normalize=true
+- model.w2v_path=/workspace2/maduo/source_md/model_hub/librispeech/data2vec2_base_librispeech_no_finetune_offical_offer/base_libri.pt
+- common.user_dir=/workspace2/maduo/fairseq_speechtext/examples/data2vec
+- dataset.train_subset=train-clean-100
+- dataset.valid_subset=dev-other
+- dataset.max_tokens=2500000
+- distributed_training.distributed_world_size=4
+- distributed_training.distributed_port=-1
+- distributed_training.ddp_backend=legacy_ddp
+- optimization.update_freq=[2]
+- common.tensorboard_logdir=/workspace2/maduo/exp/finetune/data2vec2_base_librispeech_no_finetune_offical_offer_100h_asr_finetune
+- checkpoint.save_dir=/workspace2/maduo/exp/finetune/data2vec2_base_librispeech_no_finetune_offical_offer_100h_asr_finetune

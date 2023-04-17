@@ -427,8 +427,9 @@ class Wav2VecEncoder(FairseqEncoder):
             model.remove_pretraining_modules()
             d = w2v_args.model.encoder_embed_dim
         else:
+            #print(f"cfg.normalize : {cfg.normalize}")
             assert cfg.normalize
-
+            
             if hasattr(w2v_args.task, "audio"):
                 w2v_args.task.audio.data = cfg.data
             else:

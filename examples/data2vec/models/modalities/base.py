@@ -415,8 +415,9 @@ class ModalitySpecificEncoder(nn.Module):
             B, T, D = x.shape
         else:
             B, T, D = shape
-
         mask = mask.to(torch.uint8)
+        #if torch.__version__>="2.0":
+        #    mask = mask.to(torch.bool)
         ids_shuffle = mask.argsort(dim=1)
         ids_restore = ids_shuffle.argsort(dim=1).unsqueeze(-1).expand(-1, -1, D)
 
