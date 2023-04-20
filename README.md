@@ -22,6 +22,11 @@ conda install pytorch  torchaudio pytorch-cuda=11.7  -c pytorch -c nvidia -y -c 
 pip install soundfile editdistance  tensorboardX   -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install  timm  torchvision==0.15.1 -i https://pypi.tuna.tsinghua.edu.cn/simple
 
+##for fairseq c++ part compile
+python setup.py build_ext --inplace
+
+
+
 
 ## for pytorch 1.* version(e.g. pytorch=1.11.0)
 . "/home/maduo/miniconda3/etc/profile.d/conda.sh"
@@ -39,6 +44,8 @@ pip install bitarray tqdm  -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install --upgrade --force-reinstall sacrebleu -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install  timm  torchvision==0.12.0 -i https://pypi.tuna.tsinghua.edu.cn/simple
 
+##for fairseq c++ part compile
+python setup.py build_ext --inplace
 
 ```
 
