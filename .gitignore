@@ -5,7 +5,5 @@ __pycache__/
 # C extensions
 *.so
 # Distribution / packaging
-#examples/*/.hydra
-/.hydra
 build/
 *.egg-info/
