@@ -6,5 +6,5 @@ __pycache__/
 *.so
 # Distribution / packaging
 examples/*/.hydra
-
+build/
 *.egg-info/
