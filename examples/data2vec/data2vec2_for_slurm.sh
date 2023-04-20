@@ -18,6 +18,9 @@ stop_stage=1000
 export HYDRA_FULL_ERROR=1
 export CUDA_LAUNCH_BLOCKING=1
 
+## build c++ part using CUDA, however in head node of this slurm server system hasn't cuda gpu.
+cd /mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+python setup.py build_ext --inplace
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ];then
    echo "pretrain base data2vec2.0  model for speech (e.g. librispeech)"
    tsv_dir=/mntnfs/lee_data1/maduo/datasets/librispeech/tsv_files
