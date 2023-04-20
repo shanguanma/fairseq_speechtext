@@ -1,0 +1,10 @@
+- task.data=/mntnfs/lee_data1/maduo/datasets/librispeech/tsv_files
+- common.user_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/data2vec
+- dataset.train_subset=train
+- dataset.valid_subset='dev-other,dev-clean'
+- distributed_training.distributed_world_size=4
+- distributed_training.distributed_port=-1
+- distributed_training.ddp_backend=legacy_ddp
+- optimization.update_freq=[8]
+- common.tensorboard_logdir=/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_data2vec2_4gpu_8update_960h_400k_update_offical_setting
+- checkpoint.save_dir=/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_data2vec2_4gpu_8update_960h_400k_update_offical_setting
