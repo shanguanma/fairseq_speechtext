@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 
 class DecoderType(Enum):
     VITERBI = auto()
+    VITERBI_FRAME = auto()
     KENLM = auto()
     FAIRSEQ = auto()
     KALDI = auto()
@@ -345,6 +346,11 @@ def generate(cfg: UnsupGenerateConfig, models, saved_cfg, use_cuda):
             from examples.speech_recognition.w2l_decoder import W2lViterbiDecoder
 
             return W2lViterbiDecoder(cfg, task.target_dictionary)
+
+        if w2l_decoder == DecoderType.VITERBI_FRAME:
+            from examples.speech_recognition.w2l_decoder import W2lViterbiFrameDecoder
+
+            return W2lViterbiFrameDecoder(cfg, task.target_dictionary)
         elif w2l_decoder == DecoderType.KENLM:
             from examples.speech_recognition.w2l_decoder import W2lKenLMDecoder
 
