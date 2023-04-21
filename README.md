@@ -22,6 +22,8 @@ conda install pytorch  torchaudio pytorch-cuda=11.7  -c pytorch -c nvidia -y -c 
 pip install soundfile editdistance  tensorboardX   -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install  timm  torchvision==0.15.1 -i https://pypi.tuna.tsinghua.edu.cn/simple
 
+for fixing ImportError: cannot import name 'get_ref_type' from 'omegaconf._utils'
+you  should pip install omegaconf==2.1.2 
 ##for fairseq c++ part compile
 python setup.py build_ext --inplace
 
@@ -43,6 +45,9 @@ pip3 install torch==1.11.0+cu113  torchaudio===0.11.0+cu113 -f https://download.
 pip install bitarray tqdm  -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install --upgrade --force-reinstall sacrebleu -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install  timm  torchvision==0.12.0 -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+for fixing ImportError: cannot import name 'get_ref_type' from 'omegaconf._utils'
+you  should pip install omegaconf==2.1.2
 
 ##for fairseq c++ part compile
 python setup.py build_ext --inplace

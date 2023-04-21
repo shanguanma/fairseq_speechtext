@@ -14,6 +14,13 @@ common:
     user_dir: /private/home/abaevski/fairseq-py/examples/data2vec
 
 
+task:
+  _name: audio_finetuning 
+  data: ???
+  labels: 'ltr'
+  normalize: true
+
+
 common_eval:
   results_path: null
   path: null

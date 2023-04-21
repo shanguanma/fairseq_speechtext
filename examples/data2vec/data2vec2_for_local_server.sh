@@ -6,6 +6,7 @@ stop_stage=1000
 . path_for_fairseq_speechtext.sh
 export HYDRA_FULL_ERROR=1
 export CUDA_LAUNCH_BLOCKING=1
+export OC_CAUSE=1
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ];then
    echo "pretrain base data2vec2.0  model for speech (e.g. librispeech)"
    tsv_dir=dataset/format/librispeech
@@ -76,27 +77,35 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
    fairseq_dir=/workspace2/maduo/fairseq_speechtext
    tsv_dir=/workspace2/maduo/dataset/format/librispeech
    dir=/workspace2/maduo/exp
-   model_name=pretrain_on_data2vec2_4gpu_8update_960h_400k_update_offical_setting
+   #model_name=pretrain_on_data2vec2_4gpu_8update_960h_400k_update_offical_setting
+   model_name=data2vec2_base_librispeech_no_finetune_offical_offer
    exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
    mkdir -p $exp_finetune_dir/decode_100h
    testsets='dev-clean dev-other test-clean test-other'
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   # note: it only support one gpu decoding
    for name in $testsets;do
-     CUDA_VISIBLE_DEVICES=0,5,6,7 python $fairseq_dir/examples/speech_recognition/new/infer.py\     
+     CUDA_VISIBLE_DEVICES=0 python $fairseq_dir/examples/speech_recognition/new/infer.py\
            --config-dir $fairseq_dir/examples/speech_recognition/new/conf \
            --config-name infer \
-           task=audio_finetuning
+           task=audio_finetuning \
            task.data=$tsv_dir\
-           task.label=ltr\
-           common.user_dir=$fairseq_dir/examples/data2vec
+           task.labels=ltr\
+           common.user_dir=$fairseq_dir/examples/data2vec\
            decoding.unique_wer_file=True \
            common_eval.results_path=$exp_finetune_dir/decode\
            common_eval.path=$exp_finetune_dir/checkpoint_best.pt\
            dataset.gen_subset=$name\
+           dataset.max_tokens=1000000\
            decoding.beam=1500\
            decoding.type=viterbi \
-           distributed_training.distributed_world_size=4
+           distributed_training.distributed_world_size=1
 
    done
+## wer%
+## dev_clean  dev_other test_clean test_other
+## 4.52       9.17       4.40       9.32
+
 fi
 
 
