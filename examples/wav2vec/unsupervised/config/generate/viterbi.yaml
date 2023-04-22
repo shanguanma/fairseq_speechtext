@@ -14,8 +14,9 @@ fairseq:
     quiet: true
 
   dataset:
+    max_tokens: 11000000
     gen_subset: valid
     batch_size: 1
-
-w2l_decoder: VITERBI
+    required_batch_size_multiple: 1 ## it is very important
+w2l_decoder: VITERBI_FRAME
 post_process: silence
