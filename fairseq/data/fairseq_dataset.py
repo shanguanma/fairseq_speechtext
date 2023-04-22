@@ -115,6 +115,7 @@ class FairseqDataset(torch.utils.data.Dataset, EpochListening):
         from fairseq.data import data_utils
 
         fixed_shapes = self.get_batch_shapes()
+        print(f"in the fairseq_data file, batch_by_size func, fixed_shapes: {fixed_shapes}")
         if fixed_shapes is not None:
 
             def adjust_bsz(bsz, num_tokens):
@@ -128,8 +129,9 @@ class FairseqDataset(torch.utils.data.Dataset, EpochListening):
                     and bsz % required_batch_size_multiple != 0
                 ):
                     bsz -= bsz % required_batch_size_multiple
+                print(f"bsz: {bsz}")
                 return bsz
-
+            
             fixed_shapes = np.array(
                 [
                     [adjust_bsz(bsz, num_tokens), num_tokens]
@@ -141,7 +143,17 @@ class FairseqDataset(torch.utils.data.Dataset, EpochListening):
             num_tokens_vec = self.num_tokens_vec(indices).astype("int64")
         except NotImplementedError:
             num_tokens_vec = None
-
+        print(f"indices len: {len(indices)}")
+        a = data_utils.batch_by_size(
+            indices,
+            num_tokens_fn=self.num_tokens,
+            num_tokens_vec=num_tokens_vec,
+            max_tokens=max_tokens,
+            max_sentences=max_sentences,
+            required_batch_size_multiple=required_batch_size_multiple,
+            fixed_shapes=fixed_shapes,
+        )
+        print(f"in the fairseq_data  file, batch_by_size func: samples: {len(a)}, self.num_tokens: {self.num_tokens}, max_tokens: {max_tokens}, max_sentences: {max_sentences}, required_batch_size_multiple: {required_batch_size_multiple}, fixed_shapes: {fixed_shapes}, num_tokens_vec: {num_tokens_vec}")
         return data_utils.batch_by_size(
             indices,
             num_tokens_fn=self.num_tokens,

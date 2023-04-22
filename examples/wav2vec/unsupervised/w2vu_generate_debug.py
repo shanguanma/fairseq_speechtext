@@ -165,6 +165,7 @@ class UnsupGenerateConfig(FairseqDataclass):
 
 
 def get_dataset_itr(cfg, task):
+    
     return task.get_batch_iterator(
         dataset=task.dataset(cfg.fairseq.dataset.gen_subset),
         max_tokens=cfg.fairseq.dataset.max_tokens,
@@ -337,7 +338,7 @@ def generate(cfg: UnsupGenerateConfig, models, saved_cfg, use_cuda):
     )
     # Load dataset (possibly sharded)
     itr = get_dataset_itr(cfg, task)
-    logger.info(f"itr length : {len(itr)}")
+    #logger.info(f"itr length : {len(itr)}")
     # Initialize generator
     gen_timer = StopwatchMeter()
 
@@ -420,8 +421,8 @@ def generate(cfg: UnsupGenerateConfig, models, saved_cfg, use_cuda):
     gen_timer.start()
 
     start = 0
-    end = len(itr)+1
-    print(f"end: {end}")
+    end = len(itr)
+    #print(f"end: {end}")
     hypo_futures = None
     if cfg.w2l_decoder == DecoderType.KALDI:
         logger.info("Extracting features")
