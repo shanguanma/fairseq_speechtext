@@ -18,5 +18,16 @@ fairseq:
     gen_subset: valid
     batch_size: 1
     required_batch_size_multiple: 1 ## it is very important
-w2l_decoder: VITERBI_FRAME
+
+w2l_decoder: VITERBI
 post_process: silence
+results_path: ???
+decode_stride: 1
+
+hydra:
+  run:
+    dir: ${results_path}/viterbi  ## logger store directory.
+  sweep:
+    dir: ${results_path}
+    subdir: viterbi
+
