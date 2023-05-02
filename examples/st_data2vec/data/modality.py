@@ -10,5 +10,6 @@ from enum import Enum, auto
 
 class Modality(Enum):
     AUDIO = auto()
+    AUDIOTEXT = auto()
     IMAGE = auto()
     TEXT = auto()

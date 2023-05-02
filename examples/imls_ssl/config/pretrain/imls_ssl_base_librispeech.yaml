@@ -1,47 +1,46 @@
 # @package _group_
 
 common:
-  fp16: true
+  fp16: true  ## default true
   log_format: json
   log_interval: 200
   seed: 1337
   tensorboard_logdir: tblog
 
 checkpoint:
-  save_interval_updates: 25000
+  save_interval_updates: 5000
   keep_interval_updates: 1
   no_epoch_checkpoints: true
 
 
 distributed_training:
-  ddp_backend: no_c10d  
+  ddp_backend: no_c10d
   distributed_backend: 'nccl'
   distributed_world_size: 32
-  distributed_port: 29671
+  distributed_port: -1
   nprocs_per_node: 8
   find_unused_parameters: true
 
 task:
-  _name: sthubert_pretraining2
+  _name: hubert_pretraining
   data: ???
   label_dir: ???
   labels: ???
   label_rate: ${model.label_rate}
   sample_rate: 16000
-  max_sample_size: 208000 ##250000/160=1562 
+  max_sample_size: 250000
   min_sample_size: 32000
-  max_phone_size: 350
-  min_phone_size: 5  
   pad_audio: false
   random_crop: true
   normalize: false # must be consistent with extractor
 
 dataset:
   num_workers: 6
-  max_tokens: 1200000 # default 1400000
+  max_tokens: 1400000
   skip_invalid_size_inputs_valid_test: true
   validate_interval: 5
   validate_interval_updates: 10000
+  required_batch_size_multiple: 1 ## ILS-SSL only set.
 
 criterion:
   _name: hubert
@@ -50,10 +49,11 @@ criterion:
   loss_weights: [10,]
 
 optimization:
-  max_update: 400000 ## 150000 is best for label from w2vu model
+  max_update: 400000
   lr: [0.0005]
   clip_norm: 10.0
-  #update_freq: [4]
+  update_freq: ???
+
 optimizer:
   _name: adam
   adam_betas: (0.9,0.98)
@@ -65,27 +65,34 @@ lr_scheduler:
   warmup_updates: 32000
 
 model:
-  _name: sthubert
-  label_rate: ???
+  _name: ils_hubert 
+  #arch: ils_hubert 
+  label_rate: 50
   skip_masked: false
   skip_nomask: false
   mask_prob: 0.80
   extractor_mode: default
   conv_feature_layers: '[(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2'
-  final_dim: 256
-  encoder_embed_dim: 768
-  text_embed_dim: 768
-  encoder_ffn_embed_dim: 3072
+  final_dim: 256  
   encoder_attention_heads: 12
-  encoder_layerdrop: 0.05
+  encoder_embed_dim: 768
+  encoder_ffn_embed_dim: 3072
   dropout_input: 0.1
   dropout_features: 0.1
   dropout: 0.1
   attention_dropout: 0.1
   feature_grad_mult: 0.1
-  untie_final_proj: False
   activation_dropout: 0.0
-
+  ### ILS-SSL add configuer
+  untie_final_proj: false  # hubert set is true
+  predict_layers: "[7,12]"
+  ### related attention
+  relative_position_embedding: true
+  num_buckets: 320 
+  max_distance: 800 
+  separate_label_embeds: true 
+  encoder_layerdrop: 0.05 
+  phnkm7_km12: true
 hydra:
   job:
     config:

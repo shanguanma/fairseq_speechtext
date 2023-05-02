@@ -50,7 +50,7 @@ criterion:
   loss_weights: [10,]
 
 optimization:
-  max_update: 400000 ## 150000 is best for label from w2vu model
+  max_update: 150000 ## 150000 is best for label from w2vu model
   lr: [0.0005]
   clip_norm: 10.0
   #update_freq: [4]
