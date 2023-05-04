@@ -139,9 +139,9 @@ def _infer_slurm_init(cfg: DistributedTrainingConfig, num_pipelines_per_node):
                 # number of pipelines across all nodes.
                 cfg.distributed_world_size = nnodes * num_pipelines_per_node
             else:
-                #assert (
+                # assert (
                 #    ntasks_per_node == cfg.distributed_world_size // nnodes
-                #), f"{ntasks_per_node}, {cfg.distributed_world_size}, {nnodes}"
+                # ), f"{ntasks_per_node}, {cfg.distributed_world_size}, {nnodes}"
                 cfg.distributed_no_spawn = True
                 cfg.distributed_rank = int(os.environ.get("SLURM_PROCID"))
                 cfg.device_id = int(os.environ.get("SLURM_LOCALID"))

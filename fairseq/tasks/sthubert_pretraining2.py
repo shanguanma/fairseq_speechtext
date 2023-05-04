@@ -32,6 +32,8 @@ class LabelEncoder(object):
             append_eos=False,
             add_if_not_exist=False,
         )
+
+
 class TextEncoder(object):
     def __init__(self, dictionary: Dictionary) -> None:
         self.dictionary = dictionary
@@ -42,6 +44,7 @@ class TextEncoder(object):
             append_eos=False,
             add_if_not_exist=False,
         )
+
 
 @dataclass
 class StHubertPretrainingConfig2(FairseqDataclass):
@@ -84,10 +87,10 @@ class StHubertPretrainingConfig2(FairseqDataclass):
         default=False,
         metadata={"help": "pad shorter samples instead of cropping"},
     )
-    #max_keep_size: Optional[int] = field(
+    # max_keep_size: Optional[int] = field(
     #    default=None,
     #    metadata={"help": "exclude sample longer than this"},
-    #)
+    # )
     max_sample_size: Optional[int] = field(
         default=None,
         metadata={"help": "max sample size to crop to for batching"},
@@ -104,7 +107,7 @@ class StHubertPretrainingConfig2(FairseqDataclass):
         default=None,
         metadata={"help": "min phone sequeuce size to crop to for batching"},
     )
-   
+
     single_target: Optional[bool] = field(
         default=False,
         metadata={
@@ -130,7 +133,9 @@ class StHubertPretrainingConfig2(FairseqDataclass):
     )
     text_seq: Optional[bool] = field(
         default=True,
-        metadata={"help": "## if it is true,  it will used colletor_seq_text independent audio, otherwise, will colletor_frm_text"},
+        metadata={
+            "help": "## if it is true,  it will used colletor_seq_text independent audio, otherwise, will colletor_frm_text"
+        },
     )
 
 
@@ -154,22 +159,23 @@ class StHubertPretrainingTask2(FairseqTask):
             self.state.add_factory("target_dictionary", self.load_dictionaries)
         else:
             self.state.add_factory("dictionaries", self.load_dictionaries)
-            #self.state.add_factory("text_dictionary",self.load_text_dictionaries)
+            # self.state.add_factory("text_dictionary",self.load_text_dictionaries)
 
         self.blank_symbol = "<s>"
 
     @property
     def source_dictionary(self) -> Optional[Dictionary]:
-        #return self.state.text_dictionary
-         return None
+        # return self.state.text_dictionary
+        return None
+
     @property
     def target_dictionary(self) -> Optional[Dictionary]:
         return self.state.target_dictionary
 
     @property
     def dictionaries(self) -> List[Dictionary]:
-        #dict_list=[self.state.dictionaries,self.state.text_dictionary]
-        #return dict_list
+        # dict_list=[self.state.dictionaries,self.state.text_dictionary]
+        # return dict_list
         return self.state.dictionaries
 
     @classmethod
@@ -185,13 +191,14 @@ class StHubertPretrainingTask2(FairseqTask):
             for label in self.cfg.labels
         ]
         return dictionaries[0] if self.cfg.fine_tuning else dictionaries
-    #def load_text_dictionaries(self):
+
+    # def load_text_dictionaries(self):
     #    label_dir = self.cfg.data if self.cfg.label_dir is None else self.cfg.label_dir
     #    dictionaries = [
     #        Dictionary.load(f"{label_dir}/dict.{label}.txt")
     #        for label in self.cfg.labels
     #    ]
-    #    return dictionaries[1] 
+    #    return dictionaries[1]
 
     def get_label_dir(self) -> str:
         if self.cfg.label_dir is None:
@@ -201,25 +208,27 @@ class StHubertPretrainingTask2(FairseqTask):
     def load_dataset(self, split: str, **kwargs) -> None:
         manifest = f"{self.cfg.data}/{split}.tsv"
         dicts = [self.target_dictionary] if self.cfg.fine_tuning else self.dictionaries
-        logger.info(f"dicts: {dicts}") # dicts[0] is kmeans dict dicts[1] is phn code dictionary
-        dicts_km = [dicts[0]] # remove text phn dictionary
+        logger.info(
+            f"dicts: {dicts}"
+        )  # dicts[0] is kmeans dict dicts[1] is phn code dictionary
+        dicts_km = [dicts[0]]  # remove text phn dictionary
         dicts_phncode = [dicts[1]]
-        #ori_dicts = [dicts[0][0],dicts[1]]
-        #dicts=ori_dicts
-        #for dict1 in dicts:
-            
+        # ori_dicts = [dicts[0][0],dicts[1]]
+        # dicts=ori_dicts
+        # for dict1 in dicts:
+
         #    logger.info(f"dict1: {dict1[0]}")
         #    logger.info(f"dict1.pad(): {dict1[0].pad()}")
         #    logger.info(f"dict1: {dict1[1]}")
-        pad_list = [dict.pad() for dict in dicts_km ]
+        pad_list = [dict.pad() for dict in dicts_km]
         eos_list = [dict.eos() for dict in dicts_km]
         procs = [LabelEncoder(dict) for dict in dicts_km]
-        text_procs = [ TextEncoder(dict) for dict in dicts_phncode]
+        text_procs = [TextEncoder(dict) for dict in dicts_phncode]
         paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
         logger.info(f"paths: {paths}")
         # text_paths=[f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.texts_type]
         # hubert v1: pad_audio=True, random_crop=False;
-        if len(paths) !=2: ## fintune case
+        if len(paths) != 2:  ## fintune case
             self.datasets[split] = HubertDataset(
                 manifest,
                 sample_rate=self.cfg.sample_rate,
@@ -239,7 +248,7 @@ class StHubertPretrainingTask2(FairseqTask):
             )
         else:
             self.datasets[split] = StHubertDataset2(
-                manifest, 
+                manifest,
                 manifest_text_path=paths[1],
                 sample_rate=self.cfg.sample_rate,
                 label_paths=[paths[0]],

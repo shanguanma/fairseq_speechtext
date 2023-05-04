@@ -136,7 +136,7 @@ def contextualized_features(
         if alibi_scale is not None
         else None,
     )
-    return {
+    ouput={
         "x": x,
         "local_features": local_features,
         "padding_mask": masked_padding_mask,
@@ -145,8 +145,7 @@ def contextualized_features(
         if alibi_scale is not None and alibi_scale.size(0) > 1
         else alibi_scale,
         "encoder_mask": mask_info,
-    }
-
+    return output
 
 def gather_unmasked(x: torch.Tensor, mask_info: MaskInfo) -> torch.Tensor:
     return torch.gather(

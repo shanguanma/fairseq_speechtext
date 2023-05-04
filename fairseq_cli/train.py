@@ -575,9 +575,10 @@ def cli_main(
 
     # if cfg.common.use_plasma_view:
     #     server.server.kill()
-    #import torch, gc
-    #gc.collect()
-    #torch.cuda.empty_cache()
+    # import torch, gc
+    # gc.collect()
+    # torch.cuda.empty_cache()
+
 
 if __name__ == "__main__":
     cli_main()

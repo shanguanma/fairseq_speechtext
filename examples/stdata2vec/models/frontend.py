@@ -12,8 +12,8 @@ from fairseq.modules import (
     TransposeLast,
 )
 from fairseq.modules import PositionalEmbedding, FairseqDropout, LayerNorm
-from .modules import BlockEncoder, TextLocalEncoder,AltBlock
-from .contextualized_features import contextualized_features 
+from .modules import BlockEncoder, TextLocalEncoder, AltBlock
+from .contextualized_features import contextualized_features, get_alibi_bias
 from fairseq.tasks import FairseqTask
 
 
@@ -79,6 +79,37 @@ class AudioTextConfig:
     start_drop_path_rate: float = 0
     end_drop_path_rate: float = 0
      
+    ### contentualizer network
+    mask_noise_std: float = 0.01
+    mask_prob_min: Optional[float] = None
+    mask_prob: float = 0.7
+    inverse_mask: bool = False
+    mask_prob_adjust: float = 0
+    keep_masked_pct: float = 0
+
+    mask_length: int = 5
+    add_masks: bool = False
+    remove_masks: bool = False
+    mask_dropout: float = 0.0
+    encoder_zero_mask: bool = True
+
+    mask_channel_prob: float = 0.0
+    mask_channel_length: int = 64
+
+    ema_local_encoder: bool = False  # used in data2vec_multi
+    local_grad_mult: float = 1.0
+
+    use_alibi_encoder: bool = False
+    alibi_scale: float = 1.0
+    learned_alibi: bool = False
+    alibi_max_pos: Optional[int] = None
+    learned_alibi_scale: bool = False
+    learned_alibi_scale_per_head: bool = False
+    learned_alibi_scale_per_layer: bool = False
+
+    num_alibi_heads: int = II("model.num_heads")
+    model_depth: int = II("model.depth")
+    clone_batch: int = 1     
 class AudioTextFrontend(nn.Module):
 
     cfg: AudioTextConfig
@@ -92,8 +123,8 @@ class AudioTextFrontend(nn.Module):
         alibi_biases: Dict,
         task: Optional[FairseqTask],
     ):
-
-        self.feature_enc_layers = eval(modality_cfg.feature_encoder_spec)
+        self.cfg = cfg
+        self.feature_enc_layers = eval(self.cfg.feature_encoder_spec)
         feature_embed_dim = self.feature_enc_layers[-1][0]
 
         audiolocal_encoder = ConvFeatureExtractionModel(
@@ -108,8 +139,8 @@ class AudioTextFrontend(nn.Module):
             nn.Linear(feature_embed_dim, embed_dim),
         )
 
-        num_pos_layers = cfg.conv_pos_depth
-        k = max(3, cfg.conv_pos_width // num_pos_layers)
+        num_pos_layers = self.cfg.conv_pos_depth
+        k = max(3, self.cfg.conv_pos_width // num_pos_layers)
 
         audiopositional_encoder = nn.Sequential(
             TransposeLast(),
@@ -120,7 +151,7 @@ class AudioTextFrontend(nn.Module):
                         embed_dim,
                         kernel_size=k,
                         padding=k // 2,
-                        groups=cfg.conv_pos_groups,
+                        groups=self.cfg.conv_pos_groups,
                     ),
                     SamePad(k),
                     TransposeLast(),
@@ -133,18 +164,18 @@ class AudioTextFrontend(nn.Module):
             TransposeLast(),
         )
 
-        if cfg.conv_pos_pre_ln:
+        if self.cfg.conv_pos_pre_ln:
             audiopositional_encoder = nn.Sequential(LayerNorm(embed_dim), audiopositional_encoder)
 
         ## 
-        prenetdpr = np.linspace(cfg.start_drop_path_rate,cfg.end_drop_path_rate,cfg.prenet_depth,
+        prenetdpr = np.linspace(self.cfg.start_drop_path_rate,self.cfg.end_drop_path_rate,self.cfg.prenet_depth,
         )
         self.prenet = BlockEncoder(
-            nn.ModuleList(self.make_block(prenetdpr[i]) for i in range(cfg.prenet_depth)),
+            nn.ModuleList(self.make_block(prenetdpr[i]) for i in range(self.cfg.prenet_depth)),
             self.make_layer_norm(embed_dim) if not layer_norm_first else None,
             layer_norm_first,
-            cfg.prenet_layerdrop,
-            cfg.prenet_dropout,
+            self.cfg.prenet_layerdrop,
+            self.cfg.prenet_dropout,
         )
         
                
@@ -155,31 +186,31 @@ class AudioTextFrontend(nn.Module):
         textlocal_encoder = TextLocalEncoder(
             vocab_size=self.vocab_size,
             embed_dim=embed_dim,
-            max_source_positions=cfg.max_source_positions,
+            max_source_positions=self.cfg.max_source_positions,
             pad_idx=self.pad_idx,
-            no_scale_embedding=cfg.no_scale_embedding,
-            layernorm_embedding=cfg.layernorm_embedding,
-            dropout=cfg.dropout,
-            no_token_positional_embeddings=cfg.no_token_positional_embeddings,
-            learned_pos=cfg.learned_pos,
+            no_scale_embedding=self.cfg.no_scale_embedding,
+            layernorm_embedding=self.cfg.layernorm_embedding,
+            dropout=self.cfg.dropout,
+            no_token_positional_embeddings=self.cfg.no_token_positional_embeddings,
+            learned_pos=self.cfg.learned_pos,
         )
         self.make_layer_norm = partial(
-            nn.LayerNorm, eps=cfg.norm_eps, elementwise_affine=cfg.norm_affine
+            nn.LayerNorm, eps=self.cfg.norm_eps, elementwise_affine=self.cfg.norm_affine
         )
     def make_block(drop_path, dim=None, heads=None):
         return AltBlock(
-            cfg.embed_dim if dim is None else dim,
-            cfg.num_heads if heads is None else heads,
-            cfg.mlp_ratio,
+            self.cfg.embed_dim if dim is None else dim,
+            self.cfg.num_heads if heads is None else heads,
+            self.cfg.mlp_ratio,
             qkv_bias=True,
-            drop=cfg.encoder_dropout,
-            attn_drop=cfg.attention_dropout,
-            mlp_drop=cfg.activation_dropout,
-            post_mlp_drop=cfg.post_mlp_drop,
+            drop=self.cfg.encoder_dropout,
+            attn_drop=self.cfg.attention_dropout,
+            mlp_drop=self.cfg.activation_dropout,
+            post_mlp_drop=self.cfg.post_mlp_drop,
             drop_path=drop_path,
             norm_layer=self.make_layer_norm,
-            layer_norm_first=cfg.layer_norm_first,
-            ffn_targets=not cfg.end_of_block_targets,
+            layer_norm_first=self.cfg.layer_norm_first,
+            ffn_targets=not self.cfg.end_of_block_targets,
         )
     
     def audiolocal_features(self, features):
@@ -273,7 +304,69 @@ class AudioTextFrontend(nn.Module):
                 )
 
         return padding_mask
-    def forward(self, audio, audio_padding_mask, )
+    def forward(self, audio, audio_padding_mask, text, text_padding_mask,mask,remove_masked,clone_batch: int = 1,
+        mask_seeds: Optional[torch.Tensor] = None,
+        precomputed_mask=None,):
+
+        audio_feat = self.audiolocal_features(audio)
+        audio_frontend =  contextualized_features(
+            x = audio_feat,
+            padding_mask=audio_padding_mask,
+            convert_padding_mask=audioconvert_padding_mask,
+            fixed_positional_encoder=None,
+            relative_positional_encoder=audiopositional_encoder,
+            mask_prob=self.cfg.mask_prob,
+            mask_prob_min=self.cfg.mask_prob_min,
+            inverse_mask=self.cfg.inverse_mask,
+            mask_dropout=self.cfg.mask_dropout,
+            add_masks=self.cfg.add_masks,
+            mask_length=self.cfg.mask_length,
+            keep_masked_pct=self.cfg.keep_masked_pct,
+            encoder_zero_mask=self.cfg.encoder_zero_mask,
+            mask_noise_std=self.cfg.mask_noise_std,
+            mask_channel_prob=self.cfg.mask_channel_prob,
+            get_alibi_bias=get_alibi_bias,
+            num_alibi_heads=self.cfg.num_alibi_heads,
+            alibi_scale=self.cfg.alibi_scale,
+            mask=mask,
+            remove_masked=remove_masked,
+            prenet_depth=self.cfg.prenet_depth,
+            context_encoder=self.prenet, ## (TODO) md check,it  maybe function
+            clone_batch=clone_batch, ## multi mask version
+            mask_seeds=mask_seed,
+            precomputed_mask=precomputed_mask,            
+        )
+        
+        text_feat = self.textlocal_features(text)
+        text_frontend =  contextualized_features(
+            x = text_feat,
+            padding_mask=text_padding_mask, ## in the dataset, it is raw input padding mask
+            convert_padding_mask=textconvert_padding_mask,  ## 
+            fixed_positional_encoder=None,
+            relative_positional_encoder=None,
+            mask_prob=self.cfg.mask_prob,
+            mask_prob_min=self.cfg.mask_prob_min,
+            inverse_mask=self.cfg.inverse_mask,
+            mask_dropout=self.cfg.mask_dropout,
+            add_masks=self.cfg.add_masks,
+            mask_length=self.cfg.mask_length,
+            keep_masked_pct=self.cfg.keep_masked_pct,
+            encoder_zero_mask=self.cfg.encoder_zero_mask,
+            mask_noise_std=self.cfg.mask_noise_std,
+            mask_channel_prob=self.cfg.mask_channel_prob,
+            get_alibi_bias=get_alibi_bias,
+            num_alibi_heads=self.cfg.num_alibi_heads,
+            alibi_scale=self.cfg.alibi_scale,
+            mask=mask,
+            remove_masked=remove_masked,
+            prenet_depth=self.cfg.prenet_depth,
+            context_encoder=self.prenet, ## (TODO) md check,it  maybe function
+            clone_batch=clone_batch, ## multi mask version
+            mask_seeds=mask_seed,
+            precomputed_mask=precomputed_mask,
+        )
+        return  audio_frontend, text_frontend
+
     def reset_parameters(self):
         super().reset_parameters()
         for mod in self.audioproject_features.children():

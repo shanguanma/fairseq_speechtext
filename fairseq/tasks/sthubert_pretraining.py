@@ -123,22 +123,23 @@ class StHubertPretrainingTask(FairseqTask):
             self.state.add_factory("target_dictionary", self.load_dictionaries)
         else:
             self.state.add_factory("dictionaries", self.load_dictionaries)
-            #self.state.add_factory("text_dictionary",self.load_text_dictionaries)
+            # self.state.add_factory("text_dictionary",self.load_text_dictionaries)
 
         self.blank_symbol = "<s>"
 
     @property
     def source_dictionary(self) -> Optional[Dictionary]:
-        #return self.state.text_dictionary
-         return None
+        # return self.state.text_dictionary
+        return None
+
     @property
     def target_dictionary(self) -> Optional[Dictionary]:
         return self.state.target_dictionary
 
     @property
     def dictionaries(self) -> List[Dictionary]:
-        #dict_list=[self.state.dictionaries,self.state.text_dictionary]
-        #return dict_list
+        # dict_list=[self.state.dictionaries,self.state.text_dictionary]
+        # return dict_list
         return self.state.dictionaries
 
     @classmethod
@@ -154,13 +155,14 @@ class StHubertPretrainingTask(FairseqTask):
             for label in self.cfg.labels
         ]
         return dictionaries[0] if self.cfg.fine_tuning else dictionaries
-    #def load_text_dictionaries(self):
+
+    # def load_text_dictionaries(self):
     #    label_dir = self.cfg.data if self.cfg.label_dir is None else self.cfg.label_dir
     #    dictionaries = [
     #        Dictionary.load(f"{label_dir}/dict.{label}.txt")
     #        for label in self.cfg.labels
     #    ]
-    #    return dictionaries[1] 
+    #    return dictionaries[1]
 
     def get_label_dir(self) -> str:
         if self.cfg.label_dir is None:
@@ -171,11 +173,11 @@ class StHubertPretrainingTask(FairseqTask):
         manifest = f"{self.cfg.data}/{split}.tsv"
         dicts = [self.target_dictionary] if self.cfg.fine_tuning else self.dictionaries
         logger.info(f"dicts: {dicts}")
-        dicts = [dicts[0]] # remove text phn dictionary
-        #ori_dicts = [dicts[0][0],dicts[1]]
-        #dicts=ori_dicts
-        #for dict1 in dicts:
-            
+        dicts = [dicts[0]]  # remove text phn dictionary
+        # ori_dicts = [dicts[0][0],dicts[1]]
+        # dicts=ori_dicts
+        # for dict1 in dicts:
+
         #    logger.info(f"dict1: {dict1[0]}")
         #    logger.info(f"dict1.pad(): {dict1[0].pad()}")
         #    logger.info(f"dict1: {dict1[1]}")
@@ -186,7 +188,7 @@ class StHubertPretrainingTask(FairseqTask):
         logger.info(f"paths: {paths}")
         # text_paths=[f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.texts_type]
         # hubert v1: pad_audio=True, random_crop=False;
-        if len(paths) !=2: ## fintune case
+        if len(paths) != 2:  ## fintune case
             self.datasets[split] = HubertDataset(
                 manifest,
                 sample_rate=self.cfg.sample_rate,

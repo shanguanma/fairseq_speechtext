@@ -29,8 +29,8 @@ from fairseq.modules import LayerNorm, PositionalEmbedding, TransformerDecoderLa
 from fairseq.tasks import FairseqTask
 
 
-#ACTIVATION_CHOICES = ChoiceEnum(["relu", "gelu", "gelu_accurate", "tanh", "linear"])
-#TEXTBRANCH_TYPE_CHOICES = ChoiceEnum(["none", "zero", "same"])
+# ACTIVATION_CHOICES = ChoiceEnum(["relu", "gelu", "gelu_accurate", "tanh", "linear"])
+# TEXTBRANCH_TYPE_CHOICES = ChoiceEnum(["none", "zero", "same"])
 
 logger = logging.getLogger(__name__)
 
@@ -141,11 +141,12 @@ class StHubertAsrConfig(FairseqDataclass):
 
     # this holds the loaded hubert args
     w2v_args: Any = None
-    
+
     # no extra unpair text in fine-tuning
     textbranch_type: str = field(
         default="none", metadata={"help": "Determines how to get the fake enrollment"}
     )
+
 
 @dataclass
 class StHubertCtcConfig(StHubertAsrConfig):
@@ -189,11 +190,9 @@ class HubertCtc(BaseFairseqModel):
         return logits
 
     def forward(self, **kwargs):
-        #print("in forward: **kwargs is ", **kwargs)        
-        x = self.w2v_encoder(source_text=None,**kwargs)
+        # print("in forward: **kwargs is ", **kwargs)
+        x = self.w2v_encoder(source_text=None, **kwargs)
         return x
-
-
 
 
 class StHubertEncoder(FairseqEncoder):
@@ -266,19 +265,18 @@ class StHubertEncoder(FairseqEncoder):
             self.proj = Linear(d, len(task.target_dictionary))
         else:
             self.proj = None
-        
+
         self.textbranch_type = getattr(cfg, "textbranch_type", "none")
         logger.info(f"Using fake textbranch type: {self.textbranch_type}")
-
 
     def set_num_updates(self, num_updates):
         """Set the number of parameters updates."""
         super().set_num_updates(num_updates)
         self.num_updates = num_updates
 
-    def forward(self, source,source_text, padding_mask, tbc=True, **kwargs):
+    def forward(self, source, source_text, padding_mask, tbc=True, **kwargs):
         if self.textbranch_type == "none":
-            source_text=None
+            source_text = None
         w2v_args = {
             "source": source,
             "source_text": source_text,
@@ -305,6 +303,7 @@ class StHubertEncoder(FairseqEncoder):
             "encoder_padding_mask": padding_mask,  # B x T
             "padding_mask": padding_mask,
         }
+
     def reorder_encoder_out(self, encoder_out, new_order):
         if encoder_out["encoder_out"] is not None:
             encoder_out["encoder_out"] = encoder_out["encoder_out"].index_select(
@@ -326,8 +325,6 @@ class StHubertEncoder(FairseqEncoder):
 
     def upgrade_state_dict_named(self, state_dict, name):
         return state_dict
-
-
 
 
 def Linear(in_features, out_features, bias=True):

@@ -178,7 +178,9 @@ class StHubertDataset(FairseqDataset):
             self.text_offsets_list = [
                 load_text_offset(p, inds, tot) for p in text_paths
             ]
-        logger.info(f"label_processors :{label_processors}, len(label_processors) : {len(label_processors)}")
+        logger.info(
+            f"label_processors :{label_processors}, len(label_processors) : {len(label_processors)}"
+        )
         logger.info(f"self.num_labels: {self.num_labels}")
         assert label_processors is None or len(label_processors) == self.num_labels
         for label_path, label_rate in zip(label_paths, self.label_rates):
@@ -230,13 +232,14 @@ class StHubertDataset(FairseqDataset):
 
     ## text part
     def get_text(self, index, text_idx):
-        
         with open(self.text_paths[text_idx]) as f:
             offset_s, offset_e = self.text_offsets_list[text_idx][index]
             f.seek(offset_s)
             text_code = f.read(offset_e - offset_s)
         if self.label_processors is not None:
-            text_code = self.label_processors[text_idx](text_code) ## its function is encode utterance into 1-dimtensor
+            text_code = self.label_processors[text_idx](
+                text_code
+            )  ## its function is encode utterance into 1-dimtensor
         return text_code
 
     def get_texts(self, index):
@@ -291,7 +294,7 @@ class StHubertDataset(FairseqDataset):
         targets_list, lengths_list, ntokens_list = self.collater_label(
             targets_by_label, audio_size, audio_starts
         )
-        
+
         sources_by_text = [
             [s["source_text_list"][i] for s in samples] for i in range(self.num_texts)
         ]
@@ -299,11 +302,11 @@ class StHubertDataset(FairseqDataset):
         sources_list, lengths_list, ntokens_list = self.collater_text(
             sources_by_text, audio_size, audio_starts
         )
-        
-        #a = torch.split(sources_list[0],1)
-        #b = [torch.equal(i,torch.ones(i.size(0),i.size(1),device=sources_list[0].device)) for i in a]
-        #net_input={}
-        #if not torch.any(torch.tensor(b)):        
+
+        # a = torch.split(sources_list[0],1)
+        # b = [torch.equal(i,torch.ones(i.size(0),i.size(1),device=sources_list[0].device)) for i in a]
+        # net_input={}
+        # if not torch.any(torch.tensor(b)):
         net_input = {
             "source": collated_audios,
             "padding_mask": padding_mask,
@@ -354,12 +357,12 @@ class StHubertDataset(FairseqDataset):
             rem_size = [len(t) - s for t, s in zip(targets, frm_starts)]
             frm_size = min(frm_size, *rem_size)
         targets = [t[s : s + frm_size] for t, s in zip(targets, frm_starts)]
-        #logger.info(f"audio_starts={audio_starts}")
-        #logger.info(f"frame_starts={frm_starts}")
-        #logger.info(f"frame_size={frm_size}")
+        # logger.info(f"audio_starts={audio_starts}")
+        # logger.info(f"frame_starts={frm_starts}")
+        # logger.info(f"frame_size={frm_size}")
 
         lengths = torch.LongTensor([len(t) for t in targets])
-        #logger.info(f"in collater_frm_label , labels: {targets}")
+        # logger.info(f"in collater_frm_label , labels: {targets}")
         ntokens = lengths.sum().item()
         targets = data_utils.collate_tokens(targets, pad_idx=pad, left_pad=False)
         return targets, lengths, ntokens
@@ -373,12 +376,12 @@ class StHubertDataset(FairseqDataset):
             rem_size = [len(t) - s for t, s in zip(texts, frm_starts)]
             frm_size = min(frm_size, *rem_size)
         texts = [t[s : s + frm_size] for t, s in zip(texts, frm_starts)]
-        #logger.info(f"in collater_frm_text audio_starts={audio_starts}")
-        #logger.info(f"in collater_frm_text frame_starts={frm_starts}")
-        #logger.info(f"in collater_frm_text frame_size={frm_size}")
+        # logger.info(f"in collater_frm_text audio_starts={audio_starts}")
+        # logger.info(f"in collater_frm_text frame_starts={frm_starts}")
+        # logger.info(f"in collater_frm_text frame_size={frm_size}")
 
         lengths = torch.LongTensor([len(t) for t in texts])
-        #logger.info(f"in collater_frm_text , texts: {texts}")
+        # logger.info(f"in collater_frm_text , texts: {texts}")
         ntokens = lengths.sum().item()
         texts = data_utils.collate_tokens(texts, pad_idx=pad, left_pad=False)
         return texts, lengths, ntokens
@@ -408,7 +411,7 @@ class StHubertDataset(FairseqDataset):
         texts_list, lengths_list, ntokens_list = [], [], []
         itr = zip(sources_by_text, self.label_rates, self.pad_list)
         for texts, label_rate, pad in itr:
-            #logger.info(f"in collater_text,texts: {texts}")
+            # logger.info(f"in collater_text,texts: {texts}")
             if label_rate != -1.0:
                 texts, lengths, ntokens = self.collater_frm_text(
                     texts, audio_size, audio_starts, label_rate, pad
@@ -416,7 +419,7 @@ class StHubertDataset(FairseqDataset):
             texts_list.append(texts)
             lengths_list.append(lengths)
             ntokens_list.append(ntokens)
-        
+
         return texts_list, lengths_list, ntokens_list
 
     def num_tokens(self, index):
