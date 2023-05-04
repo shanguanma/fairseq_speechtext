@@ -9,7 +9,7 @@ stop_stage=1000
 export HYDRA_FULL_ERROR=1
 export CUDA_LAUNCH_BLOCKING=1
 ## (TODO) first run it
-if [ ${stage} -le 16 ] && [ ${stop_stage} -ge 16 ];then
+if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
    echo "iter: pretrain imls_ssl on 6layer of hubert pesudo label and librispeech monophncode from w2vu2-model " 
    echo "training on 400k steps for train-960 of librispeech"
    fairseq_dir=/workspace2/maduo/fairseq_speechtext
@@ -27,10 +27,8 @@ if [ ${stage} -le 16 ] && [ ${stop_stage} -ge 16 ];then
             --config-name imls_ssl_base_librispeech \
             task.data=$tsv_dir\
             task.label_dir=$label_dir\
-            task.labels='["phncode,km"]' \
+            task.labels='["phncode","km"]' \
             model.label_rate=50\
-            model.predict_layers='[7,12]'\
-            model.phnkm7_km12=true\
             common.user_dir=$fairseq_dir/examples/imls_ssl\
             dataset.train_subset=train-960\
             dataset.valid_subset=\'dev-other,dev-clean\'\
@@ -48,7 +46,7 @@ fi
 
 
 
-if [ ${stage} -le 17 ] && [ ${stop_stage} -ge 17 ];then
+if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
    echo "fine tune base imls-ssl model  using train-clean-100 supervision data"
    fairseq_dir=/workspace2/maduo/fairseq_speechtext
    tsv_dir=/workspace2/maduo/dataset/format/librispeech
@@ -80,13 +78,13 @@ if [ ${stage} -le 17 ] && [ ${stop_stage} -ge 17 ];then
             hydra.job.name=$exp_dir/finetune
 fi
 
-if [ ${stage} -le 18 ] && [ ${stop_stage} -ge 18 ];then
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
    echo "inference imls-ssl  model on dev-other, dev-clean, test-other, test-clean of librispeech"
    fairseq_dir=/workspace2/maduo/fairseq_speechtext
    tsv_dir=/workspace2/maduo/dataset/format/librispeech
    config_dir=$fairseq_dir/examples/hubert/
    dir=/workspace2/maduo/exp
-   model_name=pretrain_on_base_ils-ssl_4gpu_8update_960h_ils-ssl_400k_update
+   model_name=pretrain_on_base_imls-ssl_4gpu_8update_960h_ils-ssl_400k_update
    exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
    mkdir -p $exp_finetune_dir/decode_on_100h
    testsets="dev-clean dev-other test-clean test-other"
