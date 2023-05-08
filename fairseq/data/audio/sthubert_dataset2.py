@@ -65,15 +65,15 @@ def load_text(manifest_text_path, max_keep, min_keep):
             sz = len(items.split())
             if min_keep is not None and sz < min_keep:
                 n_short += 1
-            if max_keep is not None and sz > max_keep:
+            elif max_keep is not None and sz > max_keep:
                 n_long += 1
             else:
                 text_uttids.append(i)
                 text_contents.append(items)
                 sizes.append(sz)
     logger.info(
-        f"max_keep={max_keep}, min_keep={min_keep},"
-        f"loaded {len(text_uttids)} texts, skipped {n_short} short and {n_long} long"
+        f"max_keep={max_keep}, min_keep={min_keep},  "
+        f"loaded {len(text_uttids)} texts, skipped {n_short} short and {n_long} long "
         f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}"
     )
     return text_uttids, text_contents
@@ -140,7 +140,8 @@ def verify_label_lengths(
 
 
 ### The version of this dataset requires number of text utternce same as  number of speech utterance.
-### however,it is random text utterances of in per batch.
+### however,it is random text utterances of in per batch. 
+### and add text ntokens into batch, this parameter is only used by computing ctc loss for text part
 class StHubertDataset2(FairseqDataset):
     def __init__(
         self,
@@ -297,14 +298,14 @@ class StHubertDataset2(FairseqDataset):
         )
         texts = [[s["text"] for s in samples]]
         # logger.info(f"in collater, texts lengths : {len(texts)}, texts : {texts}")
-        collated_texts, lengths_list, ntokens_list = self.collater_text(
+        collated_texts, text_lengths_list, text_ntokens_list = self.collater_text(
             texts, audio_size, audio_starts
         )
 
         targets_by_label = [
             [s["label_list"][i] for s in samples] for i in range(self.num_labels)
         ]
-        targets_list, lengths_list, ntokens_list = self.collater_label(
+        targets_list, label_lengths_list, label_ntokens_list = self.collater_label(
             targets_by_label, audio_size, audio_starts
         )
 
@@ -322,10 +323,14 @@ class StHubertDataset2(FairseqDataset):
             batch["target_lengths"] = lengths_list[0]
             batch["ntokens"] = ntokens_list[0]
             batch["target"] = targets_list[0]
+            batch["text_lengths_list"] = text_lengths_list[0]
+            batch["text_ntokens_list"] = text_ntokens_list[0]
         else:
-            batch["target_lengths_list"] = lengths_list
-            batch["ntokens_list"] = ntokens_list
+            batch["target_lengths_list"] = label_lengths_list
+            batch["ntokens_list"] = label_ntokens_list
             batch["target_list"] = targets_list
+            batch["text_lengths_list"] = text_lengths_list
+            batch["text_ntokens_list"] = text_ntokens_list
         return batch
 
     def collater_audio(self, audios, audio_size):

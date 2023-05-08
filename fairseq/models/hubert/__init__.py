@@ -9,3 +9,5 @@ from .sthubert import *  # noqa
 from .sthubert_asr import *  # noqa
 from .hubert2 import *  # noqa
 from .ils_hubert import *  # noqa
+from .sthubert2 import *  #noqa
+from .sthubert2_asr import *  # noqa

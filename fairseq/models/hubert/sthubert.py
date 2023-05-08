@@ -502,7 +502,7 @@ class StHubertModel(BaseFairseqModel):
             # account for padding while computing the representation
             x = x * (1 - encoder_padding_mask.unsqueeze(-1).type_as(x))
         """
-        # logger.info(f"in forward_text, source_text:  {source_text}, source_text shape : {source_text.shape}")
+        #logger.info(f"in forward_text, source_text:  {source_text}, source_text shape : {source_text.shape}")
         token_embedding = self.embed_tokens(source_text)
         x = embed = token_embedding
         # if self.embed_positions is not None:
