@@ -837,7 +837,14 @@ class StHubertModel3(BaseFairseqModel):
             y = [] ## target 
             with torch.no_grad():
                 tm.eval()
-                ema_input = result_speech["features"] ## conv feature fronet
+                ema_input = result_speech["features"] ## conv feature front
+                '''
+                if padding_mask is not None:
+                    padding_mask = tm.forward_padding_mask(ema_input, padding_mask)
+ 
+                if self.post_extract_proj is not None:
+                    ema_input = tm.post_extract_proj(features)
+                '''
                 ## first encoder
                 ema_input, layer_results_front = tm.encoder(
                        ema_input,
@@ -1010,13 +1017,14 @@ class StHubertModel3(BaseFairseqModel):
 
         if padding_mask is not None:
             padding_mask = self.forward_padding_mask(features, padding_mask)
-
+            
         if self.post_extract_proj is not None:
             features = self.post_extract_proj(features)
-
+            unmasked_features = self.post_extract_proj(unmasked_features)
         # (B,T,D)
         features = self.dropout_input(features)
-        unmasked_features = self.dropout_features(unmasked_features)
+        unmasked_features = self.dropout_input(unmasked_features)
+        
         if mask:
             x, mask_indices = self.apply_mask(features, padding_mask, target_list)
         else:

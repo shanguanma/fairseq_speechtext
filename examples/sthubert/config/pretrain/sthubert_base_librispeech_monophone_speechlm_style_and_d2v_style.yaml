@@ -53,7 +53,7 @@ criterion:
   d2v_loss_weight: 0.001
 optimization:
   max_update: 150000 ## 150000 is best for label from w2vu model
-  lr: [0.00005] #default [0.0005], work:[0.000005]
+  lr: [0.0005] #default [0.0005], work:[0.000005]
   clip_norm: 10.0
   #update_freq: [4]
 optimizer:
@@ -75,8 +75,8 @@ model:
   extractor_mode: default
   conv_feature_layers: '[(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2'
   final_dim: 256
-  encoder_embed_dim: 512
-  text_embed_dim: 512
+  encoder_embed_dim: 768
+  text_embed_dim: 768
   encoder_ffn_embed_dim: 3072
   encoder_attention_heads: 8
   encoder_layers: 6
@@ -110,9 +110,9 @@ model:
   ema_decay: 0.999 
   log_norms: True
   ema_end_decay: 0.9999
-  ema_anneal_end_step: ${optimization.max_update} 
+  ema_anneal_end_step: 75000 
   shared_transformer:
-      encoder_embed_dim: 512
+      encoder_embed_dim: 768
       encoder_ffn_embed_dim: 3072
       encoder_attention_heads: 8     
       encoder_layers: 6
