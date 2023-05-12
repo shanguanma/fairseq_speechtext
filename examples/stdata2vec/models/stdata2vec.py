@@ -311,6 +311,9 @@ class STData2VecModel(BaseFairseqModel):
         """Build a new model instance.""" 
         return cls(cfg, frontend_cfg, task=task, skip_ema=cfg.skip_ema)
 
+
+    ### loss: 1. block output and target
+    ###       2. decoder output and target
     def forward(
         self,
         source_audio,

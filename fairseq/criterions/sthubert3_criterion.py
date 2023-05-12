@@ -18,7 +18,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 @dataclass
-class STHubertCriterionConfig2(FairseqDataclass):
+class STHubertCriterionConfig3(FairseqDataclass):
     pred_masked_weight: float = field(
         default=1.0,
         metadata={"help": "weight for predictive loss for masked frames"},
@@ -43,9 +43,13 @@ class STHubertCriterionConfig2(FairseqDataclass):
         default=0.0,
         metadata={"help": "masked unit modeling weight from the text end"},
     )
+    d2v_loss_weight:  float = field(
+        default=0.001,
+        metadata={"help": "contextualized loss (idea from data2vec) weight from the speech end"},
+    )
 
-@register_criterion("sthubert2_criterion", dataclass=STHubertCriterionConfig2)
-class STHubertCriterion2(FairseqCriterion):
+@register_criterion("sthubert3_criterion", dataclass=STHubertCriterionConfig3)
+class STHubertCriterion3(FairseqCriterion):
     def __init__(
         self,
         task,
@@ -55,6 +59,7 @@ class STHubertCriterion2(FairseqCriterion):
         log_keys=None,
         text_ctc_weight=0.1,
         text_mum_weight=0,
+        d2v_loss_weight=0.001,
         no_ctc_blank=False,
         
     ):
@@ -65,6 +70,7 @@ class STHubertCriterion2(FairseqCriterion):
         self.log_keys = [] if log_keys is None else log_keys
         self.text_ctc_weight = text_ctc_weight
         self.text_mum_weight = text_mum_weight
+        self.d2v_loss_weight = d2v_loss_weight
         self.no_ctc_blank= no_ctc_blank
         self.padding_idx = task.dictionaries[0].pad()
         self.eos_idx = task.dictionaries[0].eos()
@@ -178,14 +184,40 @@ class STHubertCriterion2(FairseqCriterion):
                     p = coef * p.float() * sample_size
                     loss_speech += p
                     logging_output[f"loss_{n}"] = p.item()
-
         #### add net_output other loss, for example: embedding_l2_loss
         ### add some display information into logging system
         for lk in self.log_keys:
+            #logger.info(f"self.log_keys contain : {lk}")
             if lk in net_output:
                 logging_output[lk] = float((net_output[lk]))
+            #elif lk in net_output["result_speech"]:
+            #    logging_output[lk] = float((net_output[lk])) 
+        #loss_speech  =  loss_speech/sample_size
+        ##1.3 d2v loss
+        scaled_losses = {}
+        losses = {}
+        if isinstance(net_output, dict) and "losses" in net_output["result_speech"]:
+            losses = net_output["result_speech"]["losses"]
+        for lk, p in losses.items():
+            #logger.info(f"lk: {lk}, p: {p}")
+            #logging_output[lk] = p.float().sum()/p.size(0)
+            #scaled_losses[lk] = p.float().sum()/p.size(0)
+            logging_output[lk] = p.float().sum()/sample_size  * self.d2v_loss_weight ## for display
+            scaled_losses[lk] = p.float().sum()/sample_size  * self.d2v_loss_weight
+        if "ema_decay" in net_output["result_speech"]:
+            logging_output["ema_decay"] = net_output["result_speech"]["ema_decay"]
 
-        loss_speech  =  loss_speech/sample_size
+        '''        
+        for lk in  net_output["result_speech"].keys():
+            if lk.startswith("target_var_"):
+                logging_output[lk] = net_output["result_speech"][lk] 
+            elif lk.startswith("pred_var_"):  
+                logging_output[lk] = net_output["result_speech"][lk] 
+        '''
+        loss_d2v = sum(scaled_losses.values())
+        loss_speech  =  loss_speech/sample_size + loss_d2v
+       
+
         # 2.1. do text part forward and loss computation
         loss_text=0
         ## mask lm loss
@@ -299,6 +331,18 @@ class STHubertCriterion2(FairseqCriterion):
             elif lk.startswith("text_") and lk.endswith("_loss"):
                 val = sum(log[lk] for log in logging_outputs)
                 metrics.log_scalar(lk, val / math.log(2), round=3)
+            elif lk.startswith("ema_"):
+                val = sum(log[lk] for log in logging_outputs)
+                metrics.log_scalar(lk, val , round=3)
+            elif lk.endswith("_cls_loss"):
+                val = sum(log[lk] for log in logging_outputs)
+                metrics.log_scalar(lk, val, round=3)
+            #elif lk.startswith("target_var_") or lk.startswith("pred_var_"):
+                #logger.info(f"_var_ is running, lk: {lk}" )
+            #    val = sum(log[lk] for log in logging_outputs)
+            #    metrics.log_scalar(lk, val , round=3)
+
+
     @staticmethod
     def aggregate_logging_outputs(logging_outputs):
         """Aggregate logging outputs from data parallel training."""
