@@ -78,7 +78,7 @@ model:
   encoder_embed_dim: 768
   text_embed_dim: 768
   encoder_ffn_embed_dim: 3072
-  encoder_attention_heads: 8
+  encoder_attention_heads: 12
   encoder_layers: 6
   encoder_layerdrop: 0.05
   dropout_input: 0.1
@@ -100,8 +100,8 @@ model:
   cls_loss_scale: 1 # modify
   loss_beta: 0
   loss_scale: null
-  front_average_top_k_layers: 2
-  share_average_top_k_layers: 4
+  front_average_top_k_layers: 3
+  share_average_top_k_layers: 6
   layer_norm_target_layer:  False
   batch_norm_target_layer: False
   instance_norm_target_layer:  True
@@ -114,7 +114,7 @@ model:
   shared_transformer:
       encoder_embed_dim: 768
       encoder_ffn_embed_dim: 3072
-      encoder_attention_heads: 8     
+      encoder_attention_heads: 12     
       encoder_layers: 6
 hydra:
   job:
