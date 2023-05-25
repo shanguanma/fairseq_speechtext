@@ -23,7 +23,14 @@ w2l_decoder: VITERBI
 post_process: silence
 results_path: ???
 decode_stride: 1
-
+#targets: none  ## if it is none, will not computer wer, if it is wrd, will commputer wer
+#lm_model: none  ## it is kenlm  or fairseqlm path
+#lexicon: none
+beam_threshold: 100.0
+beam: 1500
+word_score: 1.0 ## default  1.0
+sil_weight: 0.0 ## default 0.0
+lm_weight: 2.0  ## default 2.0
 
 hydra:
   run:

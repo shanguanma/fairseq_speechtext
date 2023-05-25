@@ -40,7 +40,7 @@ with open(params.vads) as f:
         ]
         list_intervals.append(interval)
 
-
+assert len(paths) == len(list_intervals),f"audio utterances: {len(paths)}, vad utterances: {len(list_intervals)}"
 # load audio and keep only intervals (i.e. remove silences)
 for i in tqdm.trange(len(paths)):
     data, _ = torchaudio.load(paths[i])
@@ -53,8 +53,9 @@ for i in tqdm.trange(len(paths)):
 
     # YOU MAY NEED TO MODIFY THIS TO GET THE RIGHT SUBPATH
     # outpath = params.out + '/'.join(paths[i].split('/')[-1])
-    outpath = params.out + "/" + "/".join(paths[i].split("/")[-2:])
-
+    #outpath = params.out + "/" + "/".join(paths[i].split("/")[-2:])
+    outpath = params.out + "/" + "/".join(paths[i].split("/")[-3:])
+    print(f'outpath: {outpath},paths[i].split("/")[-3:]: {paths[i].split("/")[-3:]}')
     if not os.path.isdir("/".join(outpath.split("/")[:-1])):
         os.makedirs("/".join(outpath.split("/")[:-1]))
     if not os.path.exists(outpath):
