@@ -459,7 +459,7 @@ def generate(cfg: UnsupGenerateConfig, models, saved_cfg, use_cuda):
                 hypos, num_feats = gen_hypos(
                     generator, models, num_feats, sample, task, use_cuda
                 )
-
+                
             for i, sample_id in enumerate(sample["id"].tolist()):
                 if targets is not None:
                     target_tokens = targets[sample_id]

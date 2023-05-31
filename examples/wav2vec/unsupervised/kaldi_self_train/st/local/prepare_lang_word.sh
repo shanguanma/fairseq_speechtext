@@ -5,7 +5,7 @@ num_nonsil_states=1
 
 . ./cmd.sh
 . ./path.sh
-. parse_options.sh
+. utils/parse_options.sh
 
 set -eux
 

@@ -10,7 +10,7 @@ kenlm_path=/checkpoint/abaevski/data/speech/libri/librispeech_lm_novox.phnc_o6.b
 
 . ./cmd.sh
 . ./path.sh
-. parse_options.sh
+. utils/parse_options.sh
 
 exp_root=$1
 unsup_args=""
