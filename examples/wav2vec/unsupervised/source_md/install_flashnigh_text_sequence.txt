@@ -1,9 +1,0 @@
-## in order to use fairseq decoder, you now can install it as follows:
-## install flashlight text
-pip install flashlight-text  -i https://pypi.tuna.tsinghua.edu.cn/simple ## it offer beam_search decoder and dictioanry utils
-## install kenlm
-pip install https://github.com/kpu/kenlm/archive/master.zip  ## offer n-gram 
-## instll flashlight sequence
-export USE_CUDA=1
-git clone https://github.com/flashlight/sequence && cd sequence 
-pip install .
