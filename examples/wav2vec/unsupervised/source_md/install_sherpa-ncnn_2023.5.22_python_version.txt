@@ -1,0 +1,5 @@
+conda create -n k2-fsa python=3.8 -y 
+conda activate k2-fsa
+git clone https://github.com/k2-fsa/sherpa-ncnn
+cd sherpa-ncnn
+python3 setup.py install

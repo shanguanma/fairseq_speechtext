@@ -1,0 +1,30 @@
+1.install pytorch
+conda create -n sherpa-ncnn python=3.8
+ conda activate sherpa-ncnn
+conda install pytorch==1.12.0 cudatoolkit=11.3 -c pytorch -y
+
+2. install k2
+conda install -c k2-fsa -c pytorch -c conda-forge k2 python=3.8 cudatoolkit=11.3 pytorch=1.12.0 -y
+conda install -c conda-forge gcc=12.1.0 -y`:
+
+3. install kaldifeat
+conda install -c kaldifeat -c pytorch -c conda-forge kaldifeat python=3.8 cudatoolkit=11.3 pytorch=1.12.0
+
+4. install sherpa-ncnn
+git clone https://github.com/k2-fsa/sherpa
+cd sherpa
+mkdir build
+cd build
+cmake \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=$HOME/software/sherpa \
+  ..
+make -j6 install/strip
+
+# If you don't want to strip the binaries and libraries, you can
+# use "make -j6 install"
+
+export PATH=$HOME/software/sherpa/bin:$PATH
+
+# To uninstall sherpa, use
+#  rm -rf $HOME/software/sherpa`
