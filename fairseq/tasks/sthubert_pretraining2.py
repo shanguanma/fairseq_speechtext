@@ -208,11 +208,8 @@ class StHubertPretrainingTask2(FairseqTask):
     def load_dataset(self, split: str, **kwargs) -> None:
         manifest = f"{self.cfg.data}/{split}.tsv"
         dicts = [self.target_dictionary] if self.cfg.fine_tuning else self.dictionaries
-        logger.info(
-            f"dicts: {dicts}"
-        )  # dicts[0] is kmeans dict dicts[1] is phn code dictionary
-        dicts_km = [dicts[0]]  # remove text phn dictionary
-        dicts_phncode = [dicts[1]]
+        logger.info(f"dicts: {dicts}")
+        dicts = [dicts[0]]  # remove text phn dictionary
         # ori_dicts = [dicts[0][0],dicts[1]]
         # dicts=ori_dicts
         # for dict1 in dicts:
@@ -220,10 +217,10 @@ class StHubertPretrainingTask2(FairseqTask):
         #    logger.info(f"dict1: {dict1[0]}")
         #    logger.info(f"dict1.pad(): {dict1[0].pad()}")
         #    logger.info(f"dict1: {dict1[1]}")
-        pad_list = [dict.pad() for dict in dicts_km]
-        eos_list = [dict.eos() for dict in dicts_km]
-        procs = [LabelEncoder(dict) for dict in dicts_km]
-        text_procs = [TextEncoder(dict) for dict in dicts_phncode]
+        pad_list = [dict.pad() for dict in dicts]
+        eos_list = [dict.eos() for dict in dicts]
+        procs = [LabelEncoder(dict) for dict in dicts]
+        text_procs = [TextEncoder(dict) for dict in dicts]
         paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
         logger.info(f"paths: {paths}")
         # text_paths=[f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.texts_type]

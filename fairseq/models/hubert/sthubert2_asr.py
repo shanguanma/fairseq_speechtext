@@ -307,7 +307,9 @@ class StHubertEncoder2(FairseqEncoder):
         x = self.final_dropout(x)
 
         if self.proj:
-            x = self.proj(x)
+            x = x.transpose(0, 1) ## T x B x C -> B x T x C
+            x = self.proj(x) # B x T x C
+            x = x.transpose(0, 1) ## B x T x C -> T x B x C
         results = {
             "encoder_out": x,  # T x B x C
             "encoder_padding_mask": padding_mask,  # B x T

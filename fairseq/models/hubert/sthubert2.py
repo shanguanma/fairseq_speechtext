@@ -864,30 +864,44 @@ class StHubertModel2(BaseFairseqModel):
         output_layer: Optional[int] = None,
         **kwargs,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        res = self.forward(
-            source,
-            source_text=source_text,
+        
+        features = self.forward_features(source)
+        #if target_list is not None:
+        #    features, target_list = self.forward_targets(features, target_list)
+
+        features_pen = features.float().pow(2).mean()
+
+        features = features.transpose(1, 2)
+        features = self.layer_norm(features)
+        unmasked_features = features.clone()
+
+        if padding_mask is not None:
+            padding_mask = self.forward_padding_mask(features, padding_mask)
+
+        if self.post_extract_proj is not None:
+            features = self.post_extract_proj(features)
+
+        # (B,T,D)
+        features = self.dropout_input(features)
+        unmasked_features = self.dropout_features(unmasked_features)
+        x = features
+
+        # feature: (B, T, D), float
+        # target: (B, T), long
+        # x: (B, T, D), float
+        # padding_mask: (B, T), bool
+        # mask_indices: (B, T), bool
+        x, _ = self.encoder(
+            x,
             padding_mask=padding_mask,
-            mask=mask,
-            features_only=True,
-            output_layer=output_layer,
+            layer=None if output_layer is None else output_layer - 1,
         )
-        feature = res["result_speech"]["features"] if ret_conv else res["result_speech"]["x"]
-        if self.add_unit_encoder:
-            src_tokens, x_emb, l2_loss = self.swap_embedding(
-                x,
-                padding_mask,
-                mix_with_unit=False,
-                use_pred_unit=False,
-                l2_embedding=False,
-            )
+        out,_ = self.shared_encoder(x, padding_mask) ## BXTXC    
+        
+        return out, padding_mask
 
-            out,_ = self.shared_encoder(x_emb, padding_mask) ## BXTXC
-            res["result_speech"]["x"] = out
 
-            feature = res["result_speech"]["features"] if ret_conv else res["result_speech"]["x"]
-        return feature, res["result_speech"]["padding_mask"]
-
+ 
     def get_logits(self, net_output, is_masked=True):
         if is_masked:
             logits_lists=[]
