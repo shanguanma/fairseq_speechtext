@@ -471,3 +471,55 @@ if [ ${stage} -le 400 ] && [ ${stop_stage} -ge 400 ];then
      hydra.run.dir=$fairseq_dir/examples/wav2vec/unsupervised
 
 fi
+
+if [ ${stage} -le 450 ] && [ ${stop_stage} -ge 450 ];then
+  des_dir=/workspace2/maduo/dataset/format/librispeech
+  TASK_DATA=$des_dir/wav2vec_large_feat_dir_no_silence/ ## it stores wav2vec2 large model 15 layer representation of raw librispeech speech,
+                                                        ## it  removes  silence. it offers feature of speech.
+  cp -r dataset/format/librispeech/librispeech_no_silence/mfcc_no_silence/mfcc_lab/* $TASK_DATA  ## it offers hubert mfcc pesudo label
+
+  # Unpaired text input
+  TEXT_DATA=$des_dir/librispeech_lm_norm_phn_seq/unpair_text_all ## it  offers unpair trainset(train.bin, train.idx), devset (dev-clean.bin.dev-clean.idx, dev-other.bin, dev-other.idx)
+  # it also offers phone dictionary, its type is as follow:
+  ##head  dataset/format/librispeech/librispeech_lm_norm_phn_seq/phonesss/dict.phn.txt
+  ## AH 336212
+  ## N 238016
+  ## S 209100
+  ## T 194878
+  ## L 188633
+  ## IH 182116
+  ## R 172703
+  ## K 154411
+  ## IY 138376
+  ## Z 128619
+  KENLM_PATH=$des_dir/librispeech_lm_norm_phn_seq/phonesss/lm.phones.filtered.04.bin  # KenLM 4-gram phoneme language model (LM data = GAN data here)
+  config_dir=$fairseq_dir/examples/wav2vec/unsupervised
+
+  dir=/workspace2/maduo/exp/
+  model_name=w2v_unsup_gan_xp_1gpu_1update_with_unpair_text_all_second
+  exp_dir=$dir/wav2vec-u2_gan_from_scratch/${model_name}
+  mkdir -p $exp_dir
+  export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+  world_size=1
+  update_freq=1
+  CUDA_VISIBLE_DEVICES=7  python $fairseq_dir/fairseq_cli/hydra_train.py  --multirun \
+     --config-dir $config_dir/config/gan \
+     --config-name w2vu2_local1_with_kaldi_decode \
+     task.data=${TASK_DATA} \
+     task.text_data=${TEXT_DATA} \
+     task.kenlm_path=${KENLM_PATH} \
+     dataset.train_subset=train\
+     dataset.valid_subset=\'dev-other,dev-clean\'\
+     dataset.batch_size=160\
+     dataset.num_workers=6\
+     common.user_dir=${fairseq_dir}/examples/wav2vec/unsupervised \
+     model.code_penalty=2,4 model.gradient_penalty=1.5,2.0 \
+     model.smoothness_weight=0.5,0.75,1.0 'common.seed=range(0,5)'\
+     distributed_training.distributed_world_size=${world_size}\
+     distributed_training.distributed_port=-1\
+     distributed_training.ddp_backend=legacy_ddp\
+     optimization.update_freq=[${update_freq}]\
+     common.tensorboard_logdir=$exp_dir\
+     hydra.run.dir=$fairseq_dir/examples/wav2vec/unsupervised
+
+fi
