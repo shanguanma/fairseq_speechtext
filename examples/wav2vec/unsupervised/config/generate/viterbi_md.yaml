@@ -1,0 +1,41 @@
+# @package _group_
+
+fairseq:
+  task:
+    _name: unpaired_audio_text
+    labels: phn
+    data: ???
+    sort_by_length: false
+    shuffle: false
+    text_data: ''
+
+  common_eval:
+    path: ???
+    quiet: true
+
+  dataset:
+    max_tokens: 11000000
+    gen_subset: valid
+    batch_size: 1
+    required_batch_size_multiple: 1 ## it is very important
+
+w2l_decoder: VITERBI
+post_process: silence
+results_path: ???
+decode_stride: 1
+#targets: none  ## if it is none, will not computer wer, if it is wrd, will commputer wer
+#lm_model: none  ## it is kenlm  or fairseqlm path
+#lexicon: none
+beam_threshold: 100.0
+beam: 1500
+word_score: 1.0 ## default  1.0
+sil_weight: 0.0 ## default 0.0
+lm_weight: 2.0  ## default 2.0
+
+hydra:
+  run:
+    dir: ${results_path}/viterbi  ## logger store directory.
+  sweep:
+    dir: ${results_path}
+    subdir: viterbi
+

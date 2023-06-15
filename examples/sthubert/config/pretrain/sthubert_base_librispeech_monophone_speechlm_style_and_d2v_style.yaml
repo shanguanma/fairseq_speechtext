@@ -1,0 +1,133 @@
+# @package _group_
+
+common:
+  fp16: true
+  log_format: json
+  log_interval: 200
+  seed: 1337
+  tensorboard_logdir: tblog
+
+checkpoint:
+  save_interval_updates: 25000
+  keep_interval_updates: 1
+  no_epoch_checkpoints: true
+
+
+distributed_training:
+  ddp_backend: no_c10d  
+  distributed_backend: 'nccl'
+  distributed_world_size: 32
+  distributed_port: 29671
+  nprocs_per_node: 8
+  find_unused_parameters: true
+
+task:
+  _name: sthubert_pretraining2
+  data: ???
+  label_dir: ???
+  labels: ???
+  label_rate: ${model.label_rate}
+  sample_rate: 16000
+  max_sample_size: 250000 ##250000/160=1562 
+  min_sample_size: 32000
+  max_phone_size: 400
+  min_phone_size: 20  
+  pad_audio: false
+  random_crop: true
+  normalize: false # must be consistent with extractor
+
+dataset:
+  num_workers: 6
+  max_tokens: 1400000 # default 1400000
+  skip_invalid_size_inputs_valid_test: true
+  validate_interval: 5
+  validate_interval_updates: 10000
+
+criterion:
+  _name: sthubert3_criterion
+  pred_masked_weight: 1.0
+  pred_nomask_weight: 0.0
+  loss_weights: [10,]
+  text_ctc_weight: 0.1 # 0.1
+  text_mum_weight: 0.0 # drop  mum loss of text
+  d2v_loss_weight: 0.001
+optimization:
+  max_update: 150000 ## 150000 is best for label from w2vu model
+  lr: [0.0005] #default [0.0005], work:[0.000005]
+  clip_norm: 10.0
+  #update_freq: [4]
+optimizer:
+  _name: adam
+  adam_betas: (0.9,0.98)
+  adam_eps: 1e-06
+  weight_decay: 0.01
+
+lr_scheduler:
+  _name: polynomial_decay
+  warmup_updates: 32000
+
+model:
+  _name: sthubert3
+  label_rate: ???
+  skip_masked: false
+  skip_nomask: false
+  mask_prob: 0.80
+  extractor_mode: default
+  conv_feature_layers: '[(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2'
+  final_dim: 256
+  encoder_embed_dim: 768
+  text_embed_dim: 768
+  encoder_ffn_embed_dim: 3072
+  encoder_attention_heads: 12
+  encoder_layers: 6
+  encoder_layerdrop: 0.05
+  dropout_input: 0.1
+  dropout_features: 0.1
+  dropout: 0.1
+  attention_dropout: 0.1
+  feature_grad_mult: 0.1
+  #untie_final_proj: False
+  activation_dropout: 0.0
+  mix_with_unit: true
+  use_pred_unit: true 
+  l2_embedding: true
+  add_text_ctc: true
+  mask_u2t: true
+  compute_mum: true
+
+  ## EMA (teacher model)config
+  skip_ema: false
+  cls_loss_scale: 1 # modify
+  loss_beta: 0
+  loss_scale: null
+  front_average_top_k_layers: 3
+  share_average_top_k_layers: 6
+  layer_norm_target_layer:  False
+  batch_norm_target_layer: False
+  instance_norm_target_layer:  True
+  instance_norm_targets: False
+  layer_norm_targets: False
+  ema_decay: 0.999 
+  log_norms: True
+  ema_end_decay: 0.9999
+  ema_anneal_end_step: 75000 
+  shared_transformer:
+      encoder_embed_dim: 768
+      encoder_ffn_embed_dim: 3072
+      encoder_attention_heads: 12     
+      encoder_layers: 6
+hydra:
+  job:
+    config:
+      override_dirname:
+        kv_sep: '-'
+        item_sep: '__'
+        exclude_keys:
+          - run
+          - task.data
+          - task.label_dir
+  run:
+    dir: ???
+  sweep:
+    dir: ???
+    subdir: ${hydra.job.config_name}__${hydra.job.override_dirname}

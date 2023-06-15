@@ -26,51 +26,35 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ILSHubertConfig(HubertConfig2):
-    #relative position embedding
+    # relative position embedding
     relative_position_embedding: bool = field(
         default=False,
-        metadata={"help": "whether to use the relative position embedding, (bucket relpos embedding by default)"}
+        metadata={
+            "help": "whether to use the relative position embedding, (bucket relpos embedding by default)"
+        },
     )
     num_buckets: int = field(
         default=320,
-        metadata={"help": "the number of buckets for relative position embedding"}
+        metadata={"help": "the number of buckets for relative position embedding"},
     )
     max_distance: int = field(
         default=800,
-        metadata={"help": "the maximum distance for computing relative bias, beyond which will assign the same embedding"}
+        metadata={
+            "help": "the maximum distance for computing relative bias, beyond which will assign the same embedding"
+        },
     )
 
     # ILS-SSL params
-    weighted_sum: bool = field(
-        default=False
-    )
-    predict_layers: str = field(
-        default="[12]"
-    )
-    separate_label_embeds: bool = field(
-        default=False
-    )
-    separate_layer_targets: bool = field(
-        default=False
-    )
-    km4_bpekm7_km12: bool = field(
-        default=False
-    )
-    bpekm7_km12: bool = field(
-        default=False
-    )
-    phnkm6_km12: bool = field(
-        default=False
-    )
-    phnkm7_km12: bool = field(
-        default=False
-    )
-    km4_phnkm6_km12: bool = field(
-        default=False       
-    )
-    km4_phnkm7_km12: bool = field(
-        default=False
-    )
+    weighted_sum: bool = field(default=False)
+    predict_layers: str = field(default="[12]")
+    separate_label_embeds: bool = field(default=False)
+    separate_layer_targets: bool = field(default=False)
+    km4_bpekm7_km12: bool = field(default=False)
+    bpekm7_km12: bool = field(default=False)
+    phnkm6_km12: bool = field(default=False)
+    phnkm7_km12: bool = field(default=False)
+    km4_phnkm6_km12: bool = field(default=False)
+    km4_phnkm7_km12: bool = field(default=False)
 
 
 @register_model("ils_hubert", dataclass=ILSHubertConfig)
@@ -90,42 +74,62 @@ class ILSHubertModel(HubertModel2):
         self.weighted_sum = cfg.weighted_sum
         self.km4_bpekm7_km12 = cfg.km4_bpekm7_km12
         self.bpekm7_km12 = cfg.bpekm7_km12
-        self.phnkm7_km12 = cfg.phnkm7_km12   
+        self.phnkm7_km12 = cfg.phnkm7_km12
         self.phnkm6_km12 = cfg.phnkm6_km12
         self.km4_phnkm6_km12 = cfg.km4_phnkm6_km12
-        self.km4_phnkm7_km12 = cfg.km4_phnkm7_km12     
- 
+        self.km4_phnkm7_km12 = cfg.km4_phnkm7_km12
 
         self.layer_norm_first = cfg.layer_norm_first
         if self.layer_norm_first:
-            self.post_layer_norm = torch.nn.Sequential(*[LayerNorm(cfg.encoder_embed_dim) for _ in range(len(self.predict_layers))])
+            self.post_layer_norm = torch.nn.Sequential(
+                *[
+                    LayerNorm(cfg.encoder_embed_dim)
+                    for _ in range(len(self.predict_layers))
+                ]
+            )
 
         if self.separate_label_embeds:
             if self.separate_layer_targets or not self.untie_final_proj:
-                self.final_proj = torch.nn.Sequential(*[nn.Linear(
-                   cfg.encoder_embed_dim, cfg.final_dim)
-                    for _ in range(len(self.predict_layers))])
+                self.final_proj = torch.nn.Sequential(
+                    *[
+                        nn.Linear(cfg.encoder_embed_dim, cfg.final_dim)
+                        for _ in range(len(self.predict_layers))
+                    ]
+                )
             else:
-                self.final_proj = torch.nn.Sequential(*[nn.Linear(
-                    cfg.encoder_embed_dim, cfg.final_dim * len(dictionaries))
-                    for _ in range(len(self.predict_layers))])
+                self.final_proj = torch.nn.Sequential(
+                    *[
+                        nn.Linear(
+                            cfg.encoder_embed_dim, cfg.final_dim * len(dictionaries)
+                        )
+                        for _ in range(len(self.predict_layers))
+                    ]
+                )
         else:
             if self.separate_layer_targets or not self.untie_final_proj:
                 self.final_proj = nn.Linear(cfg.encoder_embed_dim, cfg.final_dim)
             else:
-                self.final_proj = nn.Linear(cfg.encoder_embed_dim, cfg.final_dim * len(dictionaries))
+                self.final_proj = nn.Linear(
+                    cfg.encoder_embed_dim, cfg.final_dim * len(dictionaries)
+                )
 
         if self.weighted_sum:
             self.weights = nn.Parameter(torch.zeros(len(self.predict_layers)))
         # modules below are not needed during fine-tuning
         if any([d is None for d in dictionaries]):
-            logger.info(
-                "cannot find dictionary. assume will be used for fine-tuning"
-            )
+            logger.info("cannot find dictionary. assume will be used for fine-tuning")
         else:
             self.num_classes = [len(d) for d in dictionaries]
-            layer_dim = len(self.predict_layers) if self.separate_layer_targets or self.separate_label_embeds else 1
-            embed_dim = sum(self.num_classes) if not self.separate_layer_targets else max(self.num_classes)
+            layer_dim = (
+                len(self.predict_layers)
+                if self.separate_layer_targets or self.separate_label_embeds
+                else 1
+            )
+            embed_dim = (
+                sum(self.num_classes)
+                if not self.separate_layer_targets
+                else max(self.num_classes)
+            )
             self.label_embs_concat = nn.Parameter(
                 torch.FloatTensor(layer_dim, embed_dim, cfg.final_dim)
             )
@@ -167,18 +171,14 @@ class ILSHubertModel(HubertModel2):
         if padding_mask is not None:
             padding_mask = self.forward_padding_mask(features, padding_mask)
 
-
         if self.post_extract_proj is not None:
             features = self.post_extract_proj(features)
-
 
         features = self.dropout_input(features)
         unmasked_features = self.dropout_features(unmasked_features)
 
         if mask:
-            x, mask_indices = self.apply_mask(
-                features, padding_mask, target_list
-            )
+            x, mask_indices = self.apply_mask(features, padding_mask, target_list)
         else:
             x = features
             mask_indices = None
@@ -190,26 +190,40 @@ class ILSHubertModel(HubertModel2):
         # mask_indices: (B, T), bool
 
         x, layer_results = self.encoder(
-            x,
-            padding_mask=padding_mask,
-            layer=self.predict_layers
+            x, padding_mask=padding_mask, layer=self.predict_layers
         )
 
-        result = {"x": x, "padding_mask": padding_mask, "features": features, "layer_results": layer_results}
+        result = {
+            "x": x,
+            "padding_mask": padding_mask,
+            "features": features,
+            "layer_results": layer_results,
+        }
 
         if features_only:
             if self.layer_norm_first and output_layer is not None:
-                result['x'] = self.post_layer_norm[-1](x)
+                result["x"] = self.post_layer_norm[-1](x)
             return result
 
-        layer_results = [layer_x.transpose(0, 1) for i, (layer_x, _) in enumerate(layer_results)]
+        layer_results = [
+            layer_x.transpose(0, 1) for i, (layer_x, _) in enumerate(layer_results)
+        ]
 
         if not (x == layer_results[-1]).all():
-            print("{} {} {} {}".format((x == layer_results[-1]).shape, (x == layer_results[-1]).float().sum(),
-                (x - layer_results[-1]).float().sum(), (x - layer_results[-1]).float().abs().max(),))
+            print(
+                "{} {} {} {}".format(
+                    (x == layer_results[-1]).shape,
+                    (x == layer_results[-1]).float().sum(),
+                    (x - layer_results[-1]).float().sum(),
+                    (x - layer_results[-1]).float().abs().max(),
+                )
+            )
 
         if self.layer_norm_first:
-            layer_results = [layernorm(x) for x, layernorm in zip(layer_results, self.post_layer_norm)]
+            layer_results = [
+                layernorm(x)
+                for x, layernorm in zip(layer_results, self.post_layer_norm)
+            ]
 
         def compute_pred(proj_x, target, label_embs):
             # compute logits for the i-th label set
@@ -223,7 +237,6 @@ class ILSHubertModel(HubertModel2):
             # negs: (Neg, S, D)
             return self.compute_nce(proj_x, y, negs)
 
-
         logit_m_list = []
         logit_u_list = []
         proj_x_m_list = []
@@ -233,7 +246,9 @@ class ILSHubertModel(HubertModel2):
             assert len(layer_results) == len(self.final_proj)
             assert len(layer_results) == len(self.label_embs_concat)
 
-        for i, layer_x in enumerate(layer_results):  #, final_proj, label_embs in zip(layer_results, self.final_proj, label_embs_concat):
+        for i, layer_x in enumerate(
+            layer_results
+        ):  # , final_proj, label_embs in zip(layer_results, self.final_proj, label_embs_concat):
             if self.separate_label_embeds:
                 final_proj = self.final_proj[i]
             else:
@@ -247,7 +262,7 @@ class ILSHubertModel(HubertModel2):
             if not self.separate_layer_targets:
                 label_embs_list = label_embs.split(self.num_classes, 0)
             else:
-                label_embs_list = [label_embs[:self.num_classes[i]]]
+                label_embs_list = [label_embs[: self.num_classes[i]]]
 
             if not self.skip_masked:
                 masked_indices = torch.logical_and(~padding_mask, mask_indices)
@@ -256,7 +271,9 @@ class ILSHubertModel(HubertModel2):
                 if self.separate_layer_targets:
                     proj_x_m_list = [proj_x_m]
                     logit_m_list += [
-                        compute_pred(proj_x_m, target_list[i][masked_indices], label_embs_list[0])
+                        compute_pred(
+                            proj_x_m, target_list[i][masked_indices], label_embs_list[0]
+                        )
                     ]
                 else:
                     if self.untie_final_proj:
@@ -278,7 +295,9 @@ class ILSHubertModel(HubertModel2):
                 if self.separate_layer_targets:
                     proj_x_u_list = [proj_x_u]
                     logit_u_list += [
-                        compute_pred(proj_x_u, target_list[i][nomask_indices], label_embs_list[0])
+                        compute_pred(
+                            proj_x_u, target_list[i][nomask_indices], label_embs_list[0]
+                        )
                     ]
                 else:
                     if self.untie_final_proj:
@@ -298,8 +317,8 @@ class ILSHubertModel(HubertModel2):
         ## Assume two style target label: ["bpekm","km"] ,two specify layer: [4, 7,12]
         ## so logit_m_list has six elements: they are [bpekm_4, km_4, bpekm_7, km_7, bpekm_12, km_12]
         ## if we only  want to logit_m_list has three elements:  they are [km_4,bpekm_7, km_12], how to do it?
-        logit_m_list_1=[]
-        logit_u_list_1=[]
+        logit_m_list_1 = []
+        logit_u_list_1 = []
         if self.km4_bpekm7_km12:
             logit_m_list_1.append(logit_m_list[1])
             logit_m_list_1.append(logit_m_list[2])
@@ -309,8 +328,8 @@ class ILSHubertModel(HubertModel2):
             logit_u_list_1.append(logit_u_list[2])
             logit_u_list_1.append(logit_u_list[5])
             logit_u_list = logit_u_list_1
-        logit_m_list_2=[]
-        logit_u_list_2=[]
+        logit_m_list_2 = []
+        logit_u_list_2 = []
         if self.bpekm7_km12:
             logit_m_list_2.append(logit_m_list[0])
             logit_m_list_2.append(logit_m_list[3])
@@ -318,9 +337,9 @@ class ILSHubertModel(HubertModel2):
             logit_u_list_2.append(logit_u_list[0])
             logit_u_list_2.append(logit_u_list[3])
             logit_u_list = logit_u_list_2
-         
-        logit_m_list_3=[]
-        logit_u_list_3=[] 
+
+        logit_m_list_3 = []
+        logit_u_list_3 = []
         if self.phnkm6_km12:
             logit_m_list_3.append(logit_m_list[0])
             logit_m_list_3.append(logit_m_list[3])
@@ -328,8 +347,8 @@ class ILSHubertModel(HubertModel2):
             logit_u_list_3.append(logit_u_list[0])
             logit_u_list_3.append(logit_u_list[3])
             logit_u_list = logit_u_list_3
-        logit_m_list_4=[]
-        logit_m_list_4=[]
+        logit_m_list_4 = []
+        logit_m_list_4 = []
         if self.km4_phnkm6_km12:
             logit_m_list_4.append(logit_m_list[1])
             logit_m_list_4.append(logit_m_list[2])
@@ -340,8 +359,8 @@ class ILSHubertModel(HubertModel2):
             logit_u_list_4.append(logit_u_list[5])
             logit_u_list = logit_u_list_4
 
-        logit_m_list_5=[]
-        logit_m_list_5=[]
+        logit_m_list_5 = []
+        logit_m_list_5 = []
         if self.km4_phnkm7_km12:
             logit_m_list_5.append(logit_m_list[1])
             logit_m_list_5.append(logit_m_list[2])
@@ -351,9 +370,9 @@ class ILSHubertModel(HubertModel2):
             logit_u_list_5.append(logit_u_list[2])
             logit_u_list_5.append(logit_u_list[5])
             logit_u_list = logit_u_list_5
-        
-        logit_m_list_6=[]
-        logit_u_list_6=[]
+
+        logit_m_list_6 = []
+        logit_u_list_6 = []
         if self.phnkm7_km12:
             logit_m_list_6.append(logit_m_list[0])
             logit_m_list_6.append(logit_m_list[3])
@@ -399,9 +418,7 @@ class ILSHubertModel(HubertModel2):
 
     def get_targets(self, net_output, is_masked=True):
         logits_list = self.get_logits(net_output, is_masked)
-        targets_list = [
-            x.new_zeros(x.size(0), dtype=torch.long) for x in logits_list
-        ]
+        targets_list = [x.new_zeros(x.size(0), dtype=torch.long) for x in logits_list]
         return targets_list
 
     def get_extra_losses(self, net_output):

@@ -70,7 +70,7 @@ class KaldiDecoder(object):
                 "pykaldi is required for this functionality. Please install from https://github.com/pykaldi/pykaldi"
             )
 
-        # set_verbose_level(2)
+        set_verbose_level(2)
 
         self.acoustic_scale = cfg.acoustic_scale
         self.nbest = nbest

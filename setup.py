@@ -185,6 +185,7 @@ def do_setup(package_data):
             "regex",
             "sacrebleu>=1.4.12",
             # "torch>=1.13",
+<<<<<<< HEAD
             #"torch==1.11.0",
             "torch==2.0.1",
             "tqdm",
@@ -192,6 +193,15 @@ def do_setup(package_data):
             # "torchaudio>=0.8.0",
             #"torchaudio==0.11.0",
             "torchaudio==2.0.2",
+=======
+            "torch==1.11.0",
+            # "torch==2.0",
+            "tqdm",
+            "bitarray",
+            # "torchaudio>=0.8.0",
+            "torchaudio==0.11.0",
+            # "torchaudio==2.0.1",
+>>>>>>> 17ca18f9c17b859343fc7e9ad90c793dd52dab5d
             "scikit-learn",
             "packaging",
         ],

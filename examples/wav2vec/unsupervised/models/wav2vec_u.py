@@ -21,7 +21,8 @@ from fairseq.modules import (
     SamePad,
     TransposeLast,
 )
-
+import logging
+logger = logging.getLogger(__name__)
 
 class SegmentationType(Enum):
     NONE = auto()
@@ -268,6 +269,7 @@ class Discriminator(nn.Module):
         )
 
     def forward(self, x, padding_mask):
+        #logger.info(f"dis forward input: {x}")
         x = x.transpose(1, 2)  # BTC -> BCT
         x = self.net(x)
         x = x.transpose(1, 2)
@@ -565,13 +567,14 @@ class Wav2vec_U(BaseFairseqModel):
         segment=True,
         aux_target=None,
     ):
+        #logger.info(f"before segment feat: {features}, its shape: {features.shape} ")
         if segment:
             features, padding_mask = self.segmenter.pre_segment(features, padding_mask)
 
         orig_size = features.size(0) * features.size(1) - padding_mask.sum()
 
         gen_result = self.generator(features, random_label, padding_mask)
-
+        #logger.info(f"gen_result of generator: {gen_result}")
         orig_dense_x, token_x = gen_result["dense_x"], gen_result["token_x"]
         orig_dense_padding_mask = gen_result["dense_padding_mask"]
 
@@ -597,7 +600,7 @@ class Wav2vec_U(BaseFairseqModel):
             }
 
         token_padding_mask = random_label == self.pad
-
+        #logger.info(f"discriminator input dense_x: : {dense_x}, token_x: {token_x}") ## if unpair text is not offered , token_x: None
         dense_y = self.discriminator(dense_x, dense_padding_mask)
         token_y = self.discriminator(token_x, token_padding_mask)
 

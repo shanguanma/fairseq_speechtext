@@ -282,7 +282,8 @@ class FairseqTask(object):
 
         # initialize the dataset with the correct starting epoch
         dataset.set_epoch(epoch)
-        #print(f"dataset len: {len(dataset)}")
+
+        # print(f"dataset len: {len(dataset)}")
         def make_batches(dataset, epoch):
             logger.info(f"creating new batches for epoch {epoch}")
 
@@ -295,16 +296,16 @@ class FairseqTask(object):
                 indices = self.filter_indices_by_size(
                     indices, dataset, max_positions, ignore_invalid_inputs
                 )
-            #print(f"in the make_batches func,max_positions: {max_positions}, dataset len : {len(dataset)}, ignore_invalid_inputs : {ignore_invalid_inputs}, indices: {len(indices)}")
+            # print(f"in the make_batches func,max_positions: {max_positions}, dataset len : {len(dataset)}, ignore_invalid_inputs : {ignore_invalid_inputs}, indices: {len(indices)}")
             # create mini-batches with given size constraints
-            #print(f"dataset.batch_by_size name {dataset.__name__}")
+            # print(f"dataset.batch_by_size name {dataset.__name__}")
             batches = dataset.batch_by_size(
                 indices,
                 max_tokens=max_tokens,
                 max_sentences=max_sentences,
                 required_batch_size_multiple=required_batch_size_multiple,
             )
-            #print(f"in the make_batches func, {len(batches)}, max_tokens: {max_tokens}, max_sentences: {max_sentences}")
+            # print(f"in the make_batches func, {len(batches)}, max_tokens: {max_tokens}, max_sentences: {max_sentences}")
             return batches
 
         reuse_dataloader = getattr(self.cfg, "reuse_dataloader", True)
@@ -318,7 +319,7 @@ class FairseqTask(object):
             batch_sampler = make_batches
         else:
             batch_sampler = make_batches(dataset, epoch)
-        #print(f"batch_sampler: {len(batch_sampler)}")
+        # print(f"batch_sampler: {len(batch_sampler)}")
         # return a reusable, sharded iterator
         epoch_iter = iterators.EpochBatchIterator(
             dataset=dataset,
@@ -335,7 +336,7 @@ class FairseqTask(object):
             reuse_dataloader=reuse_dataloader,
             persistent_workers=persistent_workers,
         )
-        #print(f"epoch_iter len: {len(epoch_iter)}")
+        # print(f"epoch_iter len: {len(epoch_iter)}")
         if can_reuse_epoch_itr:
             self.dataset_to_epoch_iter[dataset] = epoch_iter
 

@@ -243,14 +243,17 @@ class StHubertConfig(FairseqDataclass):
     )
     fp16: bool = field(default=False, metadata={"help": "If fp16 is being used"})
     # text net part
-    max_source_positions: int = field(default=512, metadata={"help": "Maximum input length supported by the transformer encoder"})
-    text_dropout: float = field(default=0.1, metadata={"help": "dropout probability for the TextModel embedding feature"})
+    max_source_positions: int = field(
+        default=512,
+        metadata={"help": "Maximum input length supported by the transformer encoder"},
+    )
+    text_dropout: float = field(
+        default=0.1,
+        metadata={"help": "dropout probability for the TextModel embedding feature"},
+    )
     text_embed_dim: int = field(
         default=768, metadata={"help": "text net part embedding dimension"}
     )
-
-
-
 
 
 @register_model("sthubert", dataclass=StHubertConfig)
@@ -264,7 +267,7 @@ class StHubertModel(BaseFairseqModel):
         super().__init__()
         logger.info(f"StHubertModel Config: {cfg}")
         self.cfg = cfg
-        self.padding_idx=1
+        self.padding_idx = 1
         feature_enc_layers = eval(cfg.conv_feature_layers)  # noqa
         self.embed = feature_enc_layers[-1][0]
         ### speech feature net part
@@ -274,7 +277,7 @@ class StHubertModel(BaseFairseqModel):
             mode=cfg.extractor_mode,
             conv_bias=cfg.conv_bias,
         )
-        ### text feature net part 
+        ### text feature net part
         self.embed_tokens = torch.nn.Embedding(
             len(dictionaries[1]), cfg.text_embed_dim, padding_idx=self.padding_idx
         )
@@ -284,12 +287,14 @@ class StHubertModel(BaseFairseqModel):
             padding_idx=self.padding_idx,
             learned=True,
         )
-        self.layernorm_embedding = torch.nn.LayerNorm(cfg.text_embed_dim) 
+        self.layernorm_embedding = torch.nn.LayerNorm(cfg.text_embed_dim)
 
         if not task_cfg.fine_tuning:
             ## pretrain case
             feature_ds_rate = np.prod([s for _, _, s in feature_enc_layers])
-            self.feat2tar_ratio = cfg.label_rate * feature_ds_rate / task_cfg.sample_rate
+            self.feat2tar_ratio = (
+                cfg.label_rate * feature_ds_rate / task_cfg.sample_rate
+            )
 
         self.post_extract_proj = (
             nn.Linear(self.embed, cfg.encoder_embed_dim)
@@ -297,21 +302,21 @@ class StHubertModel(BaseFairseqModel):
             else None
         )
         # modality embedding for distinguishing text and speech
-        #if self.post_extract_proj is not None:
+        # if self.post_extract_proj is not None:
         #    self.text_post_extract_proj = torch.nn.Linear(
         #        self.embed, cfg.encoder_embed_dim
         #    )
-        #else:
+        # else:
         #    self.text_post_extract_proj = None
         dim = cfg.encoder_embed_dim if self.post_extract_proj else self.embed
         ## prepared two modality bias
         self.text_modality_bias = torch.nn.Parameter(torch.FloatTensor(dim).uniform_())
-        self.speech_modality_bias = torch.nn.Parameter(torch.FloatTensor(dim).uniform_())
-        
-        # modality-specific positional encodings
-         
+        self.speech_modality_bias = torch.nn.Parameter(
+            torch.FloatTensor(dim).uniform_()
+        )
 
-      
+        # modality-specific positional encodings
+
         self.mask_prob = cfg.mask_prob
         self.mask_selection = cfg.mask_selection
         self.mask_other = cfg.mask_other
@@ -341,7 +346,6 @@ class StHubertModel(BaseFairseqModel):
         self.mask_emb = nn.Parameter(
             torch.FloatTensor(cfg.encoder_embed_dim).uniform_()
         )
-
 
         # modality-specific positional encodings
         ## add releated postion encoding layer for text and speech
@@ -390,11 +394,12 @@ class StHubertModel(BaseFairseqModel):
         """Build a new model instance."""
         pathss = "/workspace2/maduo/dataset/format/librispeech"
         import os
+
         logger.info(f"dictionary: {task.dictionaries[1].indices.items()}")
-        #with open(os.path.join(pathss, "hubert_iter1_kmdict_model.txt"), "w") as f:
+        # with open(os.path.join(pathss, "hubert_iter1_kmdict_model.txt"), "w") as f:
         #    for sym, num in task.dictionaries[0].indices.items():
         #        f.write(f"{sym} {num}\n")
-        #with open(os.path.join(pathss, "hubert_iter1_textphndict_model.txt"), "w") as f:
+        # with open(os.path.join(pathss, "hubert_iter1_textphndict_model.txt"), "w") as f:
         #    for sym, num in task.dictionaries[1].indices.items():
         #        f.write(f"{sym} {num}\n")
         logger.info(f"dictionary bos index: {task.dictionaries[1].bos_index}")
@@ -466,7 +471,9 @@ class StHubertModel(BaseFairseqModel):
                 features = self.feature_extractor(source)
         return features
 
-    def forward_text(self, source_text, source_text_lengths: Optional[torch.Tensor] = None):
+    def forward_text(
+        self, source_text, source_text_lengths: Optional[torch.Tensor] = None
+    ):
         """
         Args:
             source_text (LongTensor): tokens in the source language of shape
@@ -498,7 +505,7 @@ class StHubertModel(BaseFairseqModel):
         #logger.info(f"in forward_text, source_text:  {source_text}, source_text shape : {source_text.shape}")
         token_embedding = self.embed_tokens(source_text)
         x = embed = token_embedding
-        #if self.embed_positions is not None:
+        # if self.embed_positions is not None:
         #    x = embed + self.embed_positions(source_text)
         if self.layernorm_embedding is not None:
             x = self.layernorm_embedding(x)
@@ -506,7 +513,6 @@ class StHubertModel(BaseFairseqModel):
 
         return x
 
- 
     def forward_targets(
         self,
         features: torch.Tensor,
@@ -534,8 +540,6 @@ class StHubertModel(BaseFairseqModel):
         padding_mask = padding_mask.all(-1)
         return padding_mask
 
-
-
     def forward_frontend(
         self,
         source: torch.Tensor,
@@ -544,8 +548,8 @@ class StHubertModel(BaseFairseqModel):
         padding_mask: Optional[torch.Tensor] = None,
     ):
         """output layer is 1-based"""
-        #logger.info(f"source shape: {source.shape}")
-        #logger.info(f"source_text shape: {source_text.shape}")
+        # logger.info(f"source shape: {source.shape}")
+        # logger.info(f"source_text shape: {source_text.shape}")
         features = self.forward_features(source)
         if target_list is not None:
             features, target_list = self.forward_targets(features, target_list)
@@ -554,7 +558,7 @@ class StHubertModel(BaseFairseqModel):
 
         features = features.transpose(1, 2)
         features = self.layer_norm(features)
-        #unmasked_features = features.clone()
+        # unmasked_features = features.clone()
 
         if padding_mask is not None:
             padding_mask = self.forward_padding_mask(features, padding_mask)
@@ -564,23 +568,19 @@ class StHubertModel(BaseFairseqModel):
 
         # (B,T,D)
         features = self.dropout_input(features)
-        #unmasked_features = self.dropout_features(unmasked_features) 
+        # unmasked_features = self.dropout_features(unmasked_features)
         if source_text is None:
             ## only for fine-tuning without text
             return features, None, features_pen, target_list, padding_mask
- 
-        
 
         ### text part
         features_text = self.forward_text(source_text)
-        #logger.info(f"features_text shape: {features_text.shape}") 
+        # logger.info(f"features_text shape: {features_text.shape}")
         return features, features_text, features_pen, target_list, padding_mask
-
-
 
     def forward_transformer(
         self,
-        features:  torch.Tensor,
+        features: torch.Tensor,
         features_text: torch.Tensor,
         features_pen: torch.Tensor,
         target_list: Optional[List[torch.Tensor]] = None,
@@ -594,31 +594,28 @@ class StHubertModel(BaseFairseqModel):
         else:
             x = features
             mask_indices = None
-        
+
         ### text feature and mask speech feature will be cancat on time axis.
         ## (B,T, D),float
-        x = self.speech_pos(x.transpose(1, 2)).transpose(1, 2)   
-        features_concat = x.new_zeros((x.size(0),x.size(1),x.size(2)))   
-        padding_mask2 = None           
+        x = self.speech_pos(x.transpose(1, 2)).transpose(1, 2)
+        features_concat = x.new_zeros((x.size(0), x.size(1), x.size(2)))
+        padding_mask2 = None
         if features_text is None:
             ### only for fine-tuning without text
             features_concat = x + self.speech_modality_bias
             padding_mask2 = padding_mask
         else:
-            if features_text.size(1) !=0:
-                #logger.info(f"features_text shape : {features_text.shape}")
+            if features_text.size(1) != 0:
+                # logger.info(f"features_text shape : {features_text.shape}")
                 x_text = self.text_pos(features_text.transpose(1, 2)).transpose(1, 2)
-            
-                
-                #logger.info(f"x_text shape : {x_text.shape}")
+
+                # logger.info(f"x_text shape : {x_text.shape}")
                 # (B, T' + T, D), float
                 x_text_all = x_text + self.text_modality_bias
                 x_speech_all = x + self.speech_modality_bias
-                #logger.info(f"x_text_all shape : {x_text_all.shape}")
-                #logger.info(f"x_speech_all shape : {x_speech_all.shape}")
-                features_concat = torch.cat(
-                    [x_text_all, x_speech_all], dim=1
-                )
+                # logger.info(f"x_text_all shape : {x_text_all.shape}")
+                # logger.info(f"x_speech_all shape : {x_speech_all.shape}")
+                features_concat = torch.cat([x_text_all, x_speech_all], dim=1)
                 # (B, T' + T), bool
                 if padding_mask is not None:
                     padding_mask2 = nn.functional.pad(padding_mask, (x_text.size(1), 0))
@@ -633,13 +630,19 @@ class StHubertModel(BaseFairseqModel):
             padding_mask=padding_mask2,
             layer=None if output_layer is None else output_layer - 1,
         )
-        x = x[:, -features.size(1):]
-        #logger.info(f"before transformer speech feature shape: {features.shape}")
-        #logger.info(f"after transformer output features shape: {x.shape}")
-        #print(f"before transformer speech feature shape: {features.shape}")
-        #print(f"after transformer output features shape: {x.shape}")
+        x = x[:, -features.size(1) :]
+        # logger.info(f"before transformer speech feature shape: {features.shape}")
+        # logger.info(f"after transformer output features shape: {x.shape}")
+        # print(f"before transformer speech feature shape: {features.shape}")
+        # print(f"after transformer output features shape: {x.shape}")
         if features_only:
-            return {"x": x, "padding_mask": padding_mask, "features": features, "features_text":features_text}
+            return {
+                "x": x,
+                "padding_mask": padding_mask,
+                "features": features,
+                "features_text": features_text,
+            }
+
         def compute_pred(proj_x, target, label_embs):
             # compute logits for the i-th label set
             y = torch.index_select(label_embs, 0, target.long())
@@ -650,7 +653,7 @@ class StHubertModel(BaseFairseqModel):
             # proj_x: (S, D)
             # y: (S, D)
             # negs: (Neg, S, D)
-            #print(f"in compute_pred: proj_x shape: {proj_x.shape} , y shape: {y.shape} ")
+            # print(f"in compute_pred: proj_x shape: {proj_x.shape} , y shape: {y.shape} ")
             return self.compute_nce(proj_x, y, negs)
 
         label_embs_list = self.label_embs_concat.split(self.num_classes, 0)
@@ -692,9 +695,6 @@ class StHubertModel(BaseFairseqModel):
         }
         return result
 
-
-
-           
     def forward(
         self,
         source: torch.Tensor,
@@ -706,15 +706,27 @@ class StHubertModel(BaseFairseqModel):
         output_layer: Optional[int] = None,
     ) -> Dict[str, torch.Tensor]:
         """output layer is 1-based"""
-        if source_text is None: ## finetune case
-            feats, feats_text, feats_pen, target_list, padding_mask = self.forward_frontend(
+        if source_text is None:  ## finetune case
+            (
+                feats,
+                feats_text,
+                feats_pen,
+                target_list,
+                padding_mask,
+            ) = self.forward_frontend(
                 source,
                 source_text=None,
                 target_list=target_list,
                 padding_mask=padding_mask,
-            )      
-        else: 
-            feats, feats_text, feats_pen, target_list, padding_mask = self.forward_frontend(
+            )
+        else:
+            (
+                feats,
+                feats_text,
+                feats_pen,
+                target_list,
+                padding_mask,
+            ) = self.forward_frontend(
                 source,
                 source_text=source_text[0],
                 target_list=target_list,
@@ -730,7 +742,6 @@ class StHubertModel(BaseFairseqModel):
             features_only=features_only,
             output_layer=output_layer,
         )
-
 
     def extract_features(
         self,
@@ -778,8 +789,8 @@ class StHubertModel(BaseFairseqModel):
     def remove_pretraining_modules(self):
         self.target_glu = None
         self.final_proj = None
-        self.text_modality_bias=None
-        self.text_pos=None
-        self.embed_tokens=None
-        self.embed_positions=None
-        self.layernorm_embedding=None 
+        self.text_modality_bias = None
+        self.text_pos = None
+        self.embed_tokens = None
+        self.embed_positions = None
+        self.layernorm_embedding = None

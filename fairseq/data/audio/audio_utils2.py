@@ -10,17 +10,19 @@ import scipy
 import soundfile as sf
 
 
-
 SF_AUDIO_FILE_EXTENSIONS = {".wav", ".flac", ".ogg"}
 FEATURE_OR_SF_AUDIO_FILE_EXTENSIONS = {".npy", ".wav", ".flac", ".ogg"}
 
+
 def preemphasis(x, preemph):
     return scipy.signal.lfilter([1, -preemph], [1], x)
+
 
 def mulaw_encode(x, mu):
     mu = mu - 1
     fx = np.sign(x) * np.log1p(mu * np.abs(x)) / np.log1p(mu)
     return np.floor((fx + 1) / 2 * mu + 0.5)
+
 
 def mulaw_decode(y, mu):
     mu = mu - 1
@@ -29,7 +31,7 @@ def mulaw_decode(y, mu):
 
 
 def _convert_to_mono(
-        waveform: torch.FloatTensor, sample_rate: int
+    waveform: torch.FloatTensor, sample_rate: int
 ) -> torch.FloatTensor:
     if waveform.shape[0] > 1:
         try:
@@ -38,7 +40,7 @@ def _convert_to_mono(
             raise ImportError(
                 "Please install torchaudio to convert multi-channel audios"
             )
-        effects = [['channels', '1']]
+        effects = [["channels", "1"]]
         return ta_sox.apply_effects_tensor(waveform, sample_rate, effects)[0]
     return waveform
 
@@ -51,8 +53,12 @@ def convert_to_mono(waveform: np.ndarray, sample_rate: int) -> np.ndarray:
 
 
 def get_waveform(
-        path_or_fp: Union[str, BinaryIO], normalization=True, mono=True,
-        frames=-1, start=0, always_2d=True
+    path_or_fp: Union[str, BinaryIO],
+    normalization=True,
+    mono=True,
+    frames=-1,
+    start=0,
+    always_2d=True,
 ) -> Tuple[np.ndarray, int]:
     """Get the waveform and sample rate of a 16-bit WAV/FLAC/OGG Vorbis audio.
     Args:
@@ -74,9 +80,7 @@ def get_waveform(
     try:
         import soundfile as sf
     except ImportError:
-        raise ImportError(
-            "Please install soundfile to load WAV/FLAC/OGG Vorbis audios"
-        )
+        raise ImportError("Please install soundfile to load WAV/FLAC/OGG Vorbis audios")
 
     waveform, sample_rate = sf.read(
         path_or_fp, dtype="float32", always_2d=True, frames=frames, start=start
@@ -85,14 +89,14 @@ def get_waveform(
     if mono and waveform.shape[0] > 1:
         waveform = convert_to_mono(waveform, sample_rate)
     if not normalization:
-        waveform *= 2 ** 15  # denormalized to 16-bit signed integers
+        waveform *= 2**15  # denormalized to 16-bit signed integers
     if not always_2d:
         waveform = waveform.squeeze(axis=0)
     return waveform, sample_rate
 
 
 def _get_kaldi_fbank(
-        waveform: np.ndarray, sample_rate: int, n_bins=80
+    waveform: np.ndarray, sample_rate: int, n_bins=80
 ) -> Optional[np.ndarray]:
     """Get mel-filter bank features via PyKaldi."""
     try:
@@ -116,11 +120,12 @@ def _get_kaldi_fbank(
 
 
 def _get_torchaudio_fbank(
-        waveform: np.ndarray, sample_rate, n_bins=80
+    waveform: np.ndarray, sample_rate, n_bins=80
 ) -> Optional[np.ndarray]:
     """Get mel-filter bank features via TorchAudio."""
     try:
         import torchaudio.compliance.kaldi as ta_kaldi
+
         waveform = torch.from_numpy(waveform)
         features = ta_kaldi.fbank(
             waveform, num_mel_bins=n_bins, sample_frequency=sample_rate
@@ -154,9 +159,9 @@ def is_npy_data(data: bytes) -> bool:
 
 
 def is_sf_audio_data(data: bytes) -> bool:
-    is_wav = (data[0] == 82 and data[1] == 73 and data[2] == 70)
-    is_flac = (data[0] == 102 and data[1] == 76 and data[2] == 97)
-    is_ogg = (data[0] == 79 and data[1] == 103 and data[2] == 103)
+    is_wav = data[0] == 82 and data[1] == 73 and data[2] == 70
+    is_flac = data[0] == 102 and data[1] == 76 and data[2] == 97
+    is_ogg = data[0] == 79 and data[1] == 103 and data[2] == 103
     return is_wav or is_flac or is_ogg
 
 
@@ -169,14 +174,14 @@ def read_from_stored_zip(zip_path: str, offset: int, file_size: int) -> bytes:
 
 def parse_path(path: str) -> Tuple[str, List[int]]:
     """Parse data path which is either a path to
-      1. a .npy/.wav/.flac/.ogg file
-      2. a stored ZIP file with slicing info: "[zip_path]:[offset]:[length]"
-        Args:
-            path (str): the data path to parse
-        Returns:
-            file_path (str): the file path
-            slice_ptr (list of int): empty in case 1;
-              byte offset and length for the slice in case 2
+    1. a .npy/.wav/.flac/.ogg file
+    2. a stored ZIP file with slicing info: "[zip_path]:[offset]:[length]"
+      Args:
+          path (str): the data path to parse
+      Returns:
+          file_path (str): the file path
+          slice_ptr (list of int): empty in case 1;
+            byte offset and length for the slice in case 2
     """
 
     if Path(path).suffix in FEATURE_OR_SF_AUDIO_FILE_EXTENSIONS:
@@ -188,6 +193,7 @@ def parse_path(path: str) -> Tuple[str, List[int]]:
     assert len(slice_ptr) in {0, 2}, f"Invalid path: {path}"
     slice_ptr = [int(i) for i in slice_ptr]
     return _path, slice_ptr
+
 
 def _group_to_batches_by_utters(buffer, sorted_idx_len_pair, batch_size):
     batch_list = []
@@ -203,6 +209,7 @@ def _group_to_batches_by_utters(buffer, sorted_idx_len_pair, batch_size):
         batch_list.append(single_batch)
 
     return batch_list
+
 
 def _group_to_batches_by_frames(buffer, sorted_idx_len_pair, batch_size):
     batch_list = []
@@ -228,6 +235,7 @@ def _group_to_batches_by_frames(buffer, sorted_idx_len_pair, batch_size):
 
     return batch_list
 
+
 def _group_to_batches_by_frame_x_label(buffer, sorted_idx_len_pair, batch_size):
     batch_list = []
 
@@ -239,7 +247,7 @@ def _group_to_batches_by_frame_x_label(buffer, sorted_idx_len_pair, batch_size):
     for idx_len_pair in sorted_idx_len_pair:
         if max_lab_len < idx_len_pair[2] + 1:
             max_lab_len = idx_len_pair[2] + 1
-        frame_num_padded = max_utt_len * max_lab_len * (len(single_batch) )
+        frame_num_padded = max_utt_len * max_lab_len * (len(single_batch))
         if frame_num_padded > batch_size:
             if len(single_batch) > 0:
                 batch_list.append(single_batch)
@@ -256,14 +264,14 @@ def _group_to_batches_by_frame_x_label(buffer, sorted_idx_len_pair, batch_size):
     return batch_list
 
 
-class DataParser():
+class DataParser:
     def __init__(self):
         super().__init__()
 
     def _parse_data(self, data, data_type):
-        if data_type.lower() == 'audio':
+        if data_type.lower() == "audio":
             parsed_data = self._parse_audio_data(data)
-        elif data_type.lower() == 'info':
+        elif data_type.lower() == "info":
             parsed_data = self._parse_json_data(data)
         elif data_type.lower() == "feature":
             parsed_data = self._parse_feat_data(data)
@@ -273,19 +281,18 @@ class DataParser():
 
     def _parse_audio_data(self, data):
         byte_stream = io.BytesIO(data)
-        with sf.SoundFile(byte_stream, 'r') as f:
+        with sf.SoundFile(byte_stream, "r") as f:
             samples = f.read()
         return samples
 
-
     def _parse_json_data(self, data):
-        str_data = str(data, 'utf-8')
+        str_data = str(data, "utf-8")
         json_data = json.loads(str_data)
 
         return json_data
 
     def _parse_string_data(self, data):
-        str_data = str(data, 'utf-8')
+        str_data = str(data, "utf-8")
         return str_data
 
     def _parse_feat_data(self, data):

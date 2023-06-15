@@ -28,15 +28,15 @@ class LabelEncoder(object):
 
     def __call__(self, label: str) -> List[str]:
         return self.dictionary.encode_line(
-            label, append_eos=False, add_if_not_exist=False,
+            label,
+            append_eos=False,
+            add_if_not_exist=False,
         )
 
 
 @dataclass
 class UtteranceMixingPretrainingConfig(FairseqDataclass):
-    data: str = field(
-        default=MISSING, metadata={"help": "path to data directory"}
-    )
+    data: str = field(default=MISSING, metadata={"help": "path to data directory"})
     fine_tuning: bool = field(
         default=False, metadata={"help": "set to true if fine-tuning Hubert"}
     )
@@ -68,9 +68,7 @@ class UtteranceMixingPretrainingConfig(FairseqDataclass):
     )
     normalize: bool = field(
         default=False,
-        metadata={
-            "help": "if set, normalizes input to have 0 mean and unit variance"
-        },
+        metadata={"help": "if set, normalizes input to have 0 mean and unit variance"},
     )
     enable_padding: bool = field(
         default=False,
@@ -87,8 +85,7 @@ class UtteranceMixingPretrainingConfig(FairseqDataclass):
     single_target: Optional[bool] = field(
         default=False,
         metadata={
-            "help": "if set, AddTargetDatasets outputs same keys "
-            "as AddTargetDataset"
+            "help": "if set, AddTargetDatasets outputs same keys " "as AddTargetDataset"
         },
     )
     random_crop: Optional[bool] = field(
@@ -103,39 +100,33 @@ class UtteranceMixingPretrainingConfig(FairseqDataclass):
     # mixing utterance
     mixing_max_len: int = field(
         default=-1,
-        metadata={"help": "the max length of utterance mixing. -1 denote half of the batch length."}
+        metadata={
+            "help": "the max length of utterance mixing. -1 denote half of the batch length."
+        },
     )
     mixing_prob: float = field(
-        default=0.5,
-        metadata={"help": "the probability of utterance mixing"}
+        default=0.5, metadata={"help": "the probability of utterance mixing"}
     )
     mixing_num: int = field(
-        default=1,
-        metadata={"help": "the num of utterances to mix for each sample"}
+        default=1, metadata={"help": "the num of utterances to mix for each sample"}
     )
 
     # mixing noise
-    mixing_noise: bool = field(
-        default=False,
-        metadata={"help": "mixing noises"}
-    )
+    mixing_noise: bool = field(default=False, metadata={"help": "mixing noises"})
     mixing_noise_prob: float = field(
-        default=0.5,
-        metadata={"help": "the probability of mixing noise"}
+        default=0.5, metadata={"help": "the probability of mixing noise"}
     )
     mixing_noise_num: int = field(
         default=1,
-        metadata={"help": "the num of utterances to mix noise for each sample"}
+        metadata={"help": "the num of utterances to mix noise for each sample"},
     )
-    noise_path: str = field(
-        default="",
-        metadata={"help": "the path of noises"}
-    )
+    noise_path: str = field(default="", metadata={"help": "the path of noises"})
 
 
-@register_task("utterance_mixing_pretraining", dataclass=UtteranceMixingPretrainingConfig)
+@register_task(
+    "utterance_mixing_pretraining", dataclass=UtteranceMixingPretrainingConfig
+)
 class UtteranceMixingPretrainingTask(FairseqTask):
-
     cfg: UtteranceMixingPretrainingConfig
 
     def __init__(
@@ -179,7 +170,10 @@ class UtteranceMixingPretrainingTask(FairseqTask):
 
     def load_dictionaries(self):
         label_dir = self.cfg.data if self.cfg.label_dir is None else self.cfg.label_dir
-        dictionaries = [Dictionary.load(f"{label_dir}/dict.{label}.txt") for label in self.cfg.labels]
+        dictionaries = [
+            Dictionary.load(f"{label_dir}/dict.{label}.txt")
+            for label in self.cfg.labels
+        ]
         return dictionaries[0] if self.cfg.fine_tuning else dictionaries
 
     def get_label_dir(self) -> str:
@@ -193,9 +187,7 @@ class UtteranceMixingPretrainingTask(FairseqTask):
         pad_list = [dict.pad() for dict in dicts]
         eos_list = [dict.eos() for dict in dicts]
         procs = [LabelEncoder(dict) for dict in dicts]
-        paths = [
-            f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels
-        ]
+        paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
 
         self.datasets[split] = UtteranceMixingDataset(
             manifest,
@@ -225,7 +217,5 @@ class UtteranceMixingPretrainingTask(FairseqTask):
     def max_positions(self) -> Tuple[int, int]:
         return (sys.maxsize, sys.maxsize)
 
-    def filter_indices_by_size(
-        self, indices: np.array, *args, **kwargs
-    ) -> np.array:
+    def filter_indices_by_size(self, indices: np.array, *args, **kwargs) -> np.array:
         return indices

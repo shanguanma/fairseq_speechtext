@@ -659,6 +659,8 @@ def initalize_kaldi(cfg: KaldiInitializerConfig) -> Path:
     hlga_graph = create_HLGa(
         kaldi_root, fst_dir, unique_label, h_graph, lg_graph, disambig_in_units_file_int
     )
+    ## for debug
+    #hlga_graph='/workspace2/maduo/dataset/format/librispeech/librispeech_lm_norm_phn_seq/fst/phn_to_words_sil/HLGa.phn.kenlm.wrd.o40003.fst'
     hlg_graph = create_HLG(kaldi_root, fst_dir, unique_label, hlga_graph)
 
     # for debugging

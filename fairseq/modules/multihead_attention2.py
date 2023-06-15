@@ -14,8 +14,11 @@ from torch import Tensor, nn
 from torch.nn import Parameter
 
 import logging
+
 logger = logging.getLogger(__name__)
-#compared multihead_attention.py , multihead_attention2.py support related attention with buckets 
+
+
+# compared multihead_attention.py , multihead_attention2.py support related attention with buckets
 @with_incremental_state
 class MultiheadAttention2(nn.Module):
     """Multi-headed attention.
@@ -67,9 +70,9 @@ class MultiheadAttention2(nn.Module):
             self.head_dim * num_heads == self.embed_dim
         ), "embed_dim must be divisible by num_heads"
         if expand_attention_head_size == -1:
-            self.scaling = self.head_dim ** -0.5
+            self.scaling = self.head_dim**-0.5
         else:
-            self.scaling = expand_attention_head_size ** -0.5
+            self.scaling = expand_attention_head_size**-0.5
 
         self.self_attention = self_attention
         self.encoder_decoder_attention = encoder_decoder_attention
@@ -85,14 +88,11 @@ class MultiheadAttention2(nn.Module):
         k_embed_dim = embed_dim
         q_embed_dim = embed_dim
 
-
         if expand_attention_head_size > 0:
             k_embed_dim = self.num_heads * expand_attention_head_size
             q_embed_dim = self.num_heads * expand_attention_head_size
             self.q_head_dim = expand_attention_head_size
             self.k_head_dim = expand_attention_head_size
-
-
 
         self.k_proj = quant_noise(
             nn.Linear(self.kdim, k_embed_dim, bias=k_bias), q_noise, qn_block_size
@@ -157,27 +157,34 @@ class MultiheadAttention2(nn.Module):
 
         if bidirectional:
             num_buckets = num_buckets // 2
-            #relative_buckets += (relative_positions > 0).to(torch.long) * num_buckets
-            relative_buckets = relative_buckets +  (relative_positions > 0).to(torch.long) * num_buckets
+            # relative_buckets += (relative_positions > 0).to(torch.long) * num_buckets
+            relative_buckets = (
+                relative_buckets + (relative_positions > 0).to(torch.long) * num_buckets
+            )
             relative_positions = torch.abs(relative_positions)
         else:
             # relative_positions = -torch.min(relative_positions, torch.zeros_like(relative_positions))
-            relative_positions = relative_positions -torch.min(relative_positions, torch.zeros_like(relative_positions))
+            relative_positions = relative_positions - torch.min(
+                relative_positions, torch.zeros_like(relative_positions)
+            )
 
         max_exact = num_buckets // 2
         is_small = relative_positions < max_exact
 
         relative_postion_if_large = max_exact + (
-                torch.log(relative_positions.float() / max_exact)
-                / math.log(max_distance / max_exact)
-                * (num_buckets - max_exact)
+            torch.log(relative_positions.float() / max_exact)
+            / math.log(max_distance / max_exact)
+            * (num_buckets - max_exact)
         ).to(torch.long)
         relative_postion_if_large = torch.min(
-            relative_postion_if_large, torch.full_like(relative_postion_if_large, num_buckets - 1)
+            relative_postion_if_large,
+            torch.full_like(relative_postion_if_large, num_buckets - 1),
         )
 
-        #relative_buckets += torch.where(is_small, relative_positions, relative_postion_if_large)
-        relative_buckets = relative_buckets + torch.where(is_small, relative_positions, relative_postion_if_large)
+        # relative_buckets += torch.where(is_small, relative_positions, relative_postion_if_large)
+        relative_buckets = relative_buckets + torch.where(
+            is_small, relative_positions, relative_postion_if_large
+        )
         return relative_buckets
 
     def compute_bias(self, query_length, key_length):
@@ -185,12 +192,13 @@ class MultiheadAttention2(nn.Module):
         memory_position = torch.arange(key_length, dtype=torch.long)[None, :]
         relative_position = memory_position - context_position
         relative_position_bucket = self._relative_positions_bucket(
-            relative_position,
-            bidirectional=True
+            relative_position, bidirectional=True
         )
-        relative_position_bucket = relative_position_bucket.to(self.relative_attention_bias.weight.device)
+        relative_position_bucket = relative_position_bucket.to(
+            self.relative_attention_bias.weight.device
+        )
         values = self.relative_attention_bias(relative_position_bucket)
-        values = values.permute([2,0,1])
+        values = values.permute([2, 0, 1])
         return values
 
     def forward(
@@ -205,7 +213,7 @@ class MultiheadAttention2(nn.Module):
         attn_mask: Optional[Tensor] = None,
         before_softmax: bool = False,
         need_head_weights: bool = False,
-        position_bias: Optional[Tensor] = None
+        position_bias: Optional[Tensor] = None,
     ) -> Tuple[Tensor, Optional[Tensor], Optional[Tensor]]:
         """Input shape: Time x Batch x Channel
         Args:
@@ -239,11 +247,13 @@ class MultiheadAttention2(nn.Module):
                 assert value is not None
                 assert src_len, bsz == value.shape[:2]
 
-
         if self.has_relative_attention_bias and position_bias is None:
             position_bias = self.compute_bias(tgt_len, src_len)
-            position_bias = position_bias.unsqueeze(0).repeat(bsz, 1, 1, 1).view(bsz * self.num_heads, tgt_len, src_len)
-
+            position_bias = (
+                position_bias.unsqueeze(0)
+                .repeat(bsz, 1, 1, 1)
+                .view(bsz * self.num_heads, tgt_len, src_len)
+            )
 
         if (
             not self.onnx_trace
@@ -268,16 +278,21 @@ class MultiheadAttention2(nn.Module):
                     query_layer = query_layer.permute(0, 2, 1, 3)
                     _B, _H, _L, __ = query_layer.size()
 
-                    gate_a, gate_b = torch.sigmoid(self.grep_linear(query_layer).view(
-                        _B, _H, _L, 2, 4).sum(-1, keepdim=False)).chunk(2, dim=-1)
+                    gate_a, gate_b = torch.sigmoid(
+                        self.grep_linear(query_layer)
+                        .view(_B, _H, _L, 2, 4)
+                        .sum(-1, keepdim=False)
+                    ).chunk(2, dim=-1)
                     gate_a_1 = gate_a * (gate_b * self.grep_a - 1.0) + 2.0
-                    attn_mask_rel_pos = gate_a_1.view(bsz*self.num_heads, -1, 1) * position_bias
+                    attn_mask_rel_pos = (
+                        gate_a_1.view(bsz * self.num_heads, -1, 1) * position_bias
+                    )
 
                 attn_mask_rel_pos = attn_mask_rel_pos.view((-1, tgt_len, tgt_len))
             k_proj_bias = self.k_proj.bias
             if k_proj_bias is None:
                 k_proj_bias = torch.zeros_like(self.q_proj.bias)
-            
+
             x, attn = F.multi_head_attention_forward(
                 query,
                 key,
@@ -450,7 +465,7 @@ class MultiheadAttention2(nn.Module):
             attn_mask = attn_mask.unsqueeze(0)
             if self.onnx_trace:
                 attn_mask = attn_mask.repeat(attn_weights.size(0), 1, 1)
-            #attn_weights += attn_mask
+            # attn_weights += attn_mask
             attn_weights = attn_weights + attn_mask
 
         if key_padding_mask is not None:
@@ -470,21 +485,23 @@ class MultiheadAttention2(nn.Module):
         if before_softmax:
             return attn_weights, v, position_bias
 
-
-
         if position_bias is not None:
             if self.gru_rel_pos == 1:
                 query_layer = q.view(bsz, self.num_heads, tgt_len, self.q_head_dim)
                 _B, _H, _L, __ = query_layer.size()
-                gate_a, gate_b = torch.sigmoid(self.grep_linear(query_layer).view(
-                    _B, _H, _L, 2, 4).sum(-1, keepdim=False)).chunk(2, dim=-1)
+                gate_a, gate_b = torch.sigmoid(
+                    self.grep_linear(query_layer)
+                    .view(_B, _H, _L, 2, 4)
+                    .sum(-1, keepdim=False)
+                ).chunk(2, dim=-1)
                 gate_a_1 = gate_a * (gate_b * self.grep_a - 1.0) + 2.0
-                position_bias = gate_a_1.view(bsz * self.num_heads, -1, 1) * position_bias
-            
+                position_bias = (
+                    gate_a_1.view(bsz * self.num_heads, -1, 1) * position_bias
+                )
+
             position_bias = position_bias.view(attn_weights.size())
 
             attn_weights = attn_weights + position_bias
-
 
         attn_weights_float = utils.softmax(
             attn_weights, dim=-1, onnx_trace=self.onnx_trace

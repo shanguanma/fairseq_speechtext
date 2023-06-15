@@ -83,10 +83,11 @@ def cli_main():
         logger.warning("Failed to get config name from hydra args")
         cfg_name = "config"
     import os
-    #os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
+
+    # os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:512"
     hydra_init(cfg_name)
     hydra_main()
-    
+
 
 if __name__ == "__main__":
     cli_main()

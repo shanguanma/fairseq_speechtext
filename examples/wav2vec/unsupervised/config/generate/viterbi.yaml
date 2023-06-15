@@ -24,6 +24,7 @@ post_process: silence
 results_path: ???
 decode_stride: 1
 
+
 hydra:
   run:
     dir: ${results_path}/viterbi  ## logger store directory.

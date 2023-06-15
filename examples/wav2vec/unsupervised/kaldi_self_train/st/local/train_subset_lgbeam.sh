@@ -22,9 +22,9 @@ numGaussSAT=15000
 stage=1
 max_stage=1
 
-. ./cmd.sh
 . ./path.sh
-. parse_options.sh
+. ./cmd.sh
+. utils/parse_options.sh
 
 data=$1
 lang=$2
@@ -50,8 +50,10 @@ if [ $stage -le 1 ] && [ $max_stage -ge 1 ]; then
     $data/$mono_train $lang $exp_root/mono
 
   utils/mkgraph.sh $lang_test $exp_root/mono $exp_root/mono/graph
-  steps/decode.sh --nj 20 --cmd "$decode_cmd" \
-    $exp_root/mono/graph $data/$valid $exp_root/mono/decode_$valid &
+  for name in $valid;do
+   steps/decode.sh --nj 20 --cmd "$decode_cmd" \
+    $exp_root/mono/graph $data/$name $exp_root/mono/decode_$name &
+  done
 fi
 
 
@@ -74,8 +76,10 @@ if [ $stage -le 2 ] && [ $max_stage -ge 2 ]; then
       $exp_root/mono_ali_${tri1_train} $exp_root/tri1
 
   utils/mkgraph.sh $lang_test $exp_root/tri1 $exp_root/tri1/graph
-  steps/decode.sh --nj 20 --cmd "$decode_cmd" \
-    $exp_root/tri1/graph $data/$valid $exp_root/tri1/decode_$valid &
+  for name in $valid;do
+   steps/decode.sh --nj 20 --cmd "$decode_cmd" \
+    $exp_root/tri1/graph $data/$name $exp_root/tri1/decode_$name &
+  done
 fi
 
 if [ $stage -le 3 ] && [ $max_stage -ge 3 ]; then
@@ -98,8 +102,10 @@ if [ $stage -le 3 ] && [ $max_stage -ge 3 ]; then
       $exp_root/tri1_ali_${tri2b_train} $exp_root/tri2b
 
   utils/mkgraph.sh $lang_test $exp_root/tri2b $exp_root/tri2b/graph
+  for name in $valid;do
   steps/decode.sh --nj 20 --cmd "$decode_cmd" \
-    $exp_root/tri2b/graph $data/$valid $exp_root/tri2b/decode_$valid &
+    $exp_root/tri2b/graph $data/$name $exp_root/tri2b/decode_$name &
+  done
 fi
 
 
@@ -122,8 +128,11 @@ if [ $stage -le 4 ] && [ $max_stage -ge 4 ]; then
     $exp_root/tri2b_ali_${tri2b_train} $exp_root/tri3b
 
   utils/mkgraph.sh $lang_test $exp_root/tri3b $exp_root/tri3b/graph
-  steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
-    $exp_root/tri3b/graph $data/$valid $exp_root/tri3b/decode_$valid &
+  for name in $valid;do
+   steps/decode_fmllr.sh --nj 20 --cmd "$decode_cmd" \
+    $exp_root/tri3b/graph $data/$name $exp_root/tri3b/decode_$name &
+
+  done
 fi
 
 wait

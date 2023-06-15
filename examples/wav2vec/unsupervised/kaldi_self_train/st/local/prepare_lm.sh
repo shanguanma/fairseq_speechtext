@@ -5,7 +5,7 @@ lmdir=""
 
 . ./cmd.sh
 . ./path.sh
-. parse_options.sh
+. utils/parse_options.sh
 
 arpa_lm=$1
 data=$2

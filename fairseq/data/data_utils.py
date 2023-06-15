@@ -495,8 +495,8 @@ def compute_mask_indices(
             lengths = [int(round(x)) for x in lengths]
         else:
             raise Exception("unknown mask selection " + mask_type)
-        #print(f"sum(lengths) : {sum(lengths)}")
-        #print(f"num_mask: {num_mask}, mask_length: {mask_length}") ## num_mask: int, mask_length: int
+        # print(f"sum(lengths) : {sum(lengths)}")
+        # print(f"num_mask: {num_mask}, mask_length: {mask_length}") ## num_mask: int, mask_length: int
         if sum(lengths) == 0:
             if mask_type == "static":
                 raise ValueError(f"this should never happens")

@@ -133,7 +133,7 @@ class UtteranceMixingDataset(FairseqDataset):
         n_long, n_short = 0, 0
         names, inds, sizes = [], [], []
         bnds = []
-        bnd_path = manifest_path.replace('tsv', 'bnd')
+        bnd_path = manifest_path.replace("tsv", "bnd")
         if os.path.exists(bnd_path):
             with open(bnd_path) as f:
                 bnds = f.readlines()
@@ -150,7 +150,10 @@ class UtteranceMixingDataset(FairseqDataset):
                 else:
                     fname = items[0].split(":")
                     if len(fname) > 1:
-                        if len(self.chunk_names) == 0 or fname[0] != self.chunk_names[-1]:
+                        if (
+                            len(self.chunk_names) == 0
+                            or fname[0] != self.chunk_names[-1]
+                        ):
                             self.chunk_names.append(fname[0])
                             self.chunk_indices.append(len(names))
                     names.append(items[0])
@@ -184,10 +187,7 @@ class UtteranceMixingDataset(FairseqDataset):
             self.label_offsets_list = [
                 load_label_offset(p, inds, tot) for p in label_paths
             ]
-        assert (
-            label_processors is None
-            or len(label_processors) == self.num_labels
-        )
+        assert label_processors is None or len(label_processors) == self.num_labels
         for label_path, label_rate in zip(label_paths, self.label_rates):
             verify_label_lengths(
                 self.sizes, sample_rate, label_path, label_rate, inds, tot
@@ -213,8 +213,10 @@ class UtteranceMixingDataset(FairseqDataset):
 
         self.noise_path = noise_path
         if self.mixing_noise:
-            assert os.path.exists(self.noise_path), f"Invalid noise path {self.noise_path}"
-            self.noise_list = json.load(open(self.noise_path, 'r'))
+            assert os.path.exists(
+                self.noise_path
+            ), f"Invalid noise path {self.noise_path}"
+            self.noise_list = json.load(open(self.noise_path, "r"))
             self.noise_container = {}
         else:
             self.noise_list = []
@@ -228,18 +230,28 @@ class UtteranceMixingDataset(FairseqDataset):
     def set_epoch(self, epoch):
         self.epoch = epoch
 
-    def batch_by_size(self, indices, max_tokens=None, max_sentences=None, required_batch_size_multiple=1):
+    def batch_by_size(
+        self,
+        indices,
+        max_tokens=None,
+        max_sentences=None,
+        required_batch_size_multiple=1,
+    ):
         self.max_tokens = max_tokens
         self.max_sentences = max_sentences
         self.required_batch_size_multiple = required_batch_size_multiple
         if isinstance(indices[0], list):
             batch_list = []
             for indice in indices:
-                batch = super(UtteranceMixingDataset, self).batch_by_size(indice, max_tokens, max_sentences, required_batch_size_multiple)
+                batch = super(UtteranceMixingDataset, self).batch_by_size(
+                    indice, max_tokens, max_sentences, required_batch_size_multiple
+                )
                 batch_list.append(batch)
             return batch_list
         else:
-            return super(UtteranceMixingDataset, self).batch_by_size(indices, max_tokens, max_sentences, required_batch_size_multiple)
+            return super(UtteranceMixingDataset, self).batch_by_size(
+                indices, max_tokens, max_sentences, required_batch_size_multiple
+            )
 
     def shuffle_batches(self, batches, seed):
         if isinstance(batches[0], list):
@@ -258,10 +270,10 @@ class UtteranceMixingDataset(FairseqDataset):
     def reset_batch_sampler(self):
         indices = self.ordered_indices()
         batch_sampler = self.batch_by_size(
-                indices,
-                self.max_tokens,
-                self.max_sentences,
-                self.required_batch_size_multiple
+            indices,
+            self.max_tokens,
+            self.max_sentences,
+            self.required_batch_size_multiple,
         )
         return batch_sampler
 
@@ -342,14 +354,17 @@ class UtteranceMixingDataset(FairseqDataset):
             collated_audios = self.mixing_collated_audios(collated_audios)
 
         targets_by_label = [
-            [s["label_list"][i] for s in samples]
-            for i in range(self.num_labels)
+            [s["label_list"][i] for s in samples] for i in range(self.num_labels)
         ]
         targets_list, lengths_list, ntokens_list = self.collater_label(
             targets_by_label, audio_size, audio_starts
         )
 
-        net_input = {"source": collated_audios, "padding_mask": padding_mask, "boundary": bnds}
+        net_input = {
+            "source": collated_audios,
+            "padding_mask": padding_mask,
+            "boundary": bnds,
+        }
         batch = {
             "id": torch.LongTensor([s["id"] for s in samples]),
             "net_input": net_input,
@@ -387,11 +402,11 @@ class UtteranceMixingDataset(FairseqDataset):
                         path, key, start, end = c["loc"].split("\t")
                         if path not in self.noise_container:
                             self.noise_container[path] = h5py.File(path, "r")["wav"]
-                        noise = self.noise_container[path][int(start): int(end)]
+                        noise = self.noise_container[path][int(start) : int(end)]
                         noise = noise.astype(np.float32) / np.iinfo(np.int16).max
 
                         ref_pow = np.mean(source[i].numpy() ** 2)
-                        noise_pow = np.mean(noise ** 2)
+                        noise_pow = np.mean(noise**2)
                         if noise_pow == 0:
                             scale = 0
                         else:
@@ -429,7 +444,9 @@ class UtteranceMixingDataset(FairseqDataset):
                             snr = np.random.uniform(-5, 5)
                             scale = (ref_pow / (noise_pow * 10 ** (snr / 10))) ** 0.5
 
-                        source[i, s_start:s_end] += source[c, c_start:c_end].clone() * scale
+                        source[i, s_start:s_end] += (
+                            source[c, c_start:c_end].clone() * scale
+                        )
 
                 if self.normalize:
                     with torch.no_grad():
@@ -450,9 +467,7 @@ class UtteranceMixingDataset(FairseqDataset):
                 collated_audios[i] = audio
             elif diff < 0:
                 assert self.pad_audio
-                collated_audios[i] = torch.cat(
-                    [audio, audio.new_full((-diff,), 0.0)]
-                )
+                collated_audios[i] = torch.cat([audio, audio.new_full((-diff,), 0.0)])
                 padding_mask[i, diff:] = True
             else:
                 collated_audios[i], audio_starts[i] = self.crop_to_max_size(
@@ -461,9 +476,7 @@ class UtteranceMixingDataset(FairseqDataset):
 
         return collated_audios, padding_mask, audio_starts
 
-    def collater_frm_label(
-        self, targets, audio_size, audio_starts, label_rate, pad
-    ):
+    def collater_frm_label(self, targets, audio_size, audio_starts, label_rate, pad):
         assert label_rate > 0
         s2f = label_rate / self.sample_rate
         frm_starts = [int(round(s * s2f)) for s in audio_starts]
@@ -471,24 +484,20 @@ class UtteranceMixingDataset(FairseqDataset):
         if not self.pad_audio:
             rem_size = [len(t) - s for t, s in zip(targets, frm_starts)]
             frm_size = min(frm_size, *rem_size)
-        targets = [t[s: s + frm_size] for t, s in zip(targets, frm_starts)]
+        targets = [t[s : s + frm_size] for t, s in zip(targets, frm_starts)]
         logger.debug(f"audio_starts={audio_starts}")
         logger.debug(f"frame_starts={frm_starts}")
         logger.debug(f"frame_size={frm_size}")
 
         lengths = torch.LongTensor([len(t) for t in targets])
         ntokens = lengths.sum().item()
-        targets = data_utils.collate_tokens(
-            targets, pad_idx=pad, left_pad=False
-        )
+        targets = data_utils.collate_tokens(targets, pad_idx=pad, left_pad=False)
         return targets, lengths, ntokens
 
     def collater_seq_label(self, targets, pad):
         lengths = torch.LongTensor([len(t) for t in targets])
         ntokens = lengths.sum().item()
-        targets = data_utils.collate_tokens(
-            targets, pad_idx=pad, left_pad=False
-        )
+        targets = data_utils.collate_tokens(targets, pad_idx=pad, left_pad=False)
         return targets, lengths, ntokens
 
     def collater_label(self, targets_by_label, audio_size, audio_starts):
@@ -496,9 +505,7 @@ class UtteranceMixingDataset(FairseqDataset):
         itr = zip(targets_by_label, self.label_rates, self.pad_list)
         for targets, label_rate, pad in itr:
             if label_rate == -1:
-                targets, lengths, ntokens = self.collater_seq_label(
-                    targets, pad
-                )
+                targets, lengths, ntokens = self.collater_seq_label(targets, pad)
             else:
                 targets, lengths, ntokens = self.collater_frm_label(
                     targets, audio_size, audio_starts, label_rate, pad
@@ -531,7 +538,11 @@ class UtteranceMixingDataset(FairseqDataset):
                 for i in self.chunk_order:
                     chunk_count += 1
                     start = self.chunk_indices[i]
-                    end = self.chunk_indices[i+1] if i < len(self.chunk_names) - 1 else len(self)
+                    end = (
+                        self.chunk_indices[i + 1]
+                        if i < len(self.chunk_names) - 1
+                        else len(self)
+                    )
                     size = list(self.sizes[start:end])
                     tmp_indices.extend(list(np.arange(start, end)))
                     tmp_sizes.extend(size)
@@ -546,7 +557,7 @@ class UtteranceMixingDataset(FairseqDataset):
                         sort_idx = np.lexsort(order)[::-1]
                         indice.append([tmp_indices[k] for k in sort_idx])
                         tmp_indices = []
-                        tmp_sizes =[]
+                        tmp_sizes = []
                 return indice
             else:
                 order = [np.random.permutation(len(self))]

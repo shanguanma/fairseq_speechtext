@@ -28,7 +28,7 @@ from fairseq.modules import (
     GumbelVectorQuantizer,
     MultiheadAttention2,
     SamePad,
-    TransposeLast
+    TransposeLast,
 )
 from fairseq.models.wav2vec.wav2vec2 import init_bert_params
 from fairseq.utils import index_put, buffered_arange
@@ -36,9 +36,7 @@ from fairseq.utils import index_put, buffered_arange
 logger = logging.getLogger(__name__)
 
 EXTRACTOR_MODE_CHOICES = ChoiceEnum(["default", "layer_norm"])
-MASKING_DISTRIBUTION_CHOICES = ChoiceEnum(
-    ["static", "uniform", "normal", "poisson"]
-)
+MASKING_DISTRIBUTION_CHOICES = ChoiceEnum(["static", "uniform", "normal", "poisson"])
 
 
 @dataclass
@@ -92,9 +90,7 @@ class UniSpeechSATConfig(FairseqDataclass):
     )
     dropout_features: float = field(
         default=0.0,
-        metadata={
-            "help": "dropout to apply to the features (after feat extr)"
-        },
+        metadata={"help": "dropout to apply to the features (after feat extr)"},
     )
 
     final_dim: int = field(
@@ -159,9 +155,7 @@ class UniSpeechSATConfig(FairseqDataclass):
     )
     mask_min_space: int = field(
         default=1,
-        metadata={
-            "help": "min space between spans (if no overlap is enabled)"
-        },
+        metadata={"help": "min space between spans (if no overlap is enabled)"},
     )
 
     # channel masking
@@ -191,23 +185,17 @@ class UniSpeechSATConfig(FairseqDataclass):
     )
     mask_channel_min_space: int = field(
         default=1,
-        metadata={
-            "help": "min space between spans (if no overlap is enabled)"
-        },
+        metadata={"help": "min space between spans (if no overlap is enabled)"},
     )
 
     # positional embeddings
     conv_pos: int = field(
         default=128,
-        metadata={
-            "help": "number of filters for convolutional positional embeddings"
-        },
+        metadata={"help": "number of filters for convolutional positional embeddings"},
     )
     conv_pos_groups: int = field(
         default=16,
-        metadata={
-            "help": "number of groups for convolutional positional embedding"
-        },
+        metadata={"help": "number of groups for convolutional positional embedding"},
     )
 
     latent_temp: Tuple[float, float, float] = field(
@@ -309,9 +297,7 @@ class UniSpeechSATModel(BaseFairseqModel):
             conv_bias=cfg.conv_bias,
         )
         feature_ds_rate = np.prod([s for _, _, s in feature_enc_layers])
-        self.feat2tar_ratio = (
-            cfg.label_rate * feature_ds_rate / task_cfg.sample_rate
-        )
+        self.feat2tar_ratio = cfg.label_rate * feature_ds_rate / task_cfg.sample_rate
 
         self.post_extract_proj = (
             nn.Linear(self.embed, cfg.encoder_embed_dim)
@@ -350,9 +336,7 @@ class UniSpeechSATModel(BaseFairseqModel):
         self.layer_norm = LayerNorm(self.embed)
 
         # modules below are not needed during fine-tuning
-        final_dim = (
-            cfg.final_dim if cfg.final_dim > 0 else cfg.encoder_embed_dim
-        )
+        final_dim = cfg.final_dim if cfg.final_dim > 0 else cfg.encoder_embed_dim
 
         self.target_glu = None
         if cfg.target_glu:
@@ -369,9 +353,7 @@ class UniSpeechSATModel(BaseFairseqModel):
             self.final_proj = nn.Linear(cfg.encoder_embed_dim, final_dim)
 
         if any([d is None for d in dictionaries]):
-            logger.info(
-                "cannot find dictionary. assume will be used for fine-tuning"
-            )
+            logger.info("cannot find dictionary. assume will be used for fine-tuning")
         else:
             self.num_classes = [len(d) for d in dictionaries]
             self.label_embs_concat = nn.Parameter(
@@ -429,10 +411,10 @@ class UniSpeechSATModel(BaseFairseqModel):
                         end = boundary[i][1:]
                         seq_len = len(start)
                         mask = np.random.binomial(1, 0.5, size=seq_len)
-                        mask_id = np.argwhere(mask==1)
+                        mask_id = np.argwhere(mask == 1)
                         for m in range(len(mask_id)):
                             id = mask_id[m][0]
-                            mask_indices[i][start[id]:end[id]] = True
+                            mask_indices[i][start[id] : end[id]] = True
                     else:
                         mask_id = compute_mask_indices(
                             (1, T),
@@ -443,7 +425,7 @@ class UniSpeechSATModel(BaseFairseqModel):
                             self.mask_other,
                             min_masks=2,
                             no_overlap=self.no_mask_overlap,
-                            min_space=self.mask_min_space
+                            min_space=self.mask_min_space,
                         )
                         mask_indices[i] = mask_id
             else:
@@ -485,7 +467,6 @@ class UniSpeechSATModel(BaseFairseqModel):
         return x, mask_indices
 
     def sample_instances(self, y, num):
-
         if self.n_instances == 0 and self.cross_sample_instances == 0:
             return y.new(0)
 
@@ -508,8 +489,10 @@ class UniSpeechSATModel(BaseFairseqModel):
                 instance_idxs = torch.randint(
                     low=0, high=high - 1, size=(bsz, self.n_instances * num)
                 )
-                #instance_idxs[instance_idxs >= tszs] += 1
-                instance_idxs[instance_idxs >= tszs] = instance_idxs[instance_idxs >= tszs] + 1
+                # instance_idxs[instance_idxs >= tszs] += 1
+                instance_idxs[instance_idxs >= tszs] = (
+                    instance_idxs[instance_idxs >= tszs] + 1
+                )
             if self.cross_sample_instances > 0:
                 tszs = (
                     buffered_arange(num)
@@ -523,11 +506,13 @@ class UniSpeechSATModel(BaseFairseqModel):
                     high=cross_high - 1,
                     size=(bsz, self.cross_sample_instances * num),
                 )
-                #cross_instance_idxs[cross_instance_idxs >= tszs] += 1
-                cross_instance_idxs[cross_instance_idxs >= tszs] = cross_instance_idxs[cross_instance_idxs >= tszs] + 1
+                # cross_instance_idxs[cross_instance_idxs >= tszs] += 1
+                cross_instance_idxs[cross_instance_idxs >= tszs] = (
+                    cross_instance_idxs[cross_instance_idxs >= tszs] + 1
+                )
         if self.n_instances > 0:
             for i in range(1, bsz):
-                #instance_idxs[i] += i * high
+                # instance_idxs[i] += i * high
                 instance_idxs[i] = instance_idxs[i] + i * high
         else:
             instance_idxs = cross_instance_idxs
@@ -548,18 +533,17 @@ class UniSpeechSATModel(BaseFairseqModel):
         pos = pos.unsqueeze(0)
         targets = torch.cat([pos, instances], dim=0)
 
-        logits = torch.cosine_similarity(
-            x.float(), targets.float(), dim=-1
-        ).type_as(x)
+        logits = torch.cosine_similarity(x.float(), targets.float(), dim=-1).type_as(x)
         logits /= self.logit_temp
         if instance_is_pos.any() and replace_inf:
             logits[1:][instance_is_pos] = float("-inf")
         logits = logits.transpose(0, 1)  # (num_x, num_cls+1)
         return logits
 
-
     def forward_targets(
-        self, features: torch.Tensor, target_list: List[torch.Tensor],
+        self,
+        features: torch.Tensor,
+        target_list: List[torch.Tensor],
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         # Trim features to ensure labels exist and then get aligned labels
         feat_tsz = features.size(2)
@@ -572,14 +556,14 @@ class UniSpeechSATModel(BaseFairseqModel):
         return features, target_list
 
     def forward_padding_mask(
-        self, features: torch.Tensor, padding_mask: torch.Tensor,
+        self,
+        features: torch.Tensor,
+        padding_mask: torch.Tensor,
     ) -> torch.Tensor:
         extra = padding_mask.size(1) % features.size(1)
         if extra > 0:
             padding_mask = padding_mask[:, :-extra]
-        padding_mask = padding_mask.view(
-            padding_mask.size(0), features.size(1), -1
-        )
+        padding_mask = padding_mask.view(padding_mask.size(0), features.size(1), -1)
         padding_mask = padding_mask.all(-1)
         return padding_mask
 
@@ -637,10 +621,17 @@ class UniSpeechSATModel(BaseFairseqModel):
             x,
             padding_mask=padding_mask,
             layer=None if output_layer is None else output_layer - 1,
-            extract_layer=None if self.utterance_contrastive_layer is None else self.utterance_contrastive_layer - 1,
+            extract_layer=None
+            if self.utterance_contrastive_layer is None
+            else self.utterance_contrastive_layer - 1,
         )
 
-        result = {"x": x, "padding_mask": padding_mask, "features": features, "layer_results": layer_results}
+        result = {
+            "x": x,
+            "padding_mask": padding_mask,
+            "features": features,
+            "layer_results": layer_results,
+        }
 
         if features_only:
             return result
@@ -668,9 +659,7 @@ class UniSpeechSATModel(BaseFairseqModel):
                 proj_x_m_list = [proj_x_m for _ in range(len(target_list))]
             logit_m_list = [
                 compute_pred(proj_x_m, t[masked_indices], label_embs_list[i])
-                for i, (proj_x_m, t) in enumerate(
-                    zip(proj_x_m_list, target_list)
-                )
+                for i, (proj_x_m, t) in enumerate(zip(proj_x_m_list, target_list))
             ]
         else:
             logit_m_list = [None for _ in target_list]
@@ -685,9 +674,7 @@ class UniSpeechSATModel(BaseFairseqModel):
 
             logit_u_list = [
                 compute_pred(proj_x_u, t[nomask_indices], label_embs_list[i])
-                for i, (proj_x_u, t) in enumerate(
-                    zip(proj_x_u_list, target_list)
-                )
+                for i, (proj_x_u, t) in enumerate(zip(proj_x_u_list, target_list))
             ]
         else:
             logit_u_list = [None for _ in target_list]
@@ -711,9 +698,13 @@ class UniSpeechSATModel(BaseFairseqModel):
                 samples, samples_idx = self.sample_instances(y, y.size(1))
 
                 samples_b_pos = x_b_pos.view(-1)[samples_idx.view(-1)]
-                samples_b_pos = samples_b_pos.view(x.size(0), self.n_instances + self.cross_sample_instances, x.size(1)).permute(1, 0, 2)
+                samples_b_pos = samples_b_pos.view(
+                    x.size(0), self.n_instances + self.cross_sample_instances, x.size(1)
+                ).permute(1, 0, 2)
 
-                x_pos_batch = x_b_pos[..., 0].unsqueeze(1).unsqueeze(0).expand_as(samples_b_pos)
+                x_pos_batch = (
+                    x_b_pos[..., 0].unsqueeze(1).unsqueeze(0).expand_as(samples_b_pos)
+                )
 
                 samples_targets = ((samples_b_pos == x_pos_batch)).long()
                 y_targets = x.new_ones(1, x.size(0), x.size(1), dtype=torch.long)
@@ -734,17 +725,31 @@ class UniSpeechSATModel(BaseFairseqModel):
 
                 logits = self.compute_nce(proj_x, y, samples, replace_inf=False)
 
-                loss_spk = F.binary_cross_entropy_with_logits(logits, targets.type_as(logits), reduction='none').mean()
-                return loss_spk, q, targets.float().mean(), ((logits >= 0.0) == targets).float().mean()
+                loss_spk = F.binary_cross_entropy_with_logits(
+                    logits, targets.type_as(logits), reduction="none"
+                ).mean()
+                return (
+                    loss_spk,
+                    q,
+                    targets.float().mean(),
+                    ((logits >= 0.0) == targets).float().mean(),
+                )
 
-            b_pos = torch.arange(spk_x.size(0)).unsqueeze(1).expand(spk_x.size(0), spk_x.size(1)).to(spk_x.device)
+            b_pos = (
+                torch.arange(spk_x.size(0))
+                .unsqueeze(1)
+                .expand(spk_x.size(0), spk_x.size(1))
+                .to(spk_x.device)
+            )
             if not self.skip_masked:
                 masked_indices = ~padding_mask & mask_indices
                 spk_x_m = spk_x[masked_indices].view(spk_x.size(0), -1, spk_x.size(-1))
                 proj_spk_x_m = self.spk_proj(spk_x_m)
                 b_pos_m = b_pos[masked_indices].view(b_pos.size(0), -1)
 
-                loss_spk_m, q, mean_targets, contrastive_acc = compute_pred_spk(spk_x_m, proj_spk_x_m, b_pos_m)
+                loss_spk_m, q, mean_targets, contrastive_acc = compute_pred_spk(
+                    spk_x_m, proj_spk_x_m, b_pos_m
+                )
             else:
                 loss_spk_m, q, mean_targets, contrastive_acc = None, None, None, None
 
@@ -791,9 +796,7 @@ class UniSpeechSATModel(BaseFairseqModel):
 
     def get_targets(self, net_output, is_masked=True):
         logits_list = self.get_logits(net_output, is_masked)
-        targets_list = [
-            x.new_zeros(x.size(0), dtype=torch.long) for x in logits_list
-        ]
+        targets_list = [x.new_zeros(x.size(0), dtype=torch.long) for x in logits_list]
         return targets_list
 
     def get_extra_losses(self, net_output):
@@ -842,11 +845,12 @@ class ConvFeatureExtractionModel(nn.Module):
         dropout: float = 0.0,
         mode: str = "default",
         conv_bias: bool = False,
-        conv_type: str = "default"
+        conv_type: str = "default",
     ):
         super().__init__()
 
         assert mode in {"default", "layer_norm"}
+
         def block(
             n_in,
             n_out,
@@ -885,6 +889,7 @@ class ConvFeatureExtractionModel(nn.Module):
                 )
             else:
                 return nn.Sequential(make_conv(), nn.Dropout(p=dropout), nn.GELU())
+
         self.conv_type = conv_type
         if self.conv_type == "default":
             in_d = 1
@@ -912,9 +917,7 @@ class ConvFeatureExtractionModel(nn.Module):
                 assert len(cl) == 3
                 (dim, k, stride) = cl
 
-                self.conv_layers.append(
-                    torch.nn.Conv2d(in_d, dim, k, stride)
-                )
+                self.conv_layers.append(torch.nn.Conv2d(in_d, dim, k, stride))
                 self.conv_layers.append(torch.nn.ReLU())
                 in_d = dim
         elif self.conv_type == "custom":
@@ -927,12 +930,10 @@ class ConvFeatureExtractionModel(nn.Module):
                 self.conv_layers.append(
                     torch.nn.Conv2d(in_d, dim, k, stride, padding=1)
                 )
-                self.conv_layers.append(
-                    torch.nn.LayerNorm([dim, idim])
-                )
+                self.conv_layers.append(torch.nn.LayerNorm([dim, idim]))
                 self.conv_layers.append(torch.nn.ReLU())
                 in_d = dim
-                if (i+1) % 2 == 0:
+                if (i + 1) % 2 == 0:
                     self.conv_layers.append(
                         torch.nn.MaxPool2d(2, stride=2, ceil_mode=True)
                     )
@@ -941,7 +942,6 @@ class ConvFeatureExtractionModel(nn.Module):
             pass
 
     def forward(self, x, mask=None):
-
         # BxT -> BxCxT
         x = x.unsqueeze(1)
         if self.conv_type == "custom":
@@ -963,8 +963,7 @@ class ConvFeatureExtractionModel(nn.Module):
 
 
 class Swish(nn.Module):
-    """Swish function
-    """
+    """Swish function"""
 
     def __init__(self):
         """Construct an MultiHeadedAttention object."""
@@ -1001,9 +1000,14 @@ class GLU_Linear(nn.Module):
         x = self.linear(x)
 
         if self.glu_type == "bilinear":
-            x = (x[:, :, 0:self.output_dim] * x[:, :, self.output_dim:self.output_dim * 2])
+            x = (
+                x[:, :, 0 : self.output_dim]
+                * x[:, :, self.output_dim : self.output_dim * 2]
+            )
         else:
-            x = (x[:, :, 0:self.output_dim] * self.glu_act(x[:, :, self.output_dim:self.output_dim * 2]))
+            x = x[:, :, 0 : self.output_dim] * self.glu_act(
+                x[:, :, self.output_dim : self.output_dim * 2]
+            )
 
         return x
 
@@ -1031,7 +1035,6 @@ class TransformerSentenceEncoderLayer(nn.Module):
         gru_rel_pos: bool = False,
         expand_attention_head_size: int = -1,
     ) -> None:
-
         super().__init__()
         # Initialize parameters
         self.embedding_dim = embedding_dim
@@ -1064,7 +1067,7 @@ class TransformerSentenceEncoderLayer(nn.Module):
         self.self_attn_layer_norm = LayerNorm(self.embedding_dim)
 
         if self.activation_name == "glu":
-            self.fc1 = GLU_Linear(self.embedding_dim,ffn_embedding_dim,"swish")
+            self.fc1 = GLU_Linear(self.embedding_dim, ffn_embedding_dim, "swish")
         else:
             self.fc1 = nn.Linear(self.embedding_dim, ffn_embedding_dim)
         self.fc2 = nn.Linear(ffn_embedding_dim, self.embedding_dim)
@@ -1078,7 +1081,7 @@ class TransformerSentenceEncoderLayer(nn.Module):
         self_attn_mask: torch.Tensor = None,
         self_attn_padding_mask: torch.Tensor = None,
         need_weights: bool = False,
-        pos_bias=None
+        pos_bias=None,
     ):
         """
         LayerNorm is applied either before or after the self-attention/ffn
@@ -1095,7 +1098,7 @@ class TransformerSentenceEncoderLayer(nn.Module):
                 key_padding_mask=self_attn_padding_mask,
                 need_weights=False,
                 attn_mask=self_attn_mask,
-                position_bias=pos_bias
+                position_bias=pos_bias,
             )
             x = self.dropout1(x)
             x = residual + x
@@ -1118,7 +1121,7 @@ class TransformerSentenceEncoderLayer(nn.Module):
                 key_padding_mask=self_attn_padding_mask,
                 need_weights=need_weights,
                 attn_mask=self_attn_mask,
-                position_bias=pos_bias
+                position_bias=pos_bias,
             )
 
             x = self.dropout1(x)
@@ -1182,7 +1185,9 @@ class TransformerEncoder(nn.Module):
                     activation_dropout=args.activation_dropout,
                     activation_fn=args.activation_fn,
                     layer_norm_first=args.layer_norm_first,
-                    has_relative_attention_bias=(self.relative_position_embedding and i == 0),
+                    has_relative_attention_bias=(
+                        self.relative_position_embedding and i == 0
+                    ),
                     num_buckets=self.num_buckets,
                     max_distance=self.max_distance,
                     gru_rel_pos=args.gru_rel_pos,
@@ -1200,8 +1205,12 @@ class TransformerEncoder(nn.Module):
 
         self.apply(init_bert_params)
 
-    def forward(self, x, padding_mask=None, streaming_mask=None, layer=None, extract_layer=None):
-        x, layer_results, extract_result = self.extract_features(x, padding_mask, streaming_mask, layer, extract_layer=extract_layer)
+    def forward(
+        self, x, padding_mask=None, streaming_mask=None, layer=None, extract_layer=None
+    ):
+        x, layer_results, extract_result = self.extract_features(
+            x, padding_mask, streaming_mask, layer, extract_layer=extract_layer
+        )
 
         if self.layer_norm_first and layer is None:
             x = self.layer_norm(x)
@@ -1210,14 +1219,20 @@ class TransformerEncoder(nn.Module):
 
         return x, layer_results, extract_result
 
-    def extract_features(self, x, padding_mask=None, streaming_mask=None, tgt_layer=None, extract_layer=None):
-
+    def extract_features(
+        self,
+        x,
+        padding_mask=None,
+        streaming_mask=None,
+        tgt_layer=None,
+        extract_layer=None,
+    ):
         if padding_mask is not None:
             x = index_put(x, padding_mask, 0)
 
         x_conv = self.pos_conv(x.transpose(1, 2))
         x_conv = x_conv.transpose(1, 2)
-        #x += x_conv
+        # x += x_conv
         x = x + x_conv
 
         if not self.layer_norm_first:
@@ -1238,8 +1253,13 @@ class TransformerEncoder(nn.Module):
         for i, layer in enumerate(self.layers):
             dropout_probability = np.random.random()
             if not self.training or (dropout_probability > self.layerdrop):
-                x, z, pos_bias = layer(x, self_attn_padding_mask=padding_mask, need_weights=False,
-                                       self_attn_mask=streaming_mask, pos_bias=pos_bias)
+                x, z, pos_bias = layer(
+                    x,
+                    self_attn_padding_mask=padding_mask,
+                    need_weights=False,
+                    self_attn_mask=streaming_mask,
+                    pos_bias=pos_bias,
+                )
             if tgt_layer is not None:
                 layer_results.append((x, z))
             if i == extract_layer:
