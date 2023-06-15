@@ -48,7 +48,8 @@ kaldi_decoder_config:
     #LOG ([5.5.950~1-085be]:RebuildRepository():determinize-lattice-pruned.cc:287) Rebuilding repository.
     ##WARNING ([5.5.950~1-085be]:CheckMemoryUsage():determinize-lattice-pruned.cc:320) Did not reach requested beam in determinize-lattice: size exceeds maximum 120 bytes; (repo,arcs,elems) = (25760,480,5784), after rebuilding, repo size was 12448, effective beam was 7.72374 vs. requested beam 10
     ##[2023-05-29 20:57:44,304][root][WARNING] - Lattice determinization is terminated early because at least one of max_mem, max_loop or max_arcs thresholds was reached. If you want a more detailed log message, rerun this function after setting verbose level > 0 using kaldi.base.set_verbose_level.
-    max_mem: 20000000  # its unit is bytes max_mem: 120, its means that in determinize-lattice: size exceeds maximum 120 bytes. it should be big number e.g. 20000000, you can reference kaldi recipe setting (kaldi/egs/wsj/s5/steps/nnet3/get_degs.sh) 
+    #max_mem: 20000000  # its unit is bytes max_mem: 120, its means that in determinize-lattice: size exceeds maximum 120 bytes. it should be big number e.g. 20000000, you can reference kaldi recipe setting (kaldi/egs/wsj/s5/steps/nnet3/get_degs.sh) 
+    max_mem: 30000000
     phone_determinize:  True
     word_determinize:  True
     minimize: True
