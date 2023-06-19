@@ -15,6 +15,7 @@ task:
   single_target: true
   fine_tuning: true
   data: ???
+  label_dir: ???
   normalize: ???
 
 decoding:

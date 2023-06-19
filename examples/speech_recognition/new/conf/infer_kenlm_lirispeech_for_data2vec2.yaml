@@ -1,0 +1,35 @@
+# @package _group_
+
+defaults:
+  - model: null
+
+hydra:
+  run:
+    dir: ${common_eval.results_path}/${dataset.gen_subset}_beam${decoding.beam}_th${decoding.beamthreshold}_lmw${decoding.lmweight}_wrd${decoding.wordscore}_sil${decoding.silweight}
+  sweep:
+    dir: ${common_eval.results_path}
+    subdir: ${dataset.gen_subset}_beam${decoding.beam}_th${decoding.beamthreshold}_lmw${decoding.lmweight}_wrd${decoding.wordscore}_sil${decoding.silweight}
+
+task:
+  _name: audio_finetuning
+  data: ???
+  labels: ltr
+  normalize: true ## same as pretrain setting  
+
+decoding:
+  type: kenlm
+  lexicon: ???
+  lmpath: ???
+  beamthreshold: 100
+  beam: 500
+  lmweight: 2  ## for 100h ft model, setting 2 is best,  for 10h or 1h ft model , setting 3 is best
+  wordscore: -1
+  silweight: 0
+  unique_wer_file: true
+common_eval:
+  results_path: ???
+  path: ???
+  post_process: letter
+dataset:
+  max_tokens: 1100000
+  gen_subset: ???

@@ -52,6 +52,10 @@ except ImportError:
     LM = object
     LMState = object
 
+import logging
+logging.root.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class KenLMDecoder(BaseDecoder):
     def __init__(self, cfg: FlashlightDecoderConfig, tgt_dict: Dictionary) -> None:
@@ -340,6 +344,11 @@ class FairseqLMDecoder(BaseDecoder):
         self.trie = Trie(self.vocab_size, self.silence)
 
         self.word_dict = task.dictionary
+        ## for debug
+        #logger.info(f"self.word_dict indexes: {self.word_dict.indices}") # it is dictionary, key is word , value is word id
+        #logger.info(f"self.word_dict symbols: {self.word_dict.symbols}")
+        #logger.info(f"self.word_dict unk_word: {self.word_dict.unk_word}")
+        
         self.unk_word = self.word_dict.unk()
         self.lm = FairseqLM(self.word_dict, model)
 
@@ -351,9 +360,11 @@ class FairseqLMDecoder(BaseDecoder):
                     self.idx_to_wrd[i] = word
                     score = 0
                 else:
-                    word_idx = self.word_dict.index(word)
+                    word_idx = self.word_dict.index(word.lower()) ## because word2letter is upper dictionary, 
+                                                                   ## however, fairseqlm offer word dictionary(self.word_dict) is lower style
                     _, score = self.lm.score(start_state, word_idx, no_cache=True)
-
+                    #logger.info(f"self.word_dict: {self.word_dict}")
+                    #logger.info(f"current word: {word}, its idx is {word_idx}, its lm score is {score}")
                 for spelling in spellings:
                     spelling_idxs = [tgt_dict.index(token) for token in spelling]
                     assert (
@@ -428,6 +439,7 @@ class FairseqLMDecoder(BaseDecoder):
             results = self.decoder.decode(emissions_ptr, T, N)
 
             nbest_results = results[: self.nbest]
+            #logger.info(f"nbest_results: {nbest_results}")
             hypos.append([make_hypo(result) for result in nbest_results])
             self.lm.empty_cache()
 

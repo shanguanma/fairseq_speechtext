@@ -276,7 +276,7 @@ class InferenceProcessor:
         # Processes hypothesis.
         hyp_pieces = self.tgt_dict.string(hypo["tokens"].int().cpu())
         if "words" in hypo:
-            hyp_words = " ".join(hypo["words"])
+            hyp_words = " ".join(hypo["words"]).upper()
         else:
             hyp_words = post_process(hyp_pieces, self.cfg.common_eval.post_process)
 

@@ -11,10 +11,11 @@ hydra:
     subdir: viterbi
 
 task:
-  _name: sthubert_pretraining
+  _name: hubert_pretraining
   single_target: true
   fine_tuning: true
   data: ???
+  label_dir: ???
   normalize: ???
 
 decoding:
