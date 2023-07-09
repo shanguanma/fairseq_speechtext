@@ -17,14 +17,14 @@ python setup.py build_ext --inplace
 
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
-   echo "iter: pretrain imls_ssl on 6layer of hubert pesudo label and librispeech monophncode from w2vu2-model " 
+   echo "iter: pretrain voicelm on 6layer of hubert pesudo label and librispeech monophncode from w2vu2-model " 
    echo "training on 400k steps for train-960 of librispeech"
    fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
    tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
    dir=/mntnfs/lee_data1/maduo/exp
    label_dir=$tsv_dir/offical_hubert_codes_and_librispeech_frame_monophncode_using_wav2vec-u2_model
-   config_dir=$fairseq_dir/examples/imls_ssl
-   model_name=pretrain_on_base_imls-ssl_4gpu_8update_960h_400k_update
+   config_dir=$fairseq_dir/examples/voicelm
+   model_name=pretrain_on_base_voicelm_4gpu_8update_960h_400k_update
    exp_dir=$dir/pretrain/${model_name}
    mkdir -p $exp_dir
    world_size=4
@@ -32,12 +32,12 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
    python $fairseq_dir/fairseq_cli/hydra_train.py \
             --config-dir $config_dir/config/pretrain \
-            --config-name imls_ssl_base_librispeech \
+            --config-name voicelm_base_librispeech \
             task.data=$tsv_dir\
             task.label_dir=$label_dir\
             task.labels='["phncode","km"]' \
             model.label_rate=50\
-            common.user_dir=$fairseq_dir/examples/imls_ssl\
+            common.user_dir=$fairseq_dir/examples/voicelm\
             dataset.train_subset=train-960\
             dataset.valid_subset=\'dev-other,dev-clean\'\
             distributed_training.distributed_world_size=${world_size}\
@@ -46,7 +46,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
             optimization.update_freq=[${update_freq}]\
             common.tensorboard_logdir=$exp_dir\
             checkpoint.save_dir=$exp_dir\
-            hydra.run.dir=$fairseq_dir/examples/imls_ssl\
+            hydra.run.dir=$fairseq_dir/examples/voicelm\
             hydra.job.name=$exp_dir/pretrain
 ### 4V100: training about 30.6 day
 ###           200steps: about 22 minites
@@ -55,12 +55,12 @@ fi
 
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
-   echo "fine tune base imls-ssl model  using train-clean-100 supervision data"
+   echo "fine tune base voicelm model  using train-clean-100 supervision data"
    fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
    tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
    dir=/mntnfs/lee_data1/maduo/exp
-   config_dir=$fairseq_dir/examples/imls_ssl
-   model_name=pretrain_on_base_imls-ssl_4gpu_8update_960h_400k_update
+   config_dir=$fairseq_dir/examples/voicelm
+   model_name=pretrain_on_base_voicelm_4gpu_8update_960h_400k_update
    exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
    exp_dir=$dir/pretrain/${model_name}
    mkdir -p $exp_finetune_dir
@@ -69,12 +69,12 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
    python $fairseq_dir/fairseq_cli/hydra_train.py \
        --config-dir $config_dir/config/finetune \
-            --config-name imls_ssl_base_100h \
+            --config-name voicelm_base_100h \
             task.data=$tsv_dir\
             task.label_dir=$tsv_dir\
             task.labels='["ltr"]' \
             model.w2v_path=$exp_dir/checkpoint_298_400000.pt\
-            common.user_dir=$fairseq_dir/examples/imls_ssl\
+            common.user_dir=$fairseq_dir/examples/voicelm\
             dataset.train_subset=train-clean-100\
             dataset.valid_subset=dev-other\
             distributed_training.distributed_world_size=${world_size}\
@@ -83,18 +83,18 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
             optimization.update_freq=[${update_freq}]\
             common.tensorboard_logdir=$exp_finetune_dir\
             checkpoint.save_dir=$exp_finetune_dir\
-            hydra.run.dir=$fairseq_dir/examples/imls_ssl\
+            hydra.run.dir=$fairseq_dir/examples/voicelm\
             hydra.job.name=$exp_dir/finetune
 fi
 
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
-   echo "inference imls-ssl  model on dev-other, dev-clean, test-other, test-clean of librispeech"
+   echo "inference voicelm  model on dev-other, dev-clean, test-other, test-clean of librispeech"
    fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
    tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
    dir=/mntnfs/lee_data1/maduo/exp
 
    config_dir=$fairseq_dir/examples/hubert/
-   model_name=pretrain_on_base_imls-ssl_4gpu_8update_960h_400k_update
+   model_name=pretrain_on_base_voicelm_4gpu_8update_960h_400k_update
    exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
    #results_path=$exp_finetune_dir/decode_on_100h
    results_path=$exp_finetune_dir/decode_on_100h_normalize_false
@@ -115,23 +115,23 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
 
    done
    # WER% is grep -rn "Word error rate" $exp_finetune_dir/decode_on_100/viterbi/infer.log
-   ## or  grep -rn "Word error rate" logs/base_imls-ssl_stage3_infer.log
+   ## or  grep -rn "Word error rate" logs/base_voicelm_stage3_infer.log
    #  dev-clean   dev-other   test-clean   test-other  ## task.normalize=true, however it is setting false at pretrain stage.
    #    4.4373     10.6254     4.4420      10.1601
-   #  grep -rn "Word error rate" logs/base_imls-ssl_stage3_infer_normalize_false.log , ## task.normalize=false. it is same as pretain stage
+   #  grep -rn "Word error rate" logs/base_voicelm_stage3_infer_normalize_false.log , ## task.normalize=false. it is same as pretain stage
    #    4.4576     10.4095     4.4420      10.1677
 
 
 fi
 
 if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ];then
-   echo "inference imls-ssl  model on dev-other, dev-clean, test-other, test-clean of librispeech with kenlm"
+   echo "inference voicelm  model on dev-other, dev-clean, test-other, test-clean of librispeech with kenlm"
    fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
    tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
    dir=/mntnfs/lee_data1/maduo/exp
 
    config_dir=$fairseq_dir/examples/hubert/
-   model_name=pretrain_on_base_imls-ssl_4gpu_8update_960h_400k_update
+   model_name=pretrain_on_base_voicelm_4gpu_8update_960h_400k_update
    exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
    results_path=$exp_finetune_dir/decode_on_100h_with_kenlm
    mkdir -p $results_path
@@ -162,20 +162,20 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ];then
 
    done
    # WER% in kenlm and task.normalize=false
-   # log is from grep -rn "Word error rate" logs/base_imls-ssl_stage4_infer_with_kenlm.log
+   # log is from grep -rn "Word error rate" logs/base_voicelm_stage4_infer_with_kenlm.log
    # dev-clean  dev-other test-clean test-other
    # 2.5459      7.2079      3.0666     7.2580
    ## NOTE: for 1h / 10h ft model , you should set decoding.lmweight=3 to decode. will get best WER%
  fi
 
 if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ];then
-   echo "inference imls-ssl  model on dev-other, dev-clean, test-other, test-clean of librispeech with fairseqlm"
+   echo "inference voicelm  model on dev-other, dev-clean, test-other, test-clean of librispeech with fairseqlm"
    fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
    tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
    dir=/mntnfs/lee_data1/maduo/exp
 
    config_dir=$fairseq_dir/examples/hubert/
-   model_name=pretrain_on_base_imls-ssl_4gpu_8update_960h_400k_update
+   model_name=pretrain_on_base_voicelm_4gpu_8update_960h_400k_update
    exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
    results_path=$exp_finetune_dir/decode_on_100h_with_fairseqlm_normalize_false
    mkdir -p $results_path
@@ -215,13 +215,13 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ];then
 fi
 
 if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ];then
-   echo "inference imls-ssl  model on dev-other, dev-clean, test-other, test-clean of librispeech with fairseqlm"
+   echo "inference voicelm  model on dev-other, dev-clean, test-other, test-clean of librispeech with fairseqlm"
    fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
    tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
    dir=/mntnfs/lee_data1/maduo/exp
 
    config_dir=$fairseq_dir/examples/hubert/
-   model_name=pretrain_on_base_imls-ssl_4gpu_8update_960h_400k_update
+   model_name=pretrain_on_base_voicelm_4gpu_8update_960h_400k_update
    exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
    results_path=$exp_finetune_dir/decode_on_100h_with_fairseqlm_normalize_false
    mkdir -p $results_path
@@ -256,7 +256,7 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ];then
    done
    ##WER% with fairseqlm(it is a transformer network lm) to decode
    ## dev-clean  dev-other  test-clean  test-other   lmweight=3
-   ##  grep -rn "Word error rate:" logs/base_imls-ssl_stage6_infer_with_fairseqlm_normalize_false_lmweight3.log
+   ##  grep -rn "Word error rate:" logs/base_voicelm_stage6_infer_with_fairseqlm_normalize_false_lmweight3.log
    ##   3.2352    8.1187     3.3538    8.1732
 
 fi
