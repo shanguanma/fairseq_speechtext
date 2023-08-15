@@ -83,7 +83,7 @@ model:
   attention_dropout: 0.1
   feature_grad_mult: 0.1
   activation_dropout: 0.0
-  ### ILS-SSL add configuer
+  ### voicelm add configuer
   untie_final_proj: false  # hubert set is true
   predict_layers: "[7,12]"
   ### related attention

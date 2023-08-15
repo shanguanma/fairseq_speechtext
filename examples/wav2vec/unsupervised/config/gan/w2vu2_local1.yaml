@@ -146,7 +146,7 @@ hydra:
     subdir: ${hydra.job.num}    
 
 checkpoint:
-  save_interval: 1000
+  save_interval: 100 ## offical default  setting is  1000
   save_interval_updates: 1000
   #keep_interval_updates: 1 # keep one interval_updates , one checkpoint_best.pt one checkpoint_last.pt
   no_epoch_checkpoints: true
