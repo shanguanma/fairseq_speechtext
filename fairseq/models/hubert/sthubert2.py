@@ -41,7 +41,7 @@ from fairseq.tasks.sthubert_pretraining2 import (
 
 logger = logging.getLogger(__name__)
 
-
+## it is similar to speechlm.
 @dataclass
 class StHubertConfig2(FairseqDataclass):
     label_rate: float = II("task.label_rate")
