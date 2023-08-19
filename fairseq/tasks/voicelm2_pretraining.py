@@ -140,7 +140,7 @@ class Voicelm2PretrainingConfig(FairseqDataclass):
 
 
 @register_task("voicelm2_pretraining", dataclass=Voicelm2PretrainingConfig)
-class Voicelm2PretrainingTask2(FairseqTask):
+class Voicelm2PretrainingTask(FairseqTask):
     cfg: Voicelm2PretrainingConfig
 
     def __init__(

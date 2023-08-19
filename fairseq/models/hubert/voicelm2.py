@@ -34,9 +34,9 @@ from fairseq.modules import GradMultiply, LayerNorm
 from fairseq.modules import PositionalEmbedding
 from fairseq.models.hubert.hubert2 import HubertConfig2, HubertModel2 ##(TODO) check
 from fairseq.modules import GradMultiply, LayerNorm
-from fairseq.tasks.hubert_pretraining import (
-    HubertPretrainingConfig,
-    HubertPretrainingTask,
+from fairseq.tasks.voicelm2_pretraining import (
+    Voicelm2PretrainingConfig,
+    Voicelm2PretrainingTask,
 ) ##(TODO) check
 
 
@@ -206,7 +206,13 @@ class HubertModel2(BaseFairseqModel):
     @classmethod
     def build_model(cls, cfg: Voicelm2Config, task: Voicelm2PretrainingTask):
         """Build a new model instance."""
-         logger.info(f"dictionary: {task.dictionaries[1].indices.items()}") # dictionary: dict_items([('<s>', 0), ('<pad>', 1), ('</s>', 2), ('<unk>', 3), ('0', 4), ('1', 5), ('2', 6), ('3', 7), ('4', 8), ('5', 9), ('6', 10), ('7', 11), ('8', 12), ('9', 13), ('10', 14), ('11', 15), ('12', 16), ('13', 17), ('14', 18), ('15', 19), ('16', 20), ('17', 21), ('18', 22), ('19', 23), ('20', 24), ('21', 25), ('22', 26), ('23', 27), ('24', 28), ('25', 29), ('26', 30), ('27', 31), ('28', 32), ('29', 33), ('30', 34), ('31', 35), ('32', 36), ('33', 37), ('34', 38), ('35', 39), ('36', 40), ('37', 41), ('38', 42), ('39', 43), ('40', 44)])
+        logger.info(f"dictionary: {task.dictionaries[1].indices.items()}") # dictionary: dict_items([('<s>', 0), 
+        #('<pad>', 1), ('</s>', 2), ('<unk>', 3), ('0', 4), ('1', 5), ('2', 6), ('3', 7), ('4', 8), ('5', 9), 
+        #('6', 10), ('7', 11), ('8', 12), ('9', 13), ('10', 14), ('11', 15), ('12', 16), ('13', 17), ('14', 18), 
+        #('15', 19), ('16', 20), ('17', 21), ('18', 22), ('19', 23), ('20', 24), ('21', 25), ('22', 26), 
+        #('23', 27), ('24', 28), ('25', 29), ('26', 30), ('27', 31), ('28', 32), ('29', 33), ('30', 34), 
+        #('31', 35), ('32', 36), ('33', 37), ('34', 38), ('35', 39), ('36', 40), ('37', 41), ('38', 42), 
+        #('39', 43), ('40', 44)])
         logger.info(f"dictionary bos index: {task.dictionaries[1].bos_index}")## 0
         logger.info(f"dictionary pad index: {task.dictionaries[1].pad_index}")## 1
         logger.info(f"dictionary eos index: {task.dictionaries[1].eos_index}")## 2
@@ -214,7 +220,7 @@ class HubertModel2(BaseFairseqModel):
         model = Voicelm2(cfg, task.cfg, task.dictionaries)
         return model
 
-     def forward(
+    def forward(
         self,
         source: torch.Tensor,
         target_list: Optional[List[torch.Tensor]] = None,
