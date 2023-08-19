@@ -1,7 +1,8 @@
 # @package _group_
 
 common:
-  fp16: true  ## default true
+  fp16: true  ## default true  if it  is true,  fairscale don't support  full_shared ddp_backend
+              ## more details, you  can see fairseq/trainer.py 
   log_format: json
   log_interval: 200
   seed: 1337

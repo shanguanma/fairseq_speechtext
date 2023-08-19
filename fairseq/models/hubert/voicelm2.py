@@ -237,7 +237,13 @@ class HubertModel2(BaseFairseqModel):
         
         ## feature fuse via cross attention qurey is from audio branch, key and value is from text branch
         feature_audio = feature_audio.transpose(1, 2) ## [B,F,T]->[B,T,F]
-        features = self.feature_fuse(query=feature_audio, key=feature_text, value=feature_text) # [B,T,F]
+        features=None
+        if cfg.modality_fuse=='attention':
+            features = self.feature_fuse(query=feature_audio, key=feature_text, value=feature_text) # [B,T,F]
+        elif cfg.modality_fuse=='flash_attention':
+            with torch.backends.cuda.sdp_kernel(enable_math=False):## it default is enable_flash=True, 
+                                                                   ## enable_math=True, enable_mem_efficient=True
+                features = F.scaled_dot_product_attention(query=feature_audio,key=feature_text,value=feature_text)
         features = feature_audio + features ## residual add 
 
 
