@@ -20,14 +20,18 @@ from fairseq.data.data_utils import compute_mask_indices
 from fairseq.data.dictionary import Dictionary
 from fairseq.dataclass import ChoiceEnum, FairseqDataclass
 from fairseq.models import BaseFairseqModel, register_model
-from fairseq.models.wav2vec.wav2vec2 import (
-    EXTRACTOR_MODE_CHOICES,
-    MASKING_DISTRIBUTION_CHOICES,
-    LAYER_TYPE_CHOICES,
+#from fairseq.models.wav2vec.wav2vec2 import (
+    #EXTRACTOR_MODE_CHOICES,
+    #MASKING_DISTRIBUTION_CHOICES,
+    #LAYER_TYPE_CHOICES,
+    #ConvFeatureExtractionModel,
+    #TransformerEncoder,
+    #TransformerSentenceEncoderLayer,
+    #make_conv_pos,
+#)
+from fairseq.models.wavlm.wavlm import (
     ConvFeatureExtractionModel,
     TransformerEncoder,
-    TransformerSentenceEncoderLayer,
-    make_conv_pos,
 )
 
 from fairseq.modules import GradMultiply, LayerNorm
@@ -78,22 +82,30 @@ class Voicelm2Config(HubertConfig2):
     ## for audio branch loss
     sim_type: str = field(default='cosine', metadata={"help": 'similarity type'})
     #mask_type: str = field(default='input', metadata={'help': 'input or feature masking for text branch'})             
-
+    ## text 
+    text_embed_dim: int = field(
+        default=768, metadata={"help": "text net part embedding dimension"}
+    )   
+    max_source_positions: int = field(
+        default=512,
+        metadata={"help": "Maximum input length supported by the transformer encoder"},
+    ) 
 class TextModel(nn.Module):
     def __init__(self,input_dim=None, cfg=None, padding_idx=None):
+        super().__init__()
         self.embed_tokens = torch.nn.Embedding(
-            len(dictionaries[1]), cfg.text_embed_dim, padding_idx=padding_idx
+            input_dim, cfg.text_embed_dim, padding_idx=padding_idx
         )
-        self.embed_positions = PositionalEmbedding(
-            cfg.max_source_positions,
-            cfg.text_embed_dim,
-            padding_idx=padding_idx,
-            learned=True,
-        )
+        #self.embed_positions = PositionalEmbedding(
+        #    cfg.max_source_positions,
+        #    cfg.text_embed_dim,
+        #    padding_idx=padding_idx,
+        #    learned=True,
+        #)
         self.linear = nn.Linear(cfg.text_embed_dim, cfg.encoder_embed_dim)
     def forward(self,x):
         x = self.embed_tokens(x)
-        x = self.embed_positions(x)
+        #x = self.embed_positions(x)
         x = self.linear(x)
         return x
         
@@ -109,7 +121,8 @@ class Voicelm2Model(BaseFairseqModel):
         logger.info(f"voicelm2 Config: {cfg}")
         self.padding_idx = 1
         self.sim_type = cfg.sim_type
-
+        self.modality_fuse=cfg.modality_fuse
+        self.encoder_embed_dim=cfg.encoder_embed_dim
         feature_enc_layers = eval(cfg.conv_feature_layers)  # noqa
         self.embed = feature_enc_layers[-1][0]
         if cfg.audio_feature_type=='cnn':
@@ -124,7 +137,7 @@ class Voicelm2Model(BaseFairseqModel):
 
         self.feature_extractor_text = TextModel(input_dim=len(dictionaries[1]),cfg=cfg, padding_idx=self.padding_idx) 
         
-        if cfg.modality_fuse=='attention':
+        if self.modality_fuse=='attention':
             self.feature_fuse = nn.MultiheadAttention(embed_dim=cfg.encoder_embed_dim, num_heads=cfg.fuse_attention_heads,batch_first=True)
         else:
             pass
@@ -135,7 +148,7 @@ class Voicelm2Model(BaseFairseqModel):
 
         self.post_extract_proj = (
             nn.Linear(self.embed, cfg.encoder_embed_dim)
-            if self.embed != cfg.encoder_embed_dim
+            if self.embed != self.encoder_embed_dim
             else None
         )
 
@@ -162,7 +175,7 @@ class Voicelm2Model(BaseFairseqModel):
         self.skip_nomask = cfg.skip_nomask
         
         ## text
-        self.text_mask_type = cfg.text_mask_type
+        #`self.text_mask_type = cfg.text_mask_type
 
         final_dim = cfg.final_dim if cfg.final_dim > 0 else cfg.encoder_embed_dim        
         
@@ -232,15 +245,20 @@ class Voicelm2Model(BaseFairseqModel):
         """output layer is 1-based"""
         src_audio, src_text = source['audio'], source['text']
         feature_audio = self.forward_features(src_audio, modality='audio') # features: [B, F, T]
+        feature_audio = feature_audio.transpose(1, 2) #  [B, F, T]  -> [B, T, F]
+        if self.embed != self.encoder_embed_dim:
+            feature_audio = self.post_extract_proj(feature_audio) # [B,T,F]
         feature_text = self.forward_features(src_text, modality='text') # features: [B,S,F]
 
         
         ## feature fuse via cross attention qurey is from audio branch, key and value is from text branch
-        feature_audio = feature_audio.transpose(1, 2) ## [B,F,T]->[B,T,F]
+        #feature_audio = feature_audio.transpose(1, 2) ## [B,F,T]->[B,T,F]
         features=None
-        if cfg.modality_fuse=='attention':
+        if self.modality_fuse=='attention':
+            logger.info(f"feature_text shape: {feature_text.shape}")
+            logger.info(f"feature_audio shape: {feature_audio.shape}")
             features = self.feature_fuse(query=feature_audio, key=feature_text, value=feature_text) # [B,T,F]
-        elif cfg.modality_fuse=='flash_attention':
+        elif self.modality_fuse=='flash_attention':
             with torch.backends.cuda.sdp_kernel(enable_math=False):## it default is enable_flash=True, 
                                                                    ## enable_math=True, enable_mem_efficient=True
                 features = F.scaled_dot_product_attention(query=feature_audio,key=feature_text,value=feature_text)

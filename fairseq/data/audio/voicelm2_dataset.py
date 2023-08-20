@@ -237,16 +237,17 @@ class Voicelm2Dataset(FairseqDataset):
         return wav
 
     def get_text(self, index):
-        
+        #print(f"in the get_text func: index: {index}")
         utt = self.text_contents[index] ## str
-        label = self.get_labels(index) ## label is a utt speech label, it is a tensor
+         
+        label = self.get_label(index,0) ## label is a utt speech label, it is a tensor
         label_unique, count = torch.unique_consecutive(label, return_counts=True) 
         label2counts=dict()
         
         for ele,c in zip(label_unique.tolist(), count.tolist()):
             ele = str(ele) ## int to str
             c = str(c) 
-            if ele not in ele2c.keys():
+            if ele not in label2counts.keys():
                 label2counts[ele] = [c]
             else:
                 label2counts[ele] += [c] ### list splicing
@@ -295,7 +296,7 @@ class Voicelm2Dataset(FairseqDataset):
             idx = np.random.choice(list_id)
         text = self.get_text(idx)
         labels = self.get_labels(index)
-        logger.info(f"in __getitem__: text: {text}")
+        #logger.info(f"in __getitem__: text: {text}")
         return {"id": index, "source": wav, "text": text, "label_list": labels}
 
     def __len__(self):
@@ -330,7 +331,7 @@ class Voicelm2Dataset(FairseqDataset):
             audios, audio_size
         )
         texts = [[s["text"] for s in samples]]
-        logger.info(f"in collater, texts lengths : {len(texts)}, texts : {texts}")
+        #logger.info(f"in collater, texts lengths : {len(texts)}, texts : {texts}") # texts lengths=1,
         collated_texts, text_lengths_list, text_ntokens_list = self.collater_text(
             texts, audio_size, audio_starts
         )
@@ -341,7 +342,7 @@ class Voicelm2Dataset(FairseqDataset):
         targets_list, label_lengths_list, label_ntokens_list = self.collater_label(
             targets_by_label, audio_size, audio_starts
         )
-        source = {"audio": collated_audios, "text": collated_texts}
+        source = {"audio": collated_audios, "text": collated_texts[0]}
         net_input = {"source": source, "padding_mask": padding_mask}
 
         batch = {
