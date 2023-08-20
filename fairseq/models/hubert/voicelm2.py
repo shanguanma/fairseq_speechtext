@@ -98,7 +98,7 @@ class TextModel(nn.Module):
         return x
         
 @register_model("voicelm2", dataclass=Voicelm2Config)
-class HubertModel2(BaseFairseqModel):
+class Voicelm2Model(BaseFairseqModel):
     def __init__(
         self,
         cfg: Voicelm2Config,
@@ -217,7 +217,7 @@ class HubertModel2(BaseFairseqModel):
         logger.info(f"dictionary pad index: {task.dictionaries[1].pad_index}")## 1
         logger.info(f"dictionary eos index: {task.dictionaries[1].eos_index}")## 2
         logger.info(f"dictionary unk index: {task.dictionaries[1].unk_index}")## 3
-        model = Voicelm2(cfg, task.cfg, task.dictionaries)
+        model = Voicelm2Model(cfg, task.cfg, task.dictionaries)
         return model
 
     def forward(

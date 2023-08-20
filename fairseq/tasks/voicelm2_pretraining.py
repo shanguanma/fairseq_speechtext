@@ -150,7 +150,7 @@ class Voicelm2PretrainingTask(FairseqTask):
         super().__init__(cfg)
 
         logger.info(f"current directory is {os.getcwd()}")
-        logger.info(f"HubertPretrainingTask Config {cfg}")
+        logger.info(f"Voicelm2PretrainingTask Config {cfg}")
 
         self.cfg = cfg
         self.fine_tuning = cfg.fine_tuning
