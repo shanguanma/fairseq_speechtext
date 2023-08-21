@@ -5,9 +5,9 @@
 - common.user_dir=/workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2
 - dataset.train_subset=train-960
 - dataset.valid_subset='dev-other,dev-clean'
-- distributed_training.distributed_world_size=4
+- distributed_training.distributed_world_size=2
 - distributed_training.distributed_port=-1
 - distributed_training.ddp_backend=legacy_ddp
-- optimization.update_freq=[8]
+- optimization.update_freq=[16]
 - common.tensorboard_logdir=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update
 - checkpoint.save_dir=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update

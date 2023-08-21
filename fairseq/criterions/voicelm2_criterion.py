@@ -14,8 +14,8 @@ import torch.nn.functional as F
 from fairseq import metrics, utils
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
-
-
+import  logging
+logger = logging.getLogger(__name__)
 @dataclass
 class Voicelm2CriterionConfig(FairseqDataclass):
     pred_masked_weight: float = field(
@@ -108,9 +108,12 @@ class Voicelm2Criterion(FairseqCriterion):
         with torch.no_grad():
             for i, logp_m in enumerate(logp_m_list):
                 # corr_m, count_m = compute_correct(logp_m)
+                #logger.info(f"i: {i},  logp_m: {logp_m}")
                 if logp_m.numel() == 0:
                     corr_m, count_m = 0, 0
                 else:
+                    #logger.info(f"targ_m_list: {targ_m_list},its len: {len(targ_m_list)}")
+                    #logger.info(f"logp_m_list: {logp_m_list},its len: {len(logp_m_list)}")
                     corr_m, count_m = (logp_m.argmax(dim=-1)==targ_m_list[i]).sum().item(), len(targ_m_list[i])
                 logging_output[f"correct_m_{i}"] = corr_m
                 logging_output[f"count_m_{i}"] = count_m

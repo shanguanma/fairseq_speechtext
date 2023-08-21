@@ -36,10 +36,10 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
    model_name=pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update
    exp_dir=$dir/pretrain/${model_name}
    mkdir -p $exp_dir
-   world_size=4
-   update_freq=8
+   world_size=2
+   update_freq=16
    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
-   CUDA_VISIBLE_DEVICES=0,1,3,4   python $fairseq_dir/fairseq_cli/hydra_train.py \
+   CUDA_VISIBLE_DEVICES=1,3   python $fairseq_dir/fairseq_cli/hydra_train.py \
             --config-dir $config_dir/config/pretrain \
             --config-name voicelm2_base_librispeech \
             task.data=$tsv_dir\

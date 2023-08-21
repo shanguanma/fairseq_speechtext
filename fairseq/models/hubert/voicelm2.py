@@ -184,7 +184,7 @@ class Voicelm2Model(BaseFairseqModel):
         )
 
         self.encoder = TransformerEncoder(cfg)
-        self.layer_norm = LayerNorm(self.embed)
+        self.layer_norm = LayerNorm(cfg.encoder_embed_dim)
 
         self.target_glu = None
         if cfg.target_glu:
@@ -204,7 +204,10 @@ class Voicelm2Model(BaseFairseqModel):
         if any([d is None for d in dictionaries]):
             logger.info("cannot find dictionary. assume will be used for fine-tuning")
         else:
-            self.num_classes = [len(d) for d in dictionaries]
+            self.num_classes = [len(d) for d in dictionaries]  ##  because  audio and text are  used same  dictionary, 
+                                                                ##  so self.num_classes  should  be  one  element  of  list. ,this element should be 45
+            self.num_classes = [self.num_classes[0]]
+            #logger.info(f"self.num_classes: {self.num_classes},  its  len: {len(self.num_classes)}")
             self.label_embs_concat = nn.Parameter(
                 torch.FloatTensor(sum(self.num_classes), final_dim)
             )
@@ -245,39 +248,41 @@ class Voicelm2Model(BaseFairseqModel):
         """output layer is 1-based"""
         src_audio, src_text = source['audio'], source['text']
         feature_audio = self.forward_features(src_audio, modality='audio') # features: [B, F, T]
+        if target_list is not None:
+            feature_audio, target_list = self.forward_audio_targets(feature_audio, target_list)
+
         feature_audio = feature_audio.transpose(1, 2) #  [B, F, T]  -> [B, T, F]
-        if self.embed != self.encoder_embed_dim:
+        #if self.embed != self.encoder_embed_dim:
+        if self.post_extract_proj is not None:
             feature_audio = self.post_extract_proj(feature_audio) # [B,T,F]
-        feature_text = self.forward_features(src_text, modality='text') # features: [B,S,F]
+        feature_text = self.forward_features(src_text, modality='text') # features: [B,S,F],S is text seq length.
 
         
         ## feature fuse via cross attention qurey is from audio branch, key and value is from text branch
         #feature_audio = feature_audio.transpose(1, 2) ## [B,F,T]->[B,T,F]
         features=None
         if self.modality_fuse=='attention':
-            logger.info(f"feature_text shape: {feature_text.shape}")
-            logger.info(f"feature_audio shape: {feature_audio.shape}")
-            features = self.feature_fuse(query=feature_audio, key=feature_text, value=feature_text) # [B,T,F]
+            #logger.info(f"feature_text shape: {feature_text.shape}") # [B,S,F]
+            #logger.info(f"feature_audio shape: {feature_audio.shape}") # [B,T,F]
+            features,_ = self.feature_fuse(query=feature_audio, key=feature_text, value=feature_text) # [B,T,F]
         elif self.modality_fuse=='flash_attention':
             with torch.backends.cuda.sdp_kernel(enable_math=False):## it default is enable_flash=True, 
                                                                    ## enable_math=True, enable_mem_efficient=True
                 features = F.scaled_dot_product_attention(query=feature_audio,key=feature_text,value=feature_text)
         features = feature_audio + features ## residual add 
 
-
+        #logger.info(f"last  features shape: {features.shape}") # [B,T,F]
         features_pen = features.float().pow(2).mean()
-        features = self.layer_norm(features)
+        features = self.layer_norm(features)  #  [B,T,F]
         if padding_mask is not None:
-            padding_mask = self.forward_padding_mask(features, padding_mask)
+            #logger.info(f"in first padding_mask shape : {padding_mask.shape}") #(B, T'),T' is sample point of audio
+            padding_mask = self.forward_padding_mask(features, padding_mask) # (B, T)
 
-        if target_list is not None:
-            features, target_list = self.forward_audio_targets(features, target_list)
-
-        if self.post_extract_proj is not None:
-            features = self.post_extract_proj(features)
 
         features = self.dropout_input(features)
         if mask:
+            #logger.info(f"features shape: {features.shape}")
+            #logger.info(f"padding_mask shape : {padding_mask.shape}")
             x, mask_indices = self.apply_feature_mask(features, padding_mask)
         else:
             x = features 
@@ -310,13 +315,20 @@ class Voicelm2Model(BaseFairseqModel):
         else:
             logit_m_list = [None for _ in target_list]
             
-        if not self.skip_nomasked: 
+        if not self.skip_nomask: 
             unmask = torch.logical_and(~mask_indices, ~padding_mask).view(-1) # [B*T]
             logit_u_list = [logit[unmask] for logit in logit_list]
             target_u_list = [target.view(-1)[unmask].long() for target in target_list]
         else:
             logit_u_list = [None for _ in target_list]
-
+        #logger.info(f"logit_m_list  len: {len(logit_m_list)}") # its length is same as len(self.num_classes),
+                                                               # it should be is 1 
+        #logger.info(f"logit_u_list  len: {len(logit_u_list)}") # its length is same as len(self.num_classes),
+                                                               # it should be is 1 
+        #logger.info(f"target_m_list  len: {len(target_m_list)}") # its length is same as len(self.num_classes),
+                                                               # it should be is 1 
+        #logger.info(f"target_u_list  len: {len(target_u_list)}") # its length is same as len(self.num_classes),
+                                                               # it should be is 1 
         result = {
             "logit_m_list": logit_m_list,
             "logit_u_list": logit_u_list,
@@ -394,8 +406,8 @@ class Voicelm2Model(BaseFairseqModel):
             #    mask_indices = mask_indices[..., :feat_tsz]
         target_inds = torch.arange(feat_tsz).float() * self.feat2tar_ratio
         target_list = [t[:, target_inds.long()] for t in target_list]
-        return features, mask_indices, target_list
-
+        #return features, mask_indices, target_list
+        return features,  target_list
     def forward_padding_mask(
         self, features: torch.Tensor, padding_mask: torch.Tensor,
     ) -> torch.Tensor:
