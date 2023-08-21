@@ -7,3 +7,5 @@ __pycache__/
 # Distribution / packaging
 build/
 *.egg-info/
+
+examples/*/.hydra
