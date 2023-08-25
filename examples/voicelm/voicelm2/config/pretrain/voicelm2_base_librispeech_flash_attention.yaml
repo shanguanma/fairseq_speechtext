@@ -1,0 +1,120 @@
+# @package _group_
+
+common:
+  fp16: true  ## default true  if it  is true,  fairscale don't support  full_shared ddp_backend
+              ## more details, you  can see fairseq/trainer.py 
+  log_format: json
+  log_interval: 200
+  seed: 1337
+  tensorboard_logdir: tblog
+
+checkpoint:
+  save_interval_updates: 5000
+  keep_interval_updates: 1
+  no_epoch_checkpoints: true
+
+
+distributed_training:
+  ddp_backend: no_c10d
+  distributed_backend: 'nccl'
+  distributed_world_size: 32
+  distributed_port: -1
+  nprocs_per_node: 8
+  find_unused_parameters: true
+
+task:
+  _name: voicelm2_pretraining
+  data: ???
+  label_dir: ???
+  labels: ???
+  label_rate: ${model.label_rate}
+  sample_rate: 16000
+
+  ## audio
+  #max_sample_size: 208000 ##250000/160=1562
+  #loaded 243716, skipped 710 short and 36815 long, longest-loaded=250000, shortest-loaded=32000
+  max_sample_size: 250000
+  min_sample_size: 32000
+  #max_phone_size: 350
+  ## text  loaded 187806 texts, skipped 72499 short and 20936 long longest-loaded=200, shortest-loaded=50
+  max_phone_size: 200
+  min_phone_size: 50
+  pad_audio: false
+  random_crop: true
+  normalize: false # whether is apply layer_norm on wav sample
+
+dataset:
+  num_workers: 6
+  max_tokens: 1400000
+  skip_invalid_size_inputs_valid_test: true
+  validate_interval: 5
+  validate_interval_updates: 10000
+  required_batch_size_multiple: 1 ## ILS-SSL only set.
+
+criterion:
+  _name: voicelm2_criterion
+  pred_masked_weight: 1.0
+  pred_nomask_weight: 0.0
+  loss_weights: [10,]
+
+optimization:
+  max_update: 400000
+  lr: [0.0005]
+  clip_norm: 10.0
+  update_freq: ???
+
+optimizer:
+  _name: adam
+  adam_betas: (0.9,0.98)
+  adam_eps: 1e-06
+  weight_decay: 0.01
+
+lr_scheduler:
+  _name: polynomial_decay
+  warmup_updates: 32000
+
+model:
+  _name: voicelm2
+  label_rate: 50
+  skip_masked: false
+  skip_nomask: false
+  mask_prob: 0.80
+  extractor_mode: default
+  conv_feature_layers: '[(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2'
+  final_dim: 256  
+  encoder_attention_heads: 12
+  encoder_embed_dim: 768
+  encoder_ffn_embed_dim: 3072
+  dropout_input: 0.1
+  dropout_features: 0.1
+  dropout: 0.1
+  attention_dropout: 0.1
+  feature_grad_mult: 0.1
+  activation_dropout: 0.0
+  
+  ### related attention
+  relative_position_embedding: true
+  num_buckets: 320 
+  max_distance: 800 
+  ## 
+  audio_feature_type: 'cnn'
+  modality_fuse: 'flash_attention'
+  fuse_attention_heads: 12 
+  sim_type: 'cosine'
+  attention_type: 'flash_attention'
+
+hydra:
+  job:
+    config:
+      override_dirname:
+        kv_sep: '-'
+        item_sep: '__'
+        exclude_keys:
+          - run
+          - task.data
+          - task.label_dir
+  run:
+    dir: ???
+  sweep:
+    dir: ???
+    subdir: ${hydra.job.config_name}__${hydra.job.override_dirname}
