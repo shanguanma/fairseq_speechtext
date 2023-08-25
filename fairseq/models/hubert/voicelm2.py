@@ -20,15 +20,6 @@ from fairseq.data.data_utils import compute_mask_indices
 from fairseq.data.dictionary import Dictionary
 from fairseq.dataclass import ChoiceEnum, FairseqDataclass
 from fairseq.models import BaseFairseqModel, register_model
-#from fairseq.models.wav2vec.wav2vec2 import (
-    #EXTRACTOR_MODE_CHOICES,
-    #MASKING_DISTRIBUTION_CHOICES,
-    #LAYER_TYPE_CHOICES,
-    #ConvFeatureExtractionModel,
-    #TransformerEncoder,
-    #TransformerSentenceEncoderLayer,
-    #make_conv_pos,
-#)
 from fairseq.models.wavlm.wavlm import (
     ConvFeatureExtractionModel,
     TransformerEncoder,
@@ -339,8 +330,68 @@ class Voicelm2Model(BaseFairseqModel):
         }
 
         return result
+    ## here it don't need to target list, because target list will ocurr in criterions/ctc.py
+    def extract_finetune(
+        self,
+        source: torch.Tensor,
+        padding_mask: Optional[torch.Tensor] = None,
+        mask: bool = True,
+        features_only: bool = False,
+        output_layer: Optional[int] = None
+    ) -> Dict[str, torch.Tensor]:
+        """output layer is 1-based"""
+        src_audio, src_text = source['audio'], source['text']
+     
+        
+        feature_audio = self.forward_features(src_audio, modality='audio') # features: [B, F, T]
+        feature_audio = feature_audio.transpose(1, 2) #  [B, F, T]  -> [B, T, F]
+        #if self.embed != self.encoder_embed_dim:
+        if self.post_extract_proj is not None:
+            feature_audio = self.post_extract_proj(feature_audio) # [B,T,F]
 
- 
+        if src_text is not None:
+            feature_text = self.forward_features(src_text, modality='text') # features: [B,S,F],S is text seq length.
+        else:
+            feature_text = feature_audio.new_zero(feature_audio.size(0),feature_audio.size(1),feature_audio.size(2))            
+
+        ## feature fuse via cross attention qurey is from audio branch, key and value is from text branch
+        #feature_audio = feature_audio.transpose(1, 2) ## [B,F,T]->[B,T,F]
+        features=None
+        if self.modality_fuse=='attention':
+            #logger.info(f"feature_text shape: {feature_text.shape}") # [B,S,F]
+            #logger.info(f"feature_audio shape: {feature_audio.shape}") # [B,T,F]
+            features,_ = self.feature_fuse(query=feature_audio, key=feature_text, value=feature_text) # [B,T,F]
+        elif self.modality_fuse=='flash_attention':
+            with torch.backends.cuda.sdp_kernel(enable_math=False):## it default is enable_flash=True,
+                features = F.scaled_dot_product_attention(query=feature_audio,key=feature_text,value=feature_text)
+        features = feature_audio + features ## residual add
+
+        #logger.info(f"last  features shape: {features.shape}") # [B,T,F]
+        features_pen = features.float().pow(2).mean()
+        features = self.layer_norm(features)  #  [B,T,F]
+        if padding_mask is not None:
+            #logger.info(f"in first padding_mask shape : {padding_mask.shape}") #(B, T'),T' is sample point of audio
+            padding_mask = self.forward_padding_mask(features, padding_mask) # (B, T)
+
+
+        features = self.dropout_input(features)
+        if mask:
+            #logger.info(f"features shape: {features.shape}")
+            #logger.info(f"padding_mask shape : {padding_mask.shape}")
+            x, mask_indices = self.apply_feature_mask(features, padding_mask)
+        else:
+            x = features
+            mask_indices = None
+
+        # target: (B, T), long
+        # x: (B, T, F), float
+        # padding_mask: (B, T), bool
+        # mask_indices: (B, T), bool
+        x, _ = self.encoder(
+            x,
+            padding_mask=padding_mask,
+            layer=None if output_layer is None else output_layer - 1
+        ) 
     def apply_feature_mask(self, x, padding_mask):
         B, T, C = x.shape
         if self.mask_prob > 0:
