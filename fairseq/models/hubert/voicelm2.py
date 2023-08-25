@@ -80,7 +80,12 @@ class Voicelm2Config(HubertConfig2):
     max_source_positions: int = field(
         default=512,
         metadata={"help": "Maximum input length supported by the transformer encoder"},
-    ) 
+    )
+
+    attention_type: str = field(default='rel_attention', metadata={'help': '''now it contains two options: rel_attention, flash_attention,
+                                                                   rel_attention is has relative attention baise using bucket,'
+                                                                  'it is MultiheadAttention2, flash_attetion is Fast 
+                                                                   and Memory-Efficient multi head attention, but require cuda>=11.4, pytorch>=1.12''' })
 class TextModel(nn.Module):
     def __init__(self,input_dim=None, cfg=None, padding_idx=None):
         super().__init__()

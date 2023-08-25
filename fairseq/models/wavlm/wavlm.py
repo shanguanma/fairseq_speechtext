@@ -667,6 +667,8 @@ class TransformerEncoder(nn.Module):
                     max_distance=self.max_distance,
                     gru_rel_pos=self.gru_rel_pos,
                     expand_attention_head_size=self.expand_attention_head_size,
+                    attention_type=args.attention_type,
+
                 )
                 for i in range(args.encoder_layers)
             ]

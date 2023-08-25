@@ -27,6 +27,7 @@ from fairseq.modules import (
     LayerNorm,
     GumbelVectorQuantizer,
     MultiheadAttention2,
+    MHA,
     SamePad,
     TransposeLast,
 )
@@ -1034,28 +1035,51 @@ class TransformerSentenceEncoderLayer(nn.Module):
         rescale_init: bool = False,
         gru_rel_pos: bool = False,
         expand_attention_head_size: int = -1,
+        attention_type: str = "rel_attention",
     ) -> None:
         super().__init__()
         # Initialize parameters
         self.embedding_dim = embedding_dim
         self.dropout = dropout
         self.activation_dropout = activation_dropout
+        self.attention_type = attention_type
 
         # Initialize blocks
         self.activation_name = activation_fn
         self.activation_fn = utils.get_activation_fn(activation_fn)
-        self.self_attn = MultiheadAttention2(
-            self.embedding_dim,
-            num_attention_heads,
-            dropout=attention_dropout,
-            self_attention=True,
-            has_relative_attention_bias=has_relative_attention_bias,
-            num_buckets=num_buckets,
-            max_distance=max_distance,
-            rescale_init=rescale_init,
-            gru_rel_pos=gru_rel_pos,
-            expand_attention_head_size=expand_attention_head_size,
-        )
+        if self.attention_type == "rel_attention":
+            logger.info(f"using rel_attention now!")
+            self.self_attn = MultiheadAttention2(
+                self.embedding_dim,
+                num_attention_heads,
+                dropout=attention_dropout,
+                self_attention=True,
+                has_relative_attention_bias=has_relative_attention_bias,
+                num_buckets=num_buckets,
+                max_distance=max_distance,
+                rescale_init=rescale_init,
+                gru_rel_pos=gru_rel_pos,
+                expand_attention_head_size=expand_attention_head_size,
+            )
+
+        elif self.attention_type == "flash_attention": ## only suport torch.float16 and torch.bfloat16
+            logger.info(f"using flash_attention now!")
+            head_dim = self.embedding_dim // num_attention_heads
+            logger.info(f"self.embedding_dim")
+            logger.info(f"self.embedding_dim: {type(self.embedding_dim)}, head_dim type: {type(head_dim)}, head_dim: {head_dim}")
+            assert self.embedding_dim % head_dim == 0
+            
+            
+            self.self_attn = MHA(
+                self.embedding_dim,
+                num_attention_heads,
+                rotary_emb_dim=int(head_dim // 2),
+                use_flash_attn=True,
+                fused_bias_fc=True,
+                causal=False,
+                cross_attn=False,
+                dropout=attention_dropout,
+            )
 
         self.dropout1 = nn.Dropout(dropout)
         self.dropout2 = nn.Dropout(self.activation_dropout)
@@ -1192,6 +1216,7 @@ class TransformerEncoder(nn.Module):
                     max_distance=self.max_distance,
                     gru_rel_pos=args.gru_rel_pos,
                     expand_attention_head_size=args.expand_attention_head_size,
+                    attention_type=args.attention_type,
                 )
                 for i in range(args.encoder_layers)
             ]
