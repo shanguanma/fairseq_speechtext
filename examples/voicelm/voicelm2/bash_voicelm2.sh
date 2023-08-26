@@ -73,13 +73,15 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
    #dir=/workspace2/maduo/exp
    #label_dir=$tsv_dir/librispeech_lm_monophncode_using_monophn_dict_librispeech_frame_monophncode_using_wav2vec-u2_model
    config_dir=$fairseq_dir/examples/voicelm/voicelm2
-   model_name=pretrain_on_base_voicelm2_2gpu_16update_960h_400k_update_flash_attention_debug
+   model_name=pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention
+   #model_name=pretrain_on_base_voicelm2_2gpu_16update_960h_400k_update_flash_attention_debug
    exp_dir=$dir/pretrain/${model_name}
    mkdir -p $exp_dir
-   #world_size=4
-   #update_freq=8
-   world_size=2
-   update_freq=16
+   world_size=4
+   update_freq=8
+   #world_size=2
+   #update_freq=16
+
    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
    python $fairseq_dir/fairseq_cli/hydra_train.py \
             --config-dir $config_dir/config/pretrain \
@@ -103,7 +105,8 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
             checkpoint.save_dir=$exp_finetune_dir\
             hydra.run.dir=$fairseq_dir/examples/voicelm/voicelm2\
             hydra.job.name=$exp_finetune_dir/finetune
-
+### 4A100: training about  day
+###           200steps: about  minites
 fi
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
    echo "iter1: finetune voicelm2 on train-clean-100 on 80k steps"

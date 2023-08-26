@@ -24,6 +24,12 @@ from fairseq.models.wavlm.wavlm import (
     ConvFeatureExtractionModel,
     TransformerEncoder,
 )
+#from fairseq.models.wavlm.wavlm import (
+#    ConvFeatureExtractionModel,
+#)
+#from fairseq.models.unispeech_sat.unispeech_sat import (
+#    TransformerEncoder,
+#)
 
 from fairseq.modules import GradMultiply, LayerNorm
 from fairseq.modules import PositionalEmbedding

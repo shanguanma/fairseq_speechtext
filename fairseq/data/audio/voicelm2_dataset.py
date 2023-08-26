@@ -25,11 +25,11 @@ from fairseq.data.audio.audio_utils import (
 import io
 
 
-import torch.nn as nn
-from fairseq import search, utils
-from fairseq.models import FairseqIncrementalDecoder
-from torch import Tensor
-from fairseq.ngram_repeat_block import NGramRepeatBlock
+#import torch.nn as nn
+#from fairseq import search, utils
+#from fairseq.models import FairseqIncrementalDecoder
+#from torch import Tensor
+#from fairseq.ngram_repeat_block import NGramRepeatBlock
 
 
 logger = logging.getLogger(__name__)
@@ -532,7 +532,7 @@ class Voicelm2Dataset(FairseqDataset):
             with torch.no_grad():
                 wav = F.layer_norm(wav, wav.shape)
         return wav
-
+'''
 ## the below is from av_hubert/avhubert/sequence_generator.py
 ## it is used at task/voicelm2_pretraining.py, it is used to serve sequence to sequence asr decoding for finetune model. 
 class SequenceGenerator(nn.Module):
@@ -1501,3 +1501,5 @@ class EnsembleModelWithAlignment(EnsembleModel):
         if len(self.models) > 1:
             avg_attn.div_(len(self.models))
         return avg_attn
+
+    '''

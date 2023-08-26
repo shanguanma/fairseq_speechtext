@@ -583,6 +583,8 @@ class MHA(nn.Module):
             inference_params: for generation. Adapted from Megatron-LM (and Apex)
             https://github.com/NVIDIA/apex/blob/3ff1a10f72ec07067c4e44759442329804ac5162/apex/transformer/testing/standalone_transformer_lm.py#L470
         """
+        ### md note: in order to same as multihead_attention3.py input(x) format(seqlen,batch, hidden_dim) 
+        x = x.transpose(0, 1) # (seqlen,batch, hidden_dim) -> (batch, seqlen, hidden_dim)
         if cu_seqlens is not None:
             assert max_seqlen is not None
             assert key_padding_mask is None
@@ -687,6 +689,8 @@ class MHA(nn.Module):
             else:
                 context = self._apply_rotary_single_query_attention(q, inference_params, kv=kv)
         out = self.out_proj(rearrange(context, "... h d -> ... (h d)"))
+        ### md note: in order to same as multihead_attention3.py output format(seqlen,batch, hidden_dim)
+        out = out.transpose(0, 1)
         return out if not self.return_residual else (out, x)
 
 
@@ -916,4 +920,4 @@ class ParallelMHA(nn.Module):
         if seqlen is not None:
             context = rearrange(context, "b s d -> (b s) d")
         out = self.out_proj(context)
-        return out
+        return out 

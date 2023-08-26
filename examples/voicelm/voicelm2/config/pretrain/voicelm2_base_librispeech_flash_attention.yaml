@@ -98,7 +98,7 @@ model:
   max_distance: 800 
   ## 
   audio_feature_type: 'cnn'
-  modality_fuse: 'flash_attention'
+  modality_fuse: 'attention'
   fuse_attention_heads: 12 
   sim_type: 'cosine'
   attention_type: 'flash_attention'
