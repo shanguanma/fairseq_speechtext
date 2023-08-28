@@ -229,6 +229,9 @@ def _generate_mask(indices: Tensor, max_row_len: int) -> Tensor:
 
     return bool_mask.scatter_(1, indices, True)
 
+def apply_temporal_mask(x: Tensor, temporal_mask: Tensor) -> Tensor:
+    """Apply the specified temporal mask to ``x``."""
+    return x[temporal_mask].unflatten(0, (x.size(0), -1))  # type: ignore[no-any-return]
 
 '''
 ## how to use the script:
