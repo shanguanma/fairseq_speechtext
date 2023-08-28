@@ -98,10 +98,10 @@ model:
   max_distance: 800 
   ## 
   audio_feature_type: 'cnn'
-  modality_fuse: 'attention'
+  modality_fuse: 'attention' ## 'flash_attention':  pytorch version . attention:  pytorch version
   fuse_attention_heads: 12 
   sim_type: 'cosine'
-  attention_type: 'flash_attention'
+  attention_type: 'flash_attention' ## 'flash_attention' and 'rel_attention': relative attention bais with normal self attention
 
 hydra:
   job:
