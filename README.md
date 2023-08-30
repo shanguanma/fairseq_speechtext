@@ -1,7 +1,11 @@
 
 
 fairseq_speechtext project focus on dataset and model part of multi-modual pretraining(i.e: speech and text) for research.
-Fairseq_speechtext design principles:
+# fairseq_speechtext design principles:
+
+This repository follows the main principle of openness through clarity.
+
+fairseq_speechtext is 
 
 * Support complete recipe.
 * Single-file implementation without boilerplate.
