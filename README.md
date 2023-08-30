@@ -10,16 +10,16 @@ Fairseq_speechtext design principles:
 Avoiding code duplication is not a goal. Readability and hackability are.
 
 --------------------------------------------------------------------------------
-# Requirements and Installation
+# Setup
+* base environment requirenment:
+  * [PyTorch](http://pytorch.org/) version >= 1.10.0
+  * Python version >= 3.8
+  * For training new models, you'll also need an NVIDIA GPU and [NCCL](https://github.com/NVIDIA/nccl)
+  
 
 
-* [PyTorch](http://pytorch.org/) version >= 1.10.0
-* Python version >= 3.8
-* For training new models, you'll also need an NVIDIA GPU and [NCCL](https://github.com/NVIDIA/nccl)
-* **To install fairseq** and develop locally:
-
-``` bash
-## for pytorch==2.0  version
+* for pytorch==2.0  version
+```
 . "/home/maduo/miniconda3/etc/profile.d/conda.sh"
 conda create -n fairseq_speechtext python=3.9 -y
  conda activate fairseq_speechtext
@@ -34,11 +34,13 @@ for fixing ImportError: cannot import name 'get_ref_type' from 'omegaconf._utils
 you  should pip install omegaconf==2.1.2 
 ##for fairseq c++ part compile
 python setup.py build_ext --inplace
+```
 
 
 
+* For pytorch 1. version(e.g. pytorch=1.11.0)
 
-## for pytorch 1.* version(e.g. pytorch=1.11.0)
+``` bash
 . "/home/maduo/miniconda3/etc/profile.d/conda.sh"
 conda create -n fairseq_speechtext python=3.9 -y
  conda activate fairseq_speechtext
@@ -56,13 +58,16 @@ pip install  timm  torchvision==0.12.0 -i https://pypi.tuna.tsinghua.edu.cn/simp
 
 for fixing ImportError: cannot import name 'get_ref_type' from 'omegaconf._utils'
 you  should pip install omegaconf==2.1.2
-
-##for fairseq c++ part compile
-python setup.py build_ext --inplace
 ```
 
-# For ASR decoding, you need install the below library:
-```
+* For fairseq c++ part compile
+
+
+`python setup.py build_ext --inplace`
+
+
+* For ASR decoding, you need install the below library:
+``` bash
 ## in order to use fairseq decoder, you now can install it as follows:
 ## install flashlight text
 ## it offer beam_search decoder and dictioanry utils
@@ -76,9 +81,9 @@ git clone https://github.com/flashlight/sequence && cd sequence
 pip install .
 ```
 
-# For faster training, it will support float16.
+* For faster training, it will support float16.
  install NVIDIA's [apex](https://github.com/NVIDIA/apex) library:
-```
+``` bash
 git clone https://github.com/NVIDIA/apex
 cd apex
 pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" \
