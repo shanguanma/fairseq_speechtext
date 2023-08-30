@@ -52,8 +52,20 @@ you  should pip install omegaconf==2.1.2
 ##for fairseq c++ part compile
 python setup.py build_ext --inplace
 
-```
 
+For ASR decoding
+```
+## in order to use fairseq decoder, you now can install it as follows:
+## install flashlight text
+pip install flashlight-text  -i https://pypi.tuna.tsinghua.edu.cn/simple ## it offer beam_search decoder and dictioanry utils
+## install kenlm
+pip install https://github.com/kpu/kenlm/archive/master.zip  ## offer n-gram 
+## instll flashlight sequence
+export USE_CUDA=1
+git clone https://github.com/flashlight/sequence && cd sequence 
+pip install .
+```
+```
 * **For faster training** install NVIDIA's [apex](https://github.com/NVIDIA/apex) library:
 
 ``` bash
@@ -68,3 +80,10 @@ pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cud
 * If you use Docker make sure to increase the shared memory size either with `--ipc=host` or `--shm-size`
  as command line options to `nvidia-docker run` .
 
+
+Note: `*config`: means that specify setting parameters of model.
+      `recipe shell script`: means that it is the entry procedure for the proposed method, where you can see the complete recipe for the use of the configuration file, which should all be reproduced or learnt from here. 
+What's New:
+
+August 2023: [flash_attention2](https://github.com/shanguanma/fairseq_speechtext/blob/main/fairseq/modules/multihead_attention3.py) are supported. check out example [config](https://github.com/shanguanma/fairseq_speechtext/blob/main/examples/voicelm/voicelm2/config/pretrain/voicelm2_base_librispeech_flash_attention.yaml),[recipe shell script](https://github.com/shanguanma/fairseq_speechtext/blob/main/examples/voicelm/voicelm2/bash_voicelm2.sh).
+April 2023: interget flashlight library for ASR beam search decoding and kenlm decoding. check out example [viterbi decoding config](https://github.com/shanguanma/fairseq_speechtext/blob/main/examples/speech_recognition/new/conf/infer_viterbi_librispeech.yaml),[kenlm decoding config]((https://github.com/shanguanma/fairseq_speechtext/blob/main/examples/speech_recognition/new/conf/infer_kenlm_lirispeech.yaml),[fairseq lm decoding_config](https://github.com/shanguanma/fairseq_speechtext/blob/main/examples/speech_recognition/new/conf/infer_fsqlm_librispeech.yaml)[recipe_shell_script](https://github.com/shanguanma/fairseq_speechtext/blob/main/examples/voicelm/base_voicelm.sh)
