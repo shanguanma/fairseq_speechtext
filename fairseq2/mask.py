@@ -104,6 +104,10 @@ def compute_mask(
 
     :param shape:
         The two dimensional shape for which to compute a mask.
+        for example: if shape=(batch_size, seq_len), it will return temporal_mask
+                     it shape is same as (batch_size, seq_len)
+                     if shape=(batch_size, model_dim),it will return  spatial_mask
+                     it shape is same as (batch_size, model_dim).
     :param span_len:
         The length of each mask span.
     :param max_mask_prob:
@@ -119,7 +123,7 @@ def compute_mask(
         The device on which to initialize the mask.
 
     :returns:
-        A boolean mask. *:Shape:* ``shape``.
+        A boolean mask. *:Shape:* ``shape``.its shape is same as param shape
     """
     num_rows, max_row_len = shape
 
@@ -231,7 +235,16 @@ def _generate_mask(indices: Tensor, max_row_len: int) -> Tensor:
 
 
 def apply_temporal_mask(x: Tensor, temporal_mask: Tensor) -> Tensor:
-    """Apply the specified temporal mask to ``x``."""
+    """Apply the specified temporal mask to ``x``.
+       
+       :param x: 
+             shape: (B,T,C)
+       :param temporal_mask: 
+             shape: (B,T), A boolean mask, all True elements will be masked.
+       :returns:
+             shape: (T_true_nums,C), T_true_nums: sum of true positions of all utterances in temporal_mask
+    """
+
     return x[temporal_mask].unflatten(0, (x.size(0), -1))  # type: ignore[no-any-return]
 
 
