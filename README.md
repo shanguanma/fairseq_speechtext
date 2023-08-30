@@ -1,11 +1,11 @@
 
 
-fairseq_speechtext project focus on multi-modual pretraining(i.e: speech and text) for research.
+fairseq_speechtext project focus on dataset and model part of multi-modual pretraining(i.e: speech and text) for research.
 Fairseq_speechtext design principles:
 
-* simple: support complete recipe.
-          Single-file implementation without boilerplate.
-          Decoupling of the data and training components.
+* Support complete recipe.
+* Single-file implementation without boilerplate.
+* Decoupling of the data and training components.
 
 Avoiding code duplication is not a goal. Readability and hackability are.
 
