@@ -28,7 +28,11 @@ from fairseq.models import (
     FairseqIncrementalDecoder,
     register_model,
 )
-from fairseq.models.wav2vec.wav2vec2 import MASKING_DISTRIBUTION_CHOICES, LAYER_TYPE_CHOICES, AdapterFast
+from fairseq.models.wav2vec.wav2vec2 import (
+    MASKING_DISTRIBUTION_CHOICES,
+    LAYER_TYPE_CHOICES,
+    AdapterFast,
+)
 from fairseq.modules import LayerNorm, PositionalEmbedding, TransformerDecoderLayer
 from fairseq.tasks import FairseqTask
 
@@ -177,20 +181,13 @@ class Wav2Vec2AsrConfig(FairseqDataclass):
 
     layer_decay: float = 1
 
-
     layer_type: LAYER_TYPE_CHOICES = field(
         default="transformer", metadata={"help": "layer type in encoder"}
     )
     # Adapter num
-    adp_num: int = field(
-        default=-1
-    )
-    adp_dim: int = field(
-        default=64
-    )
-    adp_act_fn: str = field(
-        default="relu"
-    )
+    adp_num: int = field(default=-1)
+    adp_dim: int = field(default=64)
+    adp_act_fn: str = field(default="relu")
     adp_trf_idx: str = field(
         default="all",
     )
@@ -198,6 +195,7 @@ class Wav2Vec2AsrConfig(FairseqDataclass):
     freeze_regex: Optional[str] = field(
         default=None,
     )
+
 
 @dataclass
 class Wav2Vec2CtcConfig(Wav2Vec2AsrConfig):
@@ -438,9 +436,14 @@ class Wav2VecEncoder(FairseqEncoder):
             )
 
             with open_dict(w2v_args):
-                args_replacement = ["checkpoint_activations", "layer_type", 
-                    "adp_num", "adp_dim",
-                    "adp_act_fn", "adp_trf_idx"]
+                args_replacement = [
+                    "checkpoint_activations",
+                    "layer_type",
+                    "adp_num",
+                    "adp_dim",
+                    "adp_act_fn",
+                    "adp_trf_idx",
+                ]
                 for _args in args_replacement:
                     if hasattr(cfg, _args) and getattr(cfg, _args, None) is not None:
                         w2v_args.model[_args] = getattr(cfg, _args, None)
@@ -586,7 +589,6 @@ class Wav2VecEncoder(FairseqEncoder):
         self.num_updates = num_updates
 
     def forward(self, source, padding_mask, **kwargs):
-
         w2v_args = {
             "source": source,
             "padding_mask": padding_mask,
@@ -752,7 +754,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
             tmp = torch.zeros(
                 [len(prev_output_tokens), max_len], device=prev_output_tokens[0].device
             )
-            for (i, p) in enumerate(prev_output_tokens):
+            for i, p in enumerate(prev_output_tokens):
                 tmp[i, : len(p)] = p
             prev_output_tokens = tmp
 

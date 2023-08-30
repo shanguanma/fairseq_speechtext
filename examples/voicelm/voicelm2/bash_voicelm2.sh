@@ -5,6 +5,11 @@ stage=0
 stop_stage=1000
 .  utils/parse_options.sh
 . path_for_fairseq_speechtext.sh ## pytorch 2.0 fairseq flashnight-text flashnight sequence
+#pip install -U flash-attn==2.0.8 
+
+#pip install flash-attn --no-build-isolation
+#cd codebase/flash-attention/
+#python setup.py install
 
 export HYDRA_FULL_ERROR=1
 export CUDA_LAUNCH_BLOCKING=1

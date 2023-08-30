@@ -25,11 +25,11 @@ from fairseq.data.audio.audio_utils import (
 import io
 
 
-#import torch.nn as nn
-#from fairseq import search, utils
-#from fairseq.models import FairseqIncrementalDecoder
-#from torch import Tensor
-#from fairseq.ngram_repeat_block import NGramRepeatBlock
+# import torch.nn as nn
+# from fairseq import search, utils
+# from fairseq.models import FairseqIncrementalDecoder
+# from torch import Tensor
+# from fairseq.ngram_repeat_block import NGramRepeatBlock
 
 
 logger = logging.getLogger(__name__)
@@ -149,12 +149,14 @@ def verify_label_lengths(
             f"total {num_invalid} (audio, label) pairs with mismatched lengths"
         )
 
+
 ## compared sthubert_dataset2.py , its difference is as follows:
 ## 1. in the get_text(),construct multimodal utterance in raw text phone code.
-## 2. different from av-hubert, our fusion style is either residual cross attention or add. 
+## 2. different from av-hubert, our fusion style is either residual cross attention or add.
+
 
 ### The version of this dataset requires number of text utternce same as  number of speech utterance.
-### however,it is random text utterances of in per batch. 
+### however,it is random text utterances of in per batch.
 ### and add text ntokens into batch, this parameter is only used by computing ctc loss for text part
 class Voicelm2Dataset(FairseqDataset):
     def __init__(
@@ -173,19 +175,19 @@ class Voicelm2Dataset(FairseqDataset):
         max_keep_phone_size: Optional[int] = None,
         min_keep_phone_size: Optional[int] = None,
         max_sample_size: Optional[int] = None,
-        text_seq: bool = True,  ## if it is true,it will keep all text utterance. here text_seq is unpaired text.it is used as text modal 
+        text_seq: bool = True,  ## if it is true,it will keep all text utterance. here text_seq is unpaired text.it is used as text modal
         shuffle: bool = True,
         pad_audio: bool = False,
         normalize: bool = False,
         store_labels: bool = True,
         random_crop: bool = False,
         single_target: bool = False,
-        is_s2s: bool = False, ## it is used to determine ctc finetune or cross entropy loss finetune.
-                              ## if it is true, target text is origanized for cross entropy loss fintune.
-                              ## otherwise, target text is origanized for ctc loss fintune.
-        text_drop: bool = False, # if it is true, speech and paired text are used to finetune model, unpair text is missing.
-                                 # if it is false, speech and paired code label and unpair text code are used to pretrain model.
-   ):
+        is_s2s: bool = False,  ## it is used to determine ctc finetune or cross entropy loss finetune.
+        ## if it is true, target text is origanized for cross entropy loss fintune.
+        ## otherwise, target text is origanized for ctc loss fintune.
+        text_drop: bool = False,  # if it is true, speech and paired text are used to finetune model, unpair text is missing.
+        # if it is false, speech and paired code label and unpair text code are used to pretrain model.
+    ):
         self.audio_root, self.audio_names, inds, tot, self.sizes = load_audio(
             manifest_path, max_keep_sample_size, min_keep_sample_size
         )
@@ -205,7 +207,7 @@ class Voicelm2Dataset(FairseqDataset):
         self.label_processors = label_processors
         self.single_target = single_target
         self.is_s2s = is_s2s
-        self.text_drop=text_drop
+        self.text_drop = text_drop
         self.label_rates = (
             [label_rates for _ in range(len(label_paths))]
             if isinstance(label_rates, float)
@@ -253,35 +255,36 @@ class Voicelm2Dataset(FairseqDataset):
         return wav
 
     def get_text(self, index):
-        #print(f"in the get_text func: index: {index}")
-        utt = self.text_contents[index] ## str
-         
-        label = self.get_label(index,0) ## label is a utt speech label, it is a tensor
-        label_unique, count = torch.unique_consecutive(label, return_counts=True) 
-        label2counts=dict()
-        
-        for ele,c in zip(label_unique.tolist(), count.tolist()):
-            ele = str(ele) ## int to str
-            c = str(c) 
+        # print(f"in the get_text func: index: {index}")
+        utt = self.text_contents[index]  ## str
+
+        label = self.get_label(index, 0)  ## label is a utt speech label, it is a tensor
+        label_unique, count = torch.unique_consecutive(label, return_counts=True)
+        label2counts = dict()
+
+        for ele, c in zip(label_unique.tolist(), count.tolist()):
+            ele = str(ele)  ## int to str
+            c = str(c)
             if ele not in label2counts.keys():
                 label2counts[ele] = [c]
             else:
-                label2counts[ele] += [c] ### list splicing
-        
+                label2counts[ele] += [c]  ### list splicing
+
         unqiue_labels = len(label2counts)
-        k = unqiue_labels//2
-        labels_keys_list =random.choices(list(label2counts),k=k)
+        k = unqiue_labels // 2
+        labels_keys_list = random.choices(list(label2counts), k=k)
         new_l = []
         for s in utt.split():
             if s in labels_keys_list:
                 frames_count_list = label2counts[s]
-                n = secrets.choice(frames_count_list) ## Choose a random item from the list securely
-                new_l.extend([s]*int(n))
+                n = secrets.choice(
+                    frames_count_list
+                )  ## Choose a random item from the list securely
+                new_l.extend([s] * int(n))
             else:
                 new_l.extend([s])
-        new_utt = ' '.join(new_l) ## str, it is multi modal text seq utterance
-         
-        
+        new_utt = " ".join(new_l)  ## str, it is multi modal text seq utterance
+
         ## encode every  text utterances into tensor
         if self.text_processors is not None:
             utt = self.text_processors[0](new_utt)
@@ -312,7 +315,7 @@ class Voicelm2Dataset(FairseqDataset):
             idx = np.random.choice(list_id)
         text = self.get_text(idx)
         labels = self.get_labels(index)
-        #logger.info(f"in __getitem__: text: {text}")
+        # logger.info(f"in __getitem__: text: {text}")
         return {"id": index, "source": wav, "text": text, "label_list": labels}
 
     def __len__(self):
@@ -347,14 +350,18 @@ class Voicelm2Dataset(FairseqDataset):
             audios, audio_size
         )
         texts = [[s["text"] for s in samples]]
-        #logger.info(f"in collater, texts lengths : {len(texts)}, texts : {texts}") # texts lengths=1,
-        if not self.text_drop: ## pretrain mode 
+        # logger.info(f"in collater, texts lengths : {len(texts)}, texts : {texts}") # texts lengths=1,
+        if not self.text_drop:  ## pretrain mode
             collated_texts, text_lengths_list, text_ntokens_list = self.collater_text(
                 texts, audio_size, audio_starts
             )
-        else: ## only for normal finetune (i.e.: only using speech and paired text)
-            collated_texts, text_lengths_list, text_ntokens_list = [None], [None], [None]
- 
+        else:  ## only for normal finetune (i.e.: only using speech and paired text)
+            collated_texts, text_lengths_list, text_ntokens_list = (
+                [None],
+                [None],
+                [None],
+            )
+
         targets_by_label = [
             [s["label_list"][i] for s in samples] for i in range(self.num_labels)
         ]
@@ -374,7 +381,10 @@ class Voicelm2Dataset(FairseqDataset):
             batch["target_lengths"] = label_lengths_list[0]
             batch["ntokens"] = label_ntokens_list[0]
             if self.is_s2s:
-                batch['target'], net_input['prev_output_tokens'] = targets_list[0][0], targets_list[0][1]
+                batch["target"], net_input["prev_output_tokens"] = (
+                    targets_list[0][0],
+                    targets_list[0][1],
+                )
             else:
                 batch["target"] = targets_list[0]
             batch["text_lengths_list"] = text_lengths_list[0]
@@ -436,11 +446,21 @@ class Voicelm2Dataset(FairseqDataset):
     def collater_seq_label_s2s(self, targets, pad):
         lengths = torch.LongTensor([len(t) for t in targets])
         ntokens = lengths.sum().item()
-        pad, eos = self.label_processors[0].dictionary.pad(), self.label_processors[0].dictionary.eos()
-        targets_ = data_utils.collate_tokens(targets, pad_idx=pad, eos_idx=eos, left_pad=False)
-        prev_output_tokens = data_utils.collate_tokens(targets, pad_idx=pad, eos_idx=eos, left_pad=False, move_eos_to_beginning=True)
+        pad, eos = (
+            self.label_processors[0].dictionary.pad(),
+            self.label_processors[0].dictionary.eos(),
+        )
+        targets_ = data_utils.collate_tokens(
+            targets, pad_idx=pad, eos_idx=eos, left_pad=False
+        )
+        prev_output_tokens = data_utils.collate_tokens(
+            targets,
+            pad_idx=pad,
+            eos_idx=eos,
+            left_pad=False,
+            move_eos_to_beginning=True,
+        )
         return (targets_, prev_output_tokens), lengths, ntokens
-
 
     def collater_frm_text(self, texts, audio_size, audio_starts, label_rate, pad):
         assert label_rate > 0
@@ -448,7 +468,7 @@ class Voicelm2Dataset(FairseqDataset):
         frm_starts = [int(round(s * s2f)) for s in audio_starts]
         frm_size = int(round(audio_size * s2f))
         ### (TODO) text must be equal to speech lenght?
-        #if not self.pad_audio:
+        # if not self.pad_audio:
         #    rem_size = [len(t) - s for t, s in zip(texts, frm_starts)]
         #    frm_size = min(frm_size, *rem_size)
         texts = [t[s : s + frm_size] for t, s in zip(texts, frm_starts)]
@@ -491,7 +511,9 @@ class Voicelm2Dataset(FairseqDataset):
         for targets, label_rate, pad in itr:
             if label_rate == -1:
                 if self.is_s2s:
-                    targets, lengths, ntokens = self.collater_seq_label_s2s(targets, pad)
+                    targets, lengths, ntokens = self.collater_seq_label_s2s(
+                        targets, pad
+                    )
                 else:
                     targets, lengths, ntokens = self.collater_seq_label(targets, pad)
             else:
@@ -532,6 +554,8 @@ class Voicelm2Dataset(FairseqDataset):
             with torch.no_grad():
                 wav = F.layer_norm(wav, wav.shape)
         return wav
+
+
 '''
 ## the below is from av_hubert/avhubert/sequence_generator.py
 ## it is used at task/voicelm2_pretraining.py, it is used to serve sequence to sequence asr decoding for finetune model. 

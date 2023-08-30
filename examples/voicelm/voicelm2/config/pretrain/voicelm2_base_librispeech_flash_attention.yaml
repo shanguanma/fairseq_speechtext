@@ -59,7 +59,7 @@ criterion:
 
 optimization:
   max_update: 400000
-  lr: [0.0005]
+  lr: [0.000001] ## default = [0.0005], util to epoch 113, steps=125400, Minimum loss scale reached (0.0001). Your loss is probably exploding. 
   clip_norm: 10.0
   update_freq: ???
 

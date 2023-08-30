@@ -4,7 +4,7 @@
 # This source code is licensed under the license found in the
 # LICENSE file in the root directory of this source tree.
 
-import sys,logging
+import sys, logging
 import contextlib
 import tempfile
 from argparse import Namespace
@@ -16,12 +16,17 @@ from dataclasses import dataclass, field
 from fairseq import checkpoint_utils, tasks, utils
 from fairseq.dataclass import FairseqDataclass
 from fairseq.dataclass.utils import convert_namespace_to_omegaconf
-from fairseq.models import BaseFairseqModel, FairseqEncoder, FairseqEncoderDecoderModel, register_model
+from fairseq.models import (
+    BaseFairseqModel,
+    FairseqEncoder,
+    FairseqEncoderDecoderModel,
+    register_model,
+)
 from fairseq.models.hubert.hubert import MASKING_DISTRIBUTION_CHOICES
 from fairseq.tasks import FairseqTask
 from omegaconf import II, MISSING
 
-DBG=True if len(sys.argv) == 1 else False
+DBG = True if len(sys.argv) == 1 else False
 
 if DBG:
     from hubert import AVHubertModel
@@ -35,9 +40,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class AVHubertAsrConfig(FairseqDataclass):
-    w2v_path: str = field(
-        default=MISSING, metadata={"help": "path to hubert model"}
-    )
+    w2v_path: str = field(default=MISSING, metadata={"help": "path to hubert model"})
     no_pretrained_weights: bool = field(
         default=False,
         metadata={"help": "if true, does not load pretrained weights"},
@@ -48,9 +51,7 @@ class AVHubertAsrConfig(FairseqDataclass):
     )
     final_dropout: float = field(
         default=0.0,
-        metadata={
-            "help": "dropout after transformer and before final projection"
-        },
+        metadata={"help": "dropout after transformer and before final projection"},
     )
     dropout: float = field(
         default=0.0,
@@ -59,15 +60,13 @@ class AVHubertAsrConfig(FairseqDataclass):
     attention_dropout: float = field(
         default=0.0,
         metadata={
-            "help": "dropout probability for attention weights "
-            "inside hubert model"
+            "help": "dropout probability for attention weights " "inside hubert model"
         },
     )
     activation_dropout: float = field(
         default=0.0,
         metadata={
-            "help": "dropout probability after activation in FFN "
-            "inside hubert model"
+            "help": "dropout probability after activation in FFN " "inside hubert model"
         },
     )
 
@@ -198,9 +197,7 @@ class AVHubertSeq2SeqConfig(AVHubertAsrConfig):
     decoder_ffn_embed_dim: int = field(
         default=3072, metadata={"help": "decoder embedding dimension for FFN"}
     )
-    decoder_layers: int = field(
-        default=6, metadata={"help": "num of decoder layers"}
-    )
+    decoder_layers: int = field(default=6, metadata={"help": "num of decoder layers"})
     decoder_layerdrop: float = field(
         default=0.0, metadata={"help": "decoder layerdrop chance"}
     )
@@ -218,8 +215,7 @@ class AVHubertSeq2SeqConfig(AVHubertAsrConfig):
     no_token_positional_embeddings: bool = field(
         default=False,
         metadata={
-            "help": "if set, disables positional embeddings "
-            "(outside self attention)"
+            "help": "if set, disables positional embeddings " "(outside self attention)"
         },
     )
     decoder_dropout: float = field(
@@ -228,15 +224,13 @@ class AVHubertSeq2SeqConfig(AVHubertAsrConfig):
     decoder_attention_dropout: float = field(
         default=0.0,
         metadata={
-            "help": "dropout probability for attention weights "
-            "inside the decoder"
+            "help": "dropout probability for attention weights " "inside the decoder"
         },
     )
     decoder_activation_dropout: float = field(
         default=0.0,
         metadata={
-            "help": "dropout probability after activation in FFN "
-            "inside the decoder"
+            "help": "dropout probability after activation in FFN " "inside the decoder"
         },
     )
     max_target_positions: int = field(
@@ -246,7 +240,8 @@ class AVHubertSeq2SeqConfig(AVHubertAsrConfig):
         default=False,
         metadata={"help": "share decoder input and output embeddings"},
     )
-    no_scale_embedding: bool = field(default=True, metadata={'help': 'scale embedding'})
+    no_scale_embedding: bool = field(default=True, metadata={"help": "scale embedding"})
+
 
 class HubertEncoder(FairseqEncoder):
     def __init__(self, cfg: AVHubertAsrConfig, tgt_dict=None):
@@ -272,9 +267,7 @@ class HubertEncoder(FairseqEncoder):
         }
 
         if cfg.w2v_args is None:
-            state = checkpoint_utils.load_checkpoint_to_cpu(
-                cfg.w2v_path, arg_overrides
-            )
+            state = checkpoint_utils.load_checkpoint_to_cpu(cfg.w2v_path, arg_overrides)
             w2v_args = state.get("cfg", None)
             if w2v_args is None:
                 w2v_args = convert_namespace_to_omegaconf(state["args"])
@@ -283,9 +276,7 @@ class HubertEncoder(FairseqEncoder):
             state = None
             w2v_args = cfg.w2v_args
             if isinstance(w2v_args, Namespace):
-                cfg.w2v_args = w2v_args = convert_namespace_to_omegaconf(
-                    w2v_args
-                )
+                cfg.w2v_args = w2v_args = convert_namespace_to_omegaconf(w2v_args)
 
         assert cfg.normalize == w2v_args.task.normalize, (
             "Fine-tuning works best when data normalization is the same. "
@@ -327,7 +318,6 @@ class HubertEncoder(FairseqEncoder):
         self.num_updates = num_updates
 
     def forward(self, source, padding_mask, tbc=True, **kwargs):
-
         w2v_args = {
             "source": source,
             "padding_mask": padding_mask,
@@ -355,9 +345,9 @@ class HubertEncoder(FairseqEncoder):
 
     def reorder_encoder_out(self, encoder_out, new_order):
         if encoder_out["encoder_out"] is not None:
-            encoder_out["encoder_out"] = encoder_out[
-                "encoder_out"
-            ].index_select(1, new_order)
+            encoder_out["encoder_out"] = encoder_out["encoder_out"].index_select(
+                1, new_order
+            )
         if encoder_out["encoder_padding_mask"] is not None:
             encoder_out["encoder_padding_mask"] = encoder_out[
                 "encoder_padding_mask"
@@ -390,23 +380,24 @@ class HubertEncoderWrapper(FairseqEncoder):
         return {
             "encoder_out": x,  # T x B x C
             "encoder_padding_mask": padding_mask,  # B x T
-            "padding_mask": padding_mask
+            "padding_mask": padding_mask,
         }
 
     def reorder_encoder_out(self, encoder_out, new_order):
         if encoder_out["encoder_out"] is not None:
-            encoder_out["encoder_out"] = encoder_out[
-                "encoder_out"
-            ].index_select(1, new_order)
+            encoder_out["encoder_out"] = encoder_out["encoder_out"].index_select(
+                1, new_order
+            )
         if encoder_out["encoder_padding_mask"] is not None:
             encoder_out["encoder_padding_mask"] = encoder_out[
                 "encoder_padding_mask"
             ].index_select(0, new_order)
         if encoder_out["padding_mask"] is not None:
-            encoder_out["padding_mask"] = encoder_out[
-                "padding_mask"
-            ].index_select(0, new_order)
+            encoder_out["padding_mask"] = encoder_out["padding_mask"].index_select(
+                0, new_order
+            )
         return encoder_out
+
 
 @register_model("av_hubert_seq2seq", dataclass=AVHubertSeq2SeqConfig)
 class AVHubertSeq2Seq(FairseqEncoderDecoderModel):
@@ -439,9 +430,7 @@ class AVHubertSeq2Seq(FairseqEncoderDecoderModel):
         }
 
         if cfg.w2v_args is None:
-            state = checkpoint_utils.load_checkpoint_to_cpu(
-                cfg.w2v_path, arg_overrides
-            )
+            state = checkpoint_utils.load_checkpoint_to_cpu(cfg.w2v_path, arg_overrides)
             w2v_args = state.get("cfg", None)
             if w2v_args is None:
                 w2v_args = convert_namespace_to_omegaconf(state["args"])
@@ -450,9 +439,7 @@ class AVHubertSeq2Seq(FairseqEncoderDecoderModel):
             state = None
             w2v_args = cfg.w2v_args
             if isinstance(w2v_args, Namespace):
-                cfg.w2v_args = w2v_args = convert_namespace_to_omegaconf(
-                    w2v_args
-                )
+                cfg.w2v_args = w2v_args = convert_namespace_to_omegaconf(w2v_args)
 
         assert cfg.normalize == w2v_args.task.normalize, (
             "Fine-tuning works best when data normalization is the same. "
@@ -464,14 +451,14 @@ class AVHubertSeq2Seq(FairseqEncoderDecoderModel):
 
         task_pretrain = tasks.setup_task(w2v_args.task)
         if state is not None:
-            task_pretrain.load_state_dict(state['task_state'])
+            task_pretrain.load_state_dict(state["task_state"])
 
         encoder_ = task_pretrain.build_model(w2v_args.model)
 
         encoder = HubertEncoderWrapper(encoder_)
         if state is not None and not cfg.no_pretrained_weights:
             # set strict=False because we omit some modules
-            del state['model']['mask_emb']
+            del state["model"]["mask_emb"]
             encoder.w2v_model.load_state_dict(state["model"], strict=False)
 
         encoder.w2v_model.remove_pretraining_modules()
@@ -489,12 +476,13 @@ class AVHubertSeq2Seq(FairseqEncoderDecoderModel):
 
         return AVHubertSeq2Seq(encoder, decoder, tgt_dict, cfg)
 
-
     def forward(self, **kwargs):
         ft = self.freeze_finetune_updates <= self.num_updates
         with torch.no_grad() if not ft else contextlib.ExitStack():
             output = self.encoder(**kwargs)
-        decoder_out = self.decoder(prev_output_tokens=kwargs['prev_output_tokens'], encoder_out=output)
+        decoder_out = self.decoder(
+            prev_output_tokens=kwargs["prev_output_tokens"], encoder_out=output
+        )
         return decoder_out
 
     def upgrade_state_dict_named(self, state_dict, name):
@@ -506,9 +494,10 @@ class AVHubertSeq2Seq(FairseqEncoderDecoderModel):
         super().set_num_updates(num_updates)
         self.num_updates = num_updates
 
+
 def Embedding(num_embeddings, embedding_dim, padding_idx):
     m = nn.Embedding(num_embeddings, embedding_dim, padding_idx=padding_idx)
-    nn.init.normal_(m.weight, mean=0, std=embedding_dim ** -0.5)
+    nn.init.normal_(m.weight, mean=0, std=embedding_dim**-0.5)
     nn.init.constant_(m.weight[padding_idx], 0)
     return m
 

@@ -1062,14 +1062,15 @@ class TransformerSentenceEncoderLayer(nn.Module):
                 expand_attention_head_size=expand_attention_head_size,
             )
 
-        elif self.attention_type == "flash_attention": ## only suport torch.float16 and torch.bfloat16
+        elif (
+            self.attention_type == "flash_attention"
+        ):  ## only suport torch.float16 and torch.bfloat16
             logger.info(f"using flash_attention now!")
             head_dim = self.embedding_dim // num_attention_heads
-            #logger.info(f"self.embedding_dim")
-            #logger.info(f"self.embedding_dim: {type(self.embedding_dim)}, head_dim type: {type(head_dim)}, head_dim: {head_dim}")
+            # logger.info(f"self.embedding_dim")
+            # logger.info(f"self.embedding_dim: {type(self.embedding_dim)}, head_dim type: {type(head_dim)}, head_dim: {head_dim}")
             assert self.embedding_dim % head_dim == 0
-            
-            
+
             self.self_attn = MHA(
                 self.embedding_dim,
                 num_attention_heads,
@@ -1111,7 +1112,7 @@ class TransformerSentenceEncoderLayer(nn.Module):
         LayerNorm is applied either before or after the self-attention/ffn
         modules similar to the original Transformer imlementation.
         """
-        residual = x # (T,B,C)
+        residual = x  # (T,B,C)
 
         if self.layer_norm_first:
             x = self.self_attn_layer_norm(x)
@@ -1126,16 +1127,16 @@ class TransformerSentenceEncoderLayer(nn.Module):
                     position_bias=pos_bias,
                 )
             elif self.attention_type == "flash_attention":
-                attn=None
-                pos_bias=None
-                x  = self.self_attn(
-                        x,# TXBXC
-                        x_kv=None,
-                        key_padding_mask=None,
-                        cu_seqlens=None,
-                        max_seqlen=None,
-                    )
- 
+                attn = None
+                pos_bias = None
+                x = self.self_attn(
+                    x,  # TXBXC
+                    x_kv=None,
+                    key_padding_mask=None,
+                    cu_seqlens=None,
+                    max_seqlen=None,
+                )
+
             x = self.dropout1(x)
             x = residual + x
 
@@ -1150,7 +1151,6 @@ class TransformerSentenceEncoderLayer(nn.Module):
             x = self.dropout3(x)
             x = residual + x
         else:
-
             if self.attention_type == "rel_attention":
                 x, attn, pos_bias = self.self_attn(
                     query=x,
@@ -1162,15 +1162,15 @@ class TransformerSentenceEncoderLayer(nn.Module):
                     position_bias=pos_bias,
                 )
             elif self.attention_type == "flash_attention":
-                attn=None
-                pos_bias=None
-                x  = self.self_attn(
-                        x,# TXBXC
-                        x_kv=None,
-                        key_padding_mask=None,
-                        cu_seqlens=None,
-                        max_seqlen=None,
-                    )
+                attn = None
+                pos_bias = None
+                x = self.self_attn(
+                    x,  # TXBXC
+                    x_kv=None,
+                    key_padding_mask=None,
+                    cu_seqlens=None,
+                    max_seqlen=None,
+                )
             x = self.dropout1(x)
             x = residual + x
 
@@ -1301,7 +1301,7 @@ class TransformerEncoder(nn.Module):
             dropout_probability = np.random.random()
             if not self.training or (dropout_probability > self.layerdrop):
                 x, z, pos_bias = layer(
-                    x, ## TXBXC
+                    x,  ## TXBXC
                     self_attn_padding_mask=padding_mask,
                     need_weights=False,
                     self_attn_mask=streaming_mask,
@@ -1310,7 +1310,7 @@ class TransformerEncoder(nn.Module):
             if tgt_layer is not None:
                 layer_results.append((x, z))
             if i == extract_layer:
-                er = x.transpose(0, 1) 
+                er = x.transpose(0, 1)
             if i == tgt_layer:
                 r = x
                 break

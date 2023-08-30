@@ -169,11 +169,12 @@ class HubertCtc(BaseFairseqModel):
         """Build a new model instance."""
         w2v_encoder = StHubertEncoder2(cfg, task)
         return cls(cfg, w2v_encoder)
+
     ## it is used at ctc criterion in ctc.py
     def get_normalized_probs(self, net_output, log_probs):
         """Get normalized probabilities (or log probs) from a net's output."""
 
-        logits = net_output["encoder_out"] ## this net_output is from StHubertEncoder
+        logits = net_output["encoder_out"]  ## this net_output is from StHubertEncoder
         if log_probs:
             return utils.log_softmax(logits.float(), dim=-1)
         else:
@@ -268,15 +269,17 @@ class StHubertEncoder2(FairseqEncoder):
             self.proj = None
         """
         ## reused sthubert2 ctc head
-        if task.target_dictionary is not None and  hasattr(self.w2v_model, "unit_encoder_ctc_head"):
+        if task.target_dictionary is not None and hasattr(
+            self.w2v_model, "unit_encoder_ctc_head"
+        ):
             self.proj = self.w2v_model.unit_encoder_ctc_head
-            self.conv_ctc_proj = True ## flag
+            self.conv_ctc_proj = True  ## flag
         elif task.target_dictionary is not None:
             self.proj = Linear(d, len(task.target_dictionary))
-            self.conv_ctc_proj = False ## flag
+            self.conv_ctc_proj = False  ## flag
         else:
             self.proj = None
-            
+
         self.textbranch_type = getattr(cfg, "textbranch_type", "none")
         logger.info(f"Using fake textbranch type: {self.textbranch_type}")
 
@@ -307,9 +310,9 @@ class StHubertEncoder2(FairseqEncoder):
         x = self.final_dropout(x)
 
         if self.proj:
-            x = x.transpose(0, 1) ## T x B x C -> B x T x C
-            x = self.proj(x) # B x T x C
-            x = x.transpose(0, 1) ## B x T x C -> T x B x C
+            x = x.transpose(0, 1)  ## T x B x C -> B x T x C
+            x = self.proj(x)  # B x T x C
+            x = x.transpose(0, 1)  ## B x T x C -> T x B x C
         results = {
             "encoder_out": x,  # T x B x C
             "encoder_padding_mask": padding_mask,  # B x T
@@ -317,7 +320,9 @@ class StHubertEncoder2(FairseqEncoder):
         }
         ## update padding_mask
         if self.conv_ctc_proj:
-            padding_mask = self.w2v_model.downsample_ctc_padding_mask(results["padding_mask"])
+            padding_mask = self.w2v_model.downsample_ctc_padding_mask(
+                results["padding_mask"]
+            )
             results["encoder_padding_mask"] = padding_mask
             results["padding_mask"] = padding_mask
         return results

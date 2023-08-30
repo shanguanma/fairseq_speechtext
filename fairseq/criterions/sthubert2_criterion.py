@@ -15,7 +15,9 @@ from fairseq.logging import metrics
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
 import logging
+
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class STHubertCriterionConfig2(FairseqDataclass):
@@ -37,12 +39,15 @@ class STHubertCriterionConfig2(FairseqDataclass):
     )
     text_ctc_weight: float = field(
         default=0.1,
-        metadata={"help": "weights for text CTC Loss, loss will be (hubert_loss + text_weight * CTC_loss))"},
+        metadata={
+            "help": "weights for text CTC Loss, loss will be (hubert_loss + text_weight * CTC_loss))"
+        },
     )
     text_mum_weight: float = field(
         default=0.0,
         metadata={"help": "masked unit modeling weight from the text end"},
     )
+
 
 @register_criterion("sthubert2_criterion", dataclass=STHubertCriterionConfig2)
 class STHubertCriterion2(FairseqCriterion):
@@ -56,7 +61,6 @@ class STHubertCriterion2(FairseqCriterion):
         text_ctc_weight=0.1,
         text_mum_weight=0,
         no_ctc_blank=False,
-        
     ):
         super().__init__(task)
         self.pred_masked_weight = pred_masked_weight
@@ -65,12 +69,21 @@ class STHubertCriterion2(FairseqCriterion):
         self.log_keys = [] if log_keys is None else log_keys
         self.text_ctc_weight = text_ctc_weight
         self.text_mum_weight = text_mum_weight
-        self.no_ctc_blank= no_ctc_blank
+        self.no_ctc_blank = no_ctc_blank
         self.padding_idx = task.dictionaries[0].pad()
         self.eos_idx = task.dictionaries[0].eos()
         self.blank_idx = task.dictionaries[0].bos()
+
     def compute_hubert_loss(
-        self, model, logp_m_list, targ_m_list, logp_u_list,targ_u_list, reduce=True, log_pred=False, suffix=""
+        self,
+        model,
+        logp_m_list,
+        targ_m_list,
+        logp_u_list,
+        targ_u_list,
+        reduce=True,
+        log_pred=False,
+        suffix="",
     ):
         """Compute the mask lm style loss for the given sample.
         Returns a tuple with three elements:
@@ -84,9 +97,11 @@ class STHubertCriterion2(FairseqCriterion):
         reduction = "sum" if reduce else "none"
 
         loss_m_list = []
-        #logp_m_list = model.get_logits(net_output, True)
-        #targ_m_list = model.get_targets(net_output, True)
-        assert self.pred_masked_weight == 0 or len(logp_m_list) > 0, f"len(logp_m_list): {len(logp_m_list)}, logp_m_list: {logp_m_list}"
+        # logp_m_list = model.get_logits(net_output, True)
+        # targ_m_list = model.get_targets(net_output, True)
+        assert (
+            self.pred_masked_weight == 0 or len(logp_m_list) > 0
+        ), f"len(logp_m_list): {len(logp_m_list)}, logp_m_list: {logp_m_list}"
         for i, (logp_m, targ_m) in enumerate(zip(logp_m_list, targ_m_list)):
             loss_m = F.cross_entropy(logp_m, targ_m, reduction=reduction)
             loss_m_list.append(loss_m)
@@ -95,8 +110,8 @@ class STHubertCriterion2(FairseqCriterion):
             loss += self.pred_masked_weight * sum(loss_m_list)
             sample_size += targ_m_list[0].numel()
         loss_u_list = []
-        #logp_u_list = model.get_logits(net_output, False)
-        #targ_u_list = model.get_targets(net_output, False)
+        # logp_u_list = model.get_logits(net_output, False)
+        # targ_u_list = model.get_targets(net_output, False)
         assert self.pred_nomask_weight == 0 or len(logp_u_list) > 0
         for i, (logp_u, targ_u) in enumerate(zip(logp_u_list, targ_u_list)):
             loss_u = F.cross_entropy(logp_u, targ_u, reduction=reduction)
@@ -105,7 +120,6 @@ class STHubertCriterion2(FairseqCriterion):
         if self.pred_nomask_weight > 0:
             loss += self.pred_nomask_weight * sum(loss_u_list)
             sample_size += targ_u_list[0].numel()
-
 
         def compute_correct(logits):
             if logits.numel() == 0:
@@ -118,6 +132,7 @@ class STHubertCriterion2(FairseqCriterion):
                 corr = max.long().sum().item() - both.long().sum().item()
                 count = max.numel()
                 return corr, count
+
         with torch.no_grad():
             for i, logp_m in enumerate(logp_m_list):
                 corr_m, count_m = compute_correct(logp_m)
@@ -130,7 +145,7 @@ class STHubertCriterion2(FairseqCriterion):
                 logging_output[f"count_u_{i}{suffix}"] = count_u
 
         return loss, sample_size, logging_output
- 
+
     def forward(self, model, sample, reduce=True, log_pred=False):
         """Compute the loss for the given sample.
         Returns a tuple with three elements:
@@ -139,19 +154,19 @@ class STHubertCriterion2(FairseqCriterion):
         3) logging outputs to display while training
         """
         reduction = "sum" if reduce else "none"
-        loss_speech=0
+        loss_speech = 0
         # 1.1. mask lm loss in speech part, in other words, do hubert forward and compute loss
-        #sample["net_input"][
+        # sample["net_input"][
         #    "source_text"
-        #] = None  ## drop text sample do hubert forward and compute loss
+        # ] = None  ## drop text sample do hubert forward and compute loss
         net_output = model(target_list=sample["target_list"], **sample["net_input"])
-        logp_m_list = model.get_logits(net_output, True) ## it has three elements, 
-                                                         #first two elements for speech,
-                                                         # last elements for text
+        logp_m_list = model.get_logits(net_output, True)  ## it has three elements,
+        # first two elements for speech,
+        # last elements for text
         targ_m_list = model.get_targets(net_output, True)
         logp_u_list = model.get_logits(net_output, False)
         targ_u_list = model.get_targets(net_output, False)
-        
+
         loss_speech, sample_size, logging_output = self.compute_hubert_loss(
             model,
             logp_m_list[:2],
@@ -185,9 +200,9 @@ class STHubertCriterion2(FairseqCriterion):
             if lk in net_output:
                 logging_output[lk] = float((net_output[lk]))
 
-        loss_speech  =  loss_speech/sample_size
+        loss_speech = loss_speech / sample_size
         # 2.1. do text part forward and loss computation
-        loss_text=0
+        loss_text = 0
         ## mask lm loss
         if self.text_mum_weight > 0:
             loss_u2u, sample_size_u2u, logging_output_u2u = self.compute_hubert_loss(
@@ -202,21 +217,22 @@ class STHubertCriterion2(FairseqCriterion):
             loss_text = loss_u2u
             loss_text = self.text_mum_weight * loss_text / sample_size_u2u
             logging_output.update(logging_output_u2u)
-        #(FIXME) Can I get text token number from dataset at text part
-        #text_sample_size = sample_size_u2u
+        # (FIXME) Can I get text token number from dataset at text part
+        # text_sample_size = sample_size_u2u
         if self.text_ctc_weight > 0:
-            #logger.info("I am here , it is ctc loss")
-            text_sample_size=sample["text_ntokens_list"][0]
-            #logger.info(f"text_sample_size: {text_sample_size}")
+            # logger.info("I am here , it is ctc loss")
+            text_sample_size = sample["text_ntokens_list"][0]
+            # logger.info(f"text_sample_size: {text_sample_size}")
             text_ctc_loss = self.compute_ctc_loss(
-                model, net_output, sample["net_input"]["source_text"][0], reduction=reduction
+                model,
+                net_output,
+                sample["net_input"]["source_text"][0],
+                reduction=reduction,
             )
-            loss_text += (
-                self.text_ctc_weight * text_ctc_loss / text_sample_size
-            )
+            loss_text += self.text_ctc_weight * text_ctc_loss / text_sample_size
             logging_output["text_ctc_loss"] = utils.item(loss_text)
             logging_output["text_sample_size"] = text_sample_size
-            #logger.info(f'logging_output["text_sample_size"] : {logging_output["text_sample_size"]}')
+            # logger.info(f'logging_output["text_sample_size"] : {logging_output["text_sample_size"]}')
         loss = loss_speech + loss_text
         logging_output = {
             "loss": utils.item(loss) if reduce else loss,
@@ -227,21 +243,26 @@ class STHubertCriterion2(FairseqCriterion):
         }
 
         return loss, sample_size, logging_output
+
     def compute_ctc_loss(self, model, net_output, target, reduction):
-        logits = net_output["result_text"]["shared_encoder_out_ctc"][0].permute(1,0,2)  # (T, B, C) from the coshared_transformer encoder
-        #logger.info(f"logits shape: {logits.shape}, logits : {logits}")
+        logits = net_output["result_text"]["shared_encoder_out_ctc"][0].permute(
+            1, 0, 2
+        )  # (T, B, C) from the coshared_transformer encoder
+        # logger.info(f"logits shape: {logits.shape}, logits : {logits}")
         if self.no_ctc_blank:
             ## set prob of <blank> to -inf
             logits = logits.float()
             logits[:, :, self.blank_idx] = -1000000.0
-        
+
         lprobs = F.log_softmax(logits.float(), dim=-1)
-        #logger.info(f"lprobs shape: {lprobs.shape}, lprobs : {lprobs}")
-        encoder_padding_mask = net_output["result_text"]["shared_encoder_padding_mask_ctc"][0]
-        #logger.info(f"encoder_padding_mask: {encoder_padding_mask}, its shape:{encoder_padding_mask.shape}")
+        # logger.info(f"lprobs shape: {lprobs.shape}, lprobs : {lprobs}")
+        encoder_padding_mask = net_output["result_text"][
+            "shared_encoder_padding_mask_ctc"
+        ][0]
+        # logger.info(f"encoder_padding_mask: {encoder_padding_mask}, its shape:{encoder_padding_mask.shape}")
         non_padding_mask = ~encoder_padding_mask
         input_lengths = non_padding_mask.long().sum(-1)
-        #logger.info(f"input_lengths: {input_lengths}")
+        # logger.info(f"input_lengths: {input_lengths}")
         pad_mask = (target != self.padding_idx) & (target != self.eos_idx)
         targets_flat = target.masked_select(pad_mask)
         target_lengths = pad_mask.sum(-1)
@@ -264,23 +285,20 @@ class STHubertCriterion2(FairseqCriterion):
         loss_sum = sum(log.get("loss", 0) for log in logging_outputs)
         ntokens = sum(log.get("ntokens", 0) for log in logging_outputs)
         sample_size = sum(log.get("sample_size", 0) for log in logging_outputs)
-        #text_sample_size = sum(log.get("text_sample_size", 0) for log in logging_outputs)
+        # text_sample_size = sum(log.get("text_sample_size", 0) for log in logging_outputs)
 
-
-        metrics.log_scalar(
-            "loss", loss_sum / math.log(2), sample_size, round=3
-        )
-        #if sample_size != ntokens:
+        metrics.log_scalar("loss", loss_sum / math.log(2), sample_size, round=3)
+        # if sample_size != ntokens:
         #    metrics.log_scalar(
         #        "nll_loss", loss_sum / ntokens / math.log(2), ntokens, round=3
         #    )
         #    metrics.log_derived(
         #        "ppl", lambda meters: utils.get_perplexity(meters["nll_loss"].avg)
         #    )
-        
-        #metrics.log_derived(
+
+        # metrics.log_derived(
         #    "ppl", lambda meters: utils.get_perplexity(meters["loss"].avg)
-        #)
+        # )
 
         counts = {}
         for lk in logging_outputs[0].keys():
@@ -299,6 +317,7 @@ class STHubertCriterion2(FairseqCriterion):
             elif lk.startswith("text_") and lk.endswith("_loss"):
                 val = sum(log[lk] for log in logging_outputs)
                 metrics.log_scalar(lk, val / math.log(2), round=3)
+
     @staticmethod
     def aggregate_logging_outputs(logging_outputs):
         """Aggregate logging outputs from data parallel training."""

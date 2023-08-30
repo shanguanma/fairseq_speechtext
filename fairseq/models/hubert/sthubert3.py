@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 
 
 ## compared sthubert2, sthubert3 wants to add contextualizer target and computes loss,
-## more detail: 1. add teacher model, 
+## more detail: 1. add teacher model,
 ##              2. add decoder for reconstruct style loss(TODO)
 ##              3. compute loss between shared_transformer output and target
 ##              4. compute loss between speech_transformer output and target
@@ -319,10 +319,10 @@ class StHubertConfig3(FairseqDataclass):
     )
 
     ## EMA releated(teacher model) config
-    skip_ema: bool = field(default=False, metadata={"help":"it is flag, "})
-    cls_loss_scale: float = 1 # for scale d2v loss 
-    #recon_loss: float = 0
-    #d2v_loss: float = 1
+    skip_ema: bool = field(default=False, metadata={"help": "it is flag, "})
+    cls_loss_scale: float = 1  # for scale d2v loss
+    # recon_loss: float = 0
+    # d2v_loss: float = 1
     loss_beta: float = field(
         default=0, metadata={"help": "beta for smooth l1 loss. 0 means use l2 loss"}
     )
@@ -338,17 +338,17 @@ class StHubertConfig3(FairseqDataclass):
     share_average_top_k_layers: int = field(
         default=4, metadata={"help": "how many layers to average"}
     )
-    #output_layer_share: str = field(default='["1","2","3","4","5","6"]')
-    #output_layer_front: str = field(default='["1","2","3","4","5","6"]')
-    output_layer_share: str = field(default='[1,2,3,4,5,6]')
-    output_layer_front: str = field(default='[1,2,3,4,5,6]')
+    # output_layer_share: str = field(default='["1","2","3","4","5","6"]')
+    # output_layer_front: str = field(default='["1","2","3","4","5","6"]')
+    output_layer_share: str = field(default="[1,2,3,4,5,6]")
+    output_layer_front: str = field(default="[1,2,3,4,5,6]")
     layer_norm_target_layer: bool = False
     batch_norm_target_layer: bool = False
     instance_norm_target_layer: bool = True
     instance_norm_targets: bool = False
     layer_norm_targets: bool = False
     ema_decay: float = field(default=0.999, metadata={"help": "initial ema decay rate"})
-    #ema_same_dtype: bool = True
+    # ema_same_dtype: bool = True
     log_norms: bool = True  # parameter  of EMAModuleConfig
     ema_end_decay: float = field(
         default=0.9999, metadata={"help": "final ema decay rate"}
@@ -368,9 +368,9 @@ class StHubertModel3(BaseFairseqModel):
         skip_ema=False,
     ) -> None:
         super().__init__()
-        #logger.info(f"StHubertModel3 Config: {cfg}")
+        # logger.info(f"StHubertModel3 Config: {cfg}")
         self.cfg = cfg
-        self.task_cfg  = task_cfg
+        self.task_cfg = task_cfg
         self.task = task
         self.mask_u2t = cfg.mask_u2t  # bool, for text
         self.compute_mum = cfg.compute_mum  # bool for text
@@ -380,13 +380,12 @@ class StHubertModel3(BaseFairseqModel):
         self.l2_embedding = cfg.l2_embedding  # bool for speech
         self.add_unit_encoder = cfg.add_unit_encoder  # bool for
         ## ema related
-        self.skip_ema  = skip_ema
+        self.skip_ema = skip_ema
         self.ema_decay = cfg.ema_decay
-        #self.ema_same_dtype = cfg.ema_end_decay
-        self.output_layer_share  = eval(cfg.output_layer_share)
+        # self.ema_same_dtype = cfg.ema_end_decay
+        self.output_layer_share = eval(cfg.output_layer_share)
         self.output_layer_front = eval(cfg.output_layer_front)
-        #self.self.predict_layers = eval(cfg.predict_layers)        
-
+        # self.self.predict_layers = eval(cfg.predict_layers)
 
         self.padding_idx = 1
         feature_enc_layers = eval(cfg.conv_feature_layers)  # noqa
@@ -502,27 +501,25 @@ class StHubertModel3(BaseFairseqModel):
         ## EMA(teacher model) related
         self.ema = None
 
-        #self.average_top_k_layers = cfg.average_top_k_layers
+        # self.average_top_k_layers = cfg.average_top_k_layers
         self.loss_beta = cfg.loss_beta
         self.loss_scale = cfg.loss_scale
-        
+
         if not self.skip_ema:
             logger.info(f"self.skip_ema is {self.skip_ema}")
             self.ema = self.make_ema_teacher(cfg.ema_decay)
-            #self.recon_proj = None
-            #if cfg.recon_loss > 0:
+            # self.recon_proj = None
+            # if cfg.recon_loss > 0:
             #    self.recon_proj = nn.Linear(cfg.embed_dim, cfg.embed_dim)
-        
+
         self.num_updates = 0
 
-     
-    #it is used at finetune stage   
+    # it is used at finetune stage
     def upgrade_state_dict_named(self, state_dict, name):
         """Upgrade a (possibly old) state dict for new versions of fairseq."""
 
         super().upgrade_state_dict_named(state_dict, name)
         return state_dict
-    
 
     def state_dict(self, destination=None, prefix="", keep_vars=False):
         state = super().state_dict(destination, prefix, keep_vars)
@@ -558,7 +555,7 @@ class StHubertModel3(BaseFairseqModel):
         logger.info(f"dictionary pad index: {task.dictionaries[1].pad_index}")
         logger.info(f"dictionary eos index: {task.dictionaries[1].eos_index}")
         logger.info(f"dictionary unk index: {task.dictionaries[1].unk_index}")
-        model = cls(cfg, task.cfg, task.dictionaries,task, skip_ema=cfg.skip_ema)
+        model = cls(cfg, task.cfg, task.dictionaries, task, skip_ema=cfg.skip_ema)
         return model
 
     @torch.no_grad()
@@ -588,22 +585,21 @@ class StHubertModel3(BaseFairseqModel):
             self.task,
             skip_ema=True,
         )
-        #logger.info(f"model: {model_copy}")
+        # logger.info(f"model: {model_copy}")
         ##(
         for p_s, p_t in zip(self.parameters(), model_copy.parameters()):
             p_t.data.copy_(p_s.data)
 
-        #for mod in model_copy:
+        # for mod in model_copy:
         model_copy.embed_tokens = None
         model_copy.unit_encoder_ctc_head = None
         model_copy.final_proj_list = None
         model_copy.target_glu = None
         model_copy.label_embs_list = None
-        #logger.info(f"after model: {model_copy}")
+        # logger.info(f"after model: {model_copy}")
         model_copy.requires_grad_(False)
         return model_copy
 
-    
     def set_num_updates(self, num_updates):
         super().set_num_updates(num_updates)
 
@@ -630,16 +626,14 @@ class StHubertModel3(BaseFairseqModel):
 
         self.num_updates = num_updates
 
-    def get_annealed_rate(self,start, end, curr_step, total_steps):
+    def get_annealed_rate(self, start, end, curr_step, total_steps):
         if curr_step >= total_steps:
             return end
         r = end - start
         pct_remaining = 1 - curr_step / total_steps
         return end - r * pct_remaining
 
-
     def make_target(self, y, num_layers):
-
         with torch.no_grad():
             target_layer_results = y[-num_layers:]
 
@@ -685,7 +679,7 @@ class StHubertModel3(BaseFairseqModel):
 
     @staticmethod
     def compute_var(y):
-        #y = y.view(-1, y.size(-1))
+        # y = y.view(-1, y.size(-1))
         y = y.reshape(-1, y.size(-1))
         if dist.is_initialized():
             zc = torch.tensor(y.size(0)).cuda()
@@ -702,8 +696,8 @@ class StHubertModel3(BaseFairseqModel):
             return torch.sqrt(y.var(dim=0) + 1e-6).mean()
 
     def d2v_loss(self, x, y):
-        #x = x.view(-1, x.size(-1)).float()
-        #y = y.view(-1, x.size(-1))
+        # x = x.view(-1, x.size(-1)).float()
+        # y = y.view(-1, x.size(-1))
         x = x.reshape(-1, x.size(-1)).float()
         y = y.reshape(-1, x.size(-1))
         if self.loss_beta == 0:
@@ -779,9 +773,9 @@ class StHubertModel3(BaseFairseqModel):
         padding_mask: Optional[torch.Tensor] = None,
         mask: bool = True,
         features_only: bool = False,
-        #output_layer: Optional[int] = None,
-        #output_layer_front: Optional[int] = None,
-        #output_layer_share: Optional[int] = None,
+        # output_layer: Optional[int] = None,
+        # output_layer_front: Optional[int] = None,
+        # output_layer_share: Optional[int] = None,
     ) -> Dict[str, torch.Tensor]:
         """output layer is 1-based"""
         if source_text is None:  ## 1. finetune case,
@@ -796,35 +790,36 @@ class StHubertModel3(BaseFairseqModel):
             return result
         else:
             assert source is not None and source_text is not None
-            #logger.info(f"now, i am here!.it are running forward_speech and forward_text")
+            # logger.info(f"now, i am here!.it are running forward_speech and forward_text")
             result_speech = self.forward_speech(
                 source,
                 target_list=target_list,
                 padding_mask=padding_mask,
             )
-            
+
             result_text = self.forward_text(
                 source_text=source_text[0],
                 source_text_lengths=source_text_lengths,
                 mask=self.mask_u2t,
             )
             ### running ema teacher model
-            xs  = [] ## student outputs
+            xs = []  ## student outputs
             xs.append(result_speech["x_front"])
             if self.add_unit_encoder:
-               xs.append(result_speech["shared_encoder_out_speech"])   
+                xs.append(result_speech["shared_encoder_out_speech"])
             assert len(xs) > 0
 
             p = next(self.ema.model.parameters())
             device = result_speech["x_front"].device
             dtype = result_speech["x_front"].dtype
             ema_device = p.device
-            ema_dtype = p.dtype 
-           
+            ema_dtype = p.dtype
+
             if ema_device != device or ema_dtype != dtype:
                 logger.info(f"adjusting ema dtype to {dtype} and device to {device}")
                 self.ema.model = self.ema.model.to(dtype=dtype, device=device)
-                ema_dtype = dtype   
+                ema_dtype = dtype
+
                 def to_device(d):
                     for k, p in d.items():
                         if isinstance(d[k], dict):
@@ -834,74 +829,92 @@ class StHubertModel3(BaseFairseqModel):
 
                 to_device(self.ema.fp32_params)
             tm = self.ema.model
-            y = [] ## target 
+            y = []  ## target
             with torch.no_grad():
                 tm.eval()
-                ema_input = result_speech["features"] ## conv feature front
-                '''
+                ema_input = result_speech["features"]  ## conv feature front
+                """
                 if padding_mask is not None:
                     padding_mask = tm.forward_padding_mask(ema_input, padding_mask)
  
                 if self.post_extract_proj is not None:
                     ema_input = tm.post_extract_proj(features)
-                '''
+                """
                 ## first encoder
                 ema_input, layer_results_front = tm.encoder(
-                       ema_input,
-                       padding_mask=result_speech["padding_mask"],
-                       layer=None if self.output_layer_front is None else self.output_layer_front,
+                    ema_input,
+                    padding_mask=result_speech["padding_mask"],
+                    layer=None
+                    if self.output_layer_front is None
+                    else self.output_layer_front,
                 )
-                layer_results_front = [layer_x.transpose(0, 1) for i, (layer_x, _) in enumerate(layer_results_front)]
-                #logger.info(f"self.cfg.output_layer_front: {self.cfg.output_layer_front},  type: {type(self.cfg.output_layer_front)}")
-                #logger.info(f"layer_results_front: {layer_results_front}")
+                layer_results_front = [
+                    layer_x.transpose(0, 1)
+                    for i, (layer_x, _) in enumerate(layer_results_front)
+                ]
+                # logger.info(f"self.cfg.output_layer_front: {self.cfg.output_layer_front},  type: {type(self.cfg.output_layer_front)}")
+                # logger.info(f"layer_results_front: {layer_results_front}")
                 y.append(layer_results_front[:])
-                
+
                 ## second encoder
                 if self.add_unit_encoder:
                     ema_input, layer_results_share = self.shared_encoder(
                         ema_input,
                         padding_mask=result_speech["padding_mask"],
-                        layer=None if self.output_layer_share is None else self.output_layer_share,
-                    )  ## BXTXC 
-                    layer_results_share = [layer_x.transpose(0, 1) for i, (layer_x, _) in enumerate(layer_results_share)]                  
+                        layer=None
+                        if self.output_layer_share is None
+                        else self.output_layer_share,
+                    )  ## BXTXC
+                    layer_results_share = [
+                        layer_x.transpose(0, 1)
+                        for i, (layer_x, _) in enumerate(layer_results_share)
+                    ]
                     y.append(layer_results_share[:])
 
-            y_front = self.make_target(layer_results_front,self.cfg.front_average_top_k_layers)
-            if self.add_unit_encoder:    
-                y_share = self.make_target(layer_results_share,self.cfg.share_average_top_k_layers)
-            result_speech["losses"]  = {}
-            #cls_target_front = y_front.mean(dim=1)
-            cls_target_front = y_front
-            #logger.info(f"cls_target_front shape: {cls_target_front.shape}")
-            cls_pred_front = xs[0] 
-            #logger.info(f"cls_pred_front shape: {cls_pred_front.shape}")
-            result_speech["losses"]["front_cls_loss"] = self.d2v_loss(cls_pred_front, cls_target_front) * (
-                self.cfg.cls_loss_scale
+            y_front = self.make_target(
+                layer_results_front, self.cfg.front_average_top_k_layers
             )
-            #logger.info(f'result_speech["losses"]["front_cls_loss"] : {result_speech["losses"]["front_cls_loss"]}')             
             if self.add_unit_encoder:
-                #cls_target_share = y_share.mean(dim=1)
+                y_share = self.make_target(
+                    layer_results_share, self.cfg.share_average_top_k_layers
+                )
+            result_speech["losses"] = {}
+            # cls_target_front = y_front.mean(dim=1)
+            cls_target_front = y_front
+            # logger.info(f"cls_target_front shape: {cls_target_front.shape}")
+            cls_pred_front = xs[0]
+            # logger.info(f"cls_pred_front shape: {cls_pred_front.shape}")
+            result_speech["losses"]["front_cls_loss"] = self.d2v_loss(
+                cls_pred_front, cls_target_front
+            ) * (self.cfg.cls_loss_scale)
+            # logger.info(f'result_speech["losses"]["front_cls_loss"] : {result_speech["losses"]["front_cls_loss"]}')
+            if self.add_unit_encoder:
+                # cls_target_share = y_share.mean(dim=1)
                 cls_target_share = y_share
                 cls_pred_share = xs[1]
-                result_speech["losses"]["share_cls_loss"] = self.d2v_loss(cls_pred_share, cls_target_share) * (
-                self.cfg.cls_loss_scale 
-            )
-            suffix="_speech"   
-            y_targets =  []
+                result_speech["losses"]["share_cls_loss"] = self.d2v_loss(
+                    cls_pred_share, cls_target_share
+                ) * (self.cfg.cls_loss_scale)
+            suffix = "_speech"
+            y_targets = []
             y_targets.append(y_front)
             if self.add_unit_encoder:
-                y_targets.append(y_share)                   
-            with torch.no_grad():                 
-                for i, y_ in enumerate(y_targets):             
-                    n = f"target_var{suffix}_{i}" if len(y_targets) > 1 else f"target_var{suffix}"
+                y_targets.append(y_share)
+            with torch.no_grad():
+                for i, y_ in enumerate(y_targets):
+                    n = (
+                        f"target_var{suffix}_{i}"
+                        if len(y_targets) > 1
+                        else f"target_var{suffix}"
+                    )
                     result_speech[n] = self.compute_var(y_.float())
-                    #logger.info(f"result_speech[n], {n}: {result_speech[n]}")
+                    # logger.info(f"result_speech[n], {n}: {result_speech[n]}")
                 for i, x in enumerate(xs):
                     n = f"pred_var{suffix}_{i}" if len(xs) > 1 else f"pred_var{suffix}"
                     result_speech[n] = self.compute_var(x.float())
-                    #logger.info(f"result_speech[n],  {n}: {result_speech[n]}")
+                    # logger.info(f"result_speech[n],  {n}: {result_speech[n]}")
                 result_speech["ema_decay"] = self.ema.get_decay() * 1000
-               
+
             result = {"result_speech": result_speech, "result_text": result_text}
             return result
 
@@ -929,7 +942,7 @@ class StHubertModel3(BaseFairseqModel):
         #    x = self.layernorm_embedding(x)
         # x = F.dropout(x, self.cfg.text_dropout)
         if mask:
-            #logger.info(f"it is use mask_u2t=True  for text")
+            # logger.info(f"it is use mask_u2t=True  for text")
             x, mask_indices = self.apply_mask(x, padding_mask, [source_text])
 
         out, _ = self.shared_encoder(x, padding_mask)  ## BXTXC
@@ -937,7 +950,7 @@ class StHubertModel3(BaseFairseqModel):
         result = {}
         result["shared_encoder_out_text"] = out
         if self.compute_mum:
-            #logger.info(f"it is use comput_mum=True  for text")
+            # logger.info(f"it is use comput_mum=True  for text")
             code_logit_m_list, code_logit_u_list = self.compute_hubert_logits_simple(
                 out,
                 source_text,
@@ -950,7 +963,7 @@ class StHubertModel3(BaseFairseqModel):
             result["logit_u_list"] = code_logit_u_list
 
         if self.add_text_ctc:
-            #logger.info(f"it is use add_text_ctc=True  for text")
+            # logger.info(f"it is use add_text_ctc=True  for text")
             result["shared_encoder_out_ctc"] = [self.unit_encoder_ctc_head(out)]
             result["shared_encoder_padding_mask_ctc"] = [
                 self.downsample_ctc_padding_mask(padding_mask)
@@ -999,7 +1012,7 @@ class StHubertModel3(BaseFairseqModel):
         padding_mask: Optional[torch.Tensor] = None,
         mask: bool = True,
         features_only: bool = False,
-        #output_layer_front: Optional[int] = None,
+        # output_layer_front: Optional[int] = None,
         output_layer: Optional[int] = None,
     ) -> Dict[str, torch.Tensor]:
         """output layer is 1-based"""
@@ -1017,14 +1030,14 @@ class StHubertModel3(BaseFairseqModel):
 
         if padding_mask is not None:
             padding_mask = self.forward_padding_mask(features, padding_mask)
-            
+
         if self.post_extract_proj is not None:
             features = self.post_extract_proj(features)
             unmasked_features = self.post_extract_proj(unmasked_features)
         # (B,T,D)
         features = self.dropout_input(features)
         unmasked_features = self.dropout_input(unmasked_features)
-        
+
         if mask:
             x, mask_indices = self.apply_mask(features, padding_mask, target_list)
         else:
@@ -1036,7 +1049,7 @@ class StHubertModel3(BaseFairseqModel):
         # x: (B, T, D), float
         # padding_mask: (B, T), bool
         # mask_indices: (B, T), bool
-        x,_ = self.encoder(
+        x, _ = self.encoder(
             x,
             padding_mask=padding_mask,
             layer=None if output_layer is None else output_layer - 1,
@@ -1059,8 +1072,8 @@ class StHubertModel3(BaseFairseqModel):
             "logit_u_list": logit_u_list,
             "padding_mask": padding_mask,
             "features_pen": features_pen,
-            #"layer_results_front": layer_results_front, 
-            "x_front": x,  
+            # "layer_results_front": layer_results_front,
+            "x_front": x,
             "features": unmasked_features,
         }
         if self.add_unit_encoder:
@@ -1078,7 +1091,7 @@ class StHubertModel3(BaseFairseqModel):
                 padding_mask,
                 layer=None if output_layer is None else output_layer - 1,
             )  ## BXTXC
-            #result["layer_results_shared"]  = layer_results_shared
+            # result["layer_results_shared"]  = layer_results_shared
 
             result["shared_encoder_out_speech"] = out  # [(T, B, D)]
             if self.l2_embedding:

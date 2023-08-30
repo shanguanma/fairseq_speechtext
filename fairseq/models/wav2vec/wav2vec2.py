@@ -291,15 +291,9 @@ class Wav2Vec2Config(FairseqDataclass):
     fp16: bool = field(default=False, metadata={"help": "If fp16 is being used"})
 
     # Adapter num
-    adp_num: int = field(
-        default=-1
-    )
-    adp_dim: int = field(
-        default=64
-    )
-    adp_act_fn: str = field(
-        default="relu"
-    )
+    adp_num: int = field(default=-1)
+    adp_dim: int = field(default=64)
+    adp_act_fn: str = field(default="relu")
     adp_trf_idx: str = field(
         default="all",
     )
@@ -497,7 +491,6 @@ class Wav2Vec2Model(BaseFairseqModel):
         return x, mask_indices
 
     def sample_negatives(self, y, num, padding_count=None):
-
         if self.n_negatives == 0 and self.cross_sample_negatives == 0:
             return y.new(0)
 
@@ -555,7 +548,6 @@ class Wav2Vec2Model(BaseFairseqModel):
         return negs, neg_idxs
 
     def compute_preds(self, x, y, negatives):
-
         neg_is_pos = (y == negatives).all(-1)
         y = y.unsqueeze(0)
         targets = torch.cat([y, negatives], dim=0)
@@ -605,7 +597,6 @@ class Wav2Vec2Model(BaseFairseqModel):
         padding_count=None,
         corpus_key=None,
     ):
-
         if self.feature_grad_mult > 0:
             features = self.feature_extractor(source)
             if self.feature_grad_mult != 1.0:
@@ -912,7 +903,6 @@ class ConvFeatureExtractionModel(nn.Module):
             in_d = dim
 
     def forward(self, x):
-
         # BxT -> BxCxT
         x = x.unsqueeze(1)
 
@@ -971,7 +961,9 @@ class TransformerEncoder(nn.Module):
             if args.adp_trf_idx == "all":
                 use_adp = True
             else:
-                adp_trf_idx = list(range(*[int(g) for g in args.adp_trf_idx.split(":")]))
+                adp_trf_idx = list(
+                    range(*[int(g) for g in args.adp_trf_idx.split(":")])
+                )
                 if kwargs.get("layer_idx", None) in adp_trf_idx:
                     use_adp = True
             if use_adp:
@@ -1050,7 +1042,10 @@ class TransformerEncoder(nn.Module):
             )
 
         self.layers = nn.ModuleList(
-            [self.build_encoder_layer(args, layer_idx=ii) for ii in range(args.encoder_layers)]
+            [
+                self.build_encoder_layer(args, layer_idx=ii)
+                for ii in range(args.encoder_layers)
+            ]
         )
         self.layer_norm_first = args.layer_norm_first
         self.layer_norm = LayerNorm(self.embedding_dim)
@@ -1076,7 +1071,6 @@ class TransformerEncoder(nn.Module):
         min_layer=0,
         corpus_key=None,
     ):
-
         if padding_mask is not None:
             x = index_put(x, padding_mask, 0)
 
@@ -1113,9 +1107,8 @@ class TransformerEncoder(nn.Module):
                 if isinstance(layer, FullyShardedDataParallel):
                     layer_check = layer.unwrapped_module
                 if (corpus_key is None) or (
-                    not isinstance(layer_check, (
-                        TransformerSentenceEncoderWithAdapterLayer,
-                        )
+                    not isinstance(
+                        layer_check, (TransformerSentenceEncoderWithAdapterLayer,)
                     )
                 ):
                     x, (z, lr) = layer(
@@ -1268,7 +1261,6 @@ class TransformerSentenceEncoderLayer(nn.Module):
         activation_fn: str = "relu",
         layer_norm_first: bool = False,
     ) -> None:
-
         super().__init__()
         # Initialize parameters
         self.embedding_dim = embedding_dim
@@ -1370,7 +1362,7 @@ class AdapterFast(nn.Module):
         and without using ModuleList orto speed up training throughput.
         """
         super().__init__()
-        
+
         self.adapter_num = adapter_num
         self.input_dim = input_dim
         self.hidden_dim = hidden_dim
@@ -1391,7 +1383,6 @@ class AdapterFast(nn.Module):
         else:
             raise ValueError(f"unsupported {act_fn}")
 
-
         self.input_dim = input_dim
         self.reset_parameters()
 
@@ -1405,23 +1396,24 @@ class AdapterFast(nn.Module):
             fan_in, _ = nn.init._calculate_fan_in_and_fan_out(self.W_b[ii])
             bound = 1 / math.sqrt(fan_in) if fan_in > 0 else 0
             nn.init.uniform_(self.b_b[ii], -bound, bound)
-        
+
         nn.init.ones_(self.ln_W)
         nn.init.zeros_(self.ln_b)
 
     def forward(self, x, adapter_id):
         ii = adapter_id
         h = x
-        h = F.layer_norm(h, (self.input_dim, ), self.ln_W[ii], self.ln_b[ii])
+        h = F.layer_norm(h, (self.input_dim,), self.ln_W[ii], self.ln_b[ii])
         h = F.linear(h, self.W_a[ii], self.b_a[ii])
         h = self.act_fn(h)
         h = F.linear(h, self.W_b[ii], self.b_b[ii])
         outputs = h
         return outputs
-    
-    def extra_repr(self):
-        return ('adapter={}, input_dim={}, hidden_dim={}'.format(self.adapter_num, self.input_dim, self.hidden_dim))
 
+    def extra_repr(self):
+        return "adapter={}, input_dim={}, hidden_dim={}".format(
+            self.adapter_num, self.input_dim, self.hidden_dim
+        )
 
 
 class TransformerSentenceEncoderWithAdapterLayer(TransformerSentenceEncoderLayer):
@@ -1444,7 +1436,6 @@ class TransformerSentenceEncoderWithAdapterLayer(TransformerSentenceEncoderLayer
         adapter_dim=64,
         adapter_act_fn="relu",
     ) -> None:
-
         super().__init__(
             embedding_dim=embedding_dim,
             ffn_embedding_dim=ffn_embedding_dim,
@@ -1454,12 +1445,13 @@ class TransformerSentenceEncoderWithAdapterLayer(TransformerSentenceEncoderLayer
             activation_dropout=activation_dropout,
             activation_fn=activation_fn,
             layer_norm_first=layer_norm_first,
-
         )
 
         self.adapter_num = adapter_num
         self.adapter_dim = adapter_dim
-        self.adapter_layer = AdapterFast(adapter_num, self.embedding_dim, self.adapter_dim, adapter_act_fn)
+        self.adapter_layer = AdapterFast(
+            adapter_num, self.embedding_dim, self.adapter_dim, adapter_act_fn
+        )
 
     def forward(
         self,
@@ -1470,7 +1462,6 @@ class TransformerSentenceEncoderWithAdapterLayer(TransformerSentenceEncoderLayer
         att_args=None,
         corpus_key=None,
     ):
-
         x, (attn, layer_result) = super().forward(
             x=x,
             self_attn_mask=self_attn_mask,

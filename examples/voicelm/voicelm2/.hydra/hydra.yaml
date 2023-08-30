@@ -139,5 +139,5 @@ hydra:
         - task.label_dir
   runtime:
     version: 1.0.7
-    cwd: /mntnfs/lee_data1/maduo
+    cwd: /mntnfs/lee_data1/maduo/codebase/flash-attention
   verbose: false
