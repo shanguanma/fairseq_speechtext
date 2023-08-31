@@ -111,32 +111,39 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
             hydra.run.dir=$fairseq_dir/examples/voicelm/voicelm2\
             hydra.job.name=$exp_finetune_dir/finetune
 ### 4A100: training about  day
-###           200steps: about  minites
+###           200steps: about 3 minites
 fi
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
-   echo "iter1: finetune voicelm2 on train-clean-100 on 80k steps"
-   #fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
-   #tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
-   #dir=/mntnfs/lee_data1/maduo/exp
-   #label_dir=$tsv_dir/librispeech_lm_monophncode_using_monophn_dict_librispeech_frame_monophncode_using_wav2vec-u2_model
-   fairseq_dir=/workspace2/maduo/fairseq_speechtext
-   tsv_dir=/workspace2/maduo/dataset/format/librispeech/
-   dir=/workspace2/maduo/exp
+   echo "iter1: finetune voicelm2 on train-clean-100 on 80k steps in letter ctc loss mode"
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   dir=/mntnfs/lee_data1/maduo/exp
+   label_dir=$tsv_dir/librispeech_lm_monophncode_using_monophn_dict_librispeech_frame_monophncode_using_wav2vec-u2_model
+   #fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   #tsv_dir=/workspace2/maduo/dataset/format/librispeech/
+   #dir=/workspace2/maduo/exp
    #label_dir=$tsv_dir/librispeech_lm_monophncode_using_monophn_dict_librispeech_frame_monophncode_using_wav2vec-u2_model
    config_dir=$fairseq_dir/examples/voicelm/voicelm2
-   model_name=pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update
+   
+   model_name=pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention
+   exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune_debug
+   #exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
    exp_dir=$dir/pretrain/${model_name}
-   mkdir -p $exp_dir
+   mkdir -p $exp_finetune_dir
+   #world_size=4
+   #update_freq=2
+   #debug
    world_size=2
-   update_freq=16
+   update_freq=4
    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
-   CUDA_VISIBLE_DEVICES=1,3   python $fairseq_dir/fairseq_cli/hydra_train.py \
-            --config-dir $config_dir/config/pretrain \
-            --config-name voicelm2_base_librispeech \
+   python $fairseq_dir/fairseq_cli/hydra_train.py \
+            --config-dir $config_dir/config/finetune \
+            --config-name voicelm2_base_100h_ctc_ltr \
             task.data=$tsv_dir\
-            task.label_dir=$tsv_dir\
-            task.labels='["ltr"]' \
-            model.label_rate=-1\
+            task.label_dir=$label_dir\
+            task.labels='["ltr","textphncode"]' \
+            task.text_drop=true\
+            model.w2v_path=$exp_dir/checkpoint_265_295000.pt\
             common.user_dir=$fairseq_dir/examples/voicelm/voicelm2\
             dataset.train_subset=train-clean-100\
             dataset.valid_subset=\'dev-other\'\
@@ -144,10 +151,6 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
             distributed_training.distributed_port=-1\
             distributed_training.ddp_backend=legacy_ddp\
             optimization.update_freq=[${update_freq}]\
-            common.tensorboard_logdir=$exp_dir\
-            checkpoint.save_dir=$exp_dir\
-            hydra.run.dir=$fairseq_dir/examples/voicelm/voicelm2\
-            hydra.job.name=$exp_dir/pretrain
             common.tensorboard_logdir=$exp_finetune_dir\
             checkpoint.save_dir=$exp_finetune_dir\
             hydra.run.dir=$fairseq_dir/examples/voicelm/voicelm2\

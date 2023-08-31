@@ -22,13 +22,14 @@ distributed_training:
   #nprocs_per_node: 8
 
 task:
-  _name: hubert_pretraining
+  _name: voicelm2_pretraining
   data: ???
   fine_tuning: true
   label_dir: ???
   normalize: false  # must be consistent with pre-training
   labels: ["ltr"]
   single_target: true
+  text_drop: true 
 
 dataset:
   num_workers: 6
@@ -60,7 +61,7 @@ lr_scheduler:
   final_lr_scale: 0.05
 
 model:
-  _name: hubert_ctc
+  _name: voicelm2_ctc
   w2v_path: ???
   apply_mask: true
   mask_selection: static
@@ -78,6 +79,8 @@ model:
   attention_dropout: 0.1
   feature_grad_mult: 0.0
   freeze_finetune_updates: 0
+
+  feature_fuse_freeze: false
 
 hydra:
   job:

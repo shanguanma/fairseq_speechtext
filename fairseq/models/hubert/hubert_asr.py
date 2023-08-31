@@ -70,7 +70,7 @@ class HubertAsrConfig(FairseqDataclass):
 
     # masking
     apply_mask: bool = field(
-        default=False, metadata={"help": "apply masking during fine-tuning"}
+        default=True, metadata={"help": "apply masking during fine-tuning"}
     )
     mask_length: int = field(
         default=10, metadata={"help": "repeat the mask indices multiple times"}

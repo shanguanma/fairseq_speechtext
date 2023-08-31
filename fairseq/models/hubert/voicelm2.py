@@ -93,9 +93,9 @@ class Voicelm2Config(HubertConfig2):
         default="rel_attention",
         metadata={
             "help": """now it contains two options: rel_attention, flash_attention,
-                                                                   rel_attention is has relative attention baise using bucket,'
-                                                                  'it is MultiheadAttention2, flash_attetion is Fast 
-                                                                   and Memory-Efficient multi head attention, but require cuda>=11.4, pytorch>=1.12"""
+                    rel_attention is has relative attention baise using bucket,'
+                    'it is MultiheadAttention2, flash_attetion is Fast 
+                    and Memory-Efficient multi head attention, but require cuda>=11.4, pytorch>=1.12"""
         },
     )
 
@@ -405,7 +405,7 @@ class Voicelm2Model(BaseFairseqModel):
                 src_text, modality="text"
             )  # features: [B,S,F],S is text seq length.
         else:
-            feature_text = feature_audio.new_zero(
+            feature_text = feature_audio.new_zeros(
                 feature_audio.size(0), feature_audio.size(1), feature_audio.size(2)
             )
 
@@ -452,6 +452,8 @@ class Voicelm2Model(BaseFairseqModel):
             padding_mask=padding_mask,
             layer=None if output_layer is None else output_layer - 1,
         )
+        return x, padding_mask
+
 
     def apply_feature_mask(self, x, padding_mask):
         B, T, C = x.shape

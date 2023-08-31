@@ -7,7 +7,7 @@ common:
   log_file: null
   aim_repo: null
   aim_run_hash: null
-  tensorboard_logdir: /mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention
+  tensorboard_logdir: /mntnfs/lee_data1/maduo/exp/finetune/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_100h_asr_finetune_debug
   wandb_project: null
   azureml_logging: false
   seed: 1337
@@ -47,8 +47,8 @@ common_eval:
   results_path: null
 distributed_training:
   _name: null
-  distributed_world_size: 4
-  distributed_num_procs: 4
+  distributed_world_size: 2
+  distributed_num_procs: 2
   distributed_rank: 0
   distributed_backend: nccl
   distributed_init_method: null
@@ -67,7 +67,7 @@ distributed_training:
   slowmo_momentum: null
   slowmo_base_algorithm: localsgd
   localsgd_frequency: 3
-  nprocs_per_node: 8
+  nprocs_per_node: 2
   pipeline_model_parallel: false
   pipeline_balance: null
   pipeline_devices: null
@@ -89,19 +89,19 @@ distributed_training:
 dataset:
   _name: null
   num_workers: 6
-  skip_invalid_size_inputs_valid_test: true
-  max_tokens: 1400000
+  skip_invalid_size_inputs_valid_test: false
+  max_tokens: 3200000
   batch_size: null
-  required_batch_size_multiple: 1
+  required_batch_size_multiple: 8
   required_seq_len_multiple: 1
   dataset_impl: null
   data_buffer_size: 10
-  train_subset: train-960
-  valid_subset: dev-other,dev-clean
+  train_subset: train-clean-100
+  valid_subset: dev-other
   combine_valid_subsets: null
   ignore_unused_valid_subsets: false
-  validate_interval: 5
-  validate_interval_updates: 10000
+  validate_interval: 1
+  validate_interval_updates: 0
   validate_after_updates: 0
   fixed_validation_seed: null
   disable_validation: false
@@ -118,21 +118,21 @@ dataset:
 optimization:
   _name: null
   max_epoch: 0
-  max_update: 400000
+  max_update: 80000
   stop_time_hours: 0.0
-  clip_norm: 10.0
-  sentence_avg: false
+  clip_norm: 0.0
+  sentence_avg: true
   update_freq:
-  - 8
+  - 4
   lr:
-  - 1.0e-06
+  - 3.0e-05
   stop_min_lr: -1.0
   use_bmuf: false
   skip_remainder_batch: false
   debug_param_names: false
 checkpoint:
   _name: null
-  save_dir: /mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention
+  save_dir: /mntnfs/lee_data1/maduo/exp/finetune/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_100h_asr_finetune_debug
   restore_file: checkpoint_last.pt
   continue_once: null
   finetune_from_model: null
@@ -141,8 +141,8 @@ checkpoint:
   reset_meters: false
   reset_optimizer: false
   optimizer_overrides: '{}'
-  save_interval: 1
-  save_interval_updates: 5000
+  save_interval: 5
+  save_interval_updates: 0
   keep_interval_updates: 1
   keep_interval_updates_pattern: -1
   keep_last_epochs: -1
@@ -151,7 +151,7 @@ checkpoint:
   no_epoch_checkpoints: true
   no_last_checkpoints: false
   no_save_optimizer_state: false
-  best_checkpoint_metric: loss
+  best_checkpoint_metric: wer
   maximize_best_checkpoint_metric: false
   patience: -1
   checkpoint_suffix: ''
@@ -224,61 +224,48 @@ interactive:
   buffer_size: 0
   input: '-'
 model:
-  _name: voicelm2
-  label_rate: 50
-  skip_masked: false
-  skip_nomask: false
-  mask_prob: 0.8
-  extractor_mode: default
-  conv_feature_layers: '[(512,10,5)] + [(512,3,2)] * 4 + [(512,2,2)] * 2'
-  final_dim: 256
-  encoder_attention_heads: 12
-  encoder_embed_dim: 768
-  encoder_ffn_embed_dim: 3072
-  dropout_input: 0.1
-  dropout_features: 0.1
+  _name: voicelm2_ctc
+  w2v_path: /mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention/checkpoint_265_295000.pt
+  apply_mask: true
+  mask_selection: static
+  mask_length: 10
+  mask_other: 0
+  mask_prob: 0.65
+  mask_channel_selection: static
+  mask_channel_length: 64
+  mask_channel_other: 0
+  mask_channel_prob: 0.5
+  layerdrop: 0.1
   dropout: 0.1
+  final_dropout: 0.1
+  activation_dropout: 0.1
   attention_dropout: 0.1
-  feature_grad_mult: 0.1
-  activation_dropout: 0.0
-  relative_position_embedding: true
-  num_buckets: 320
-  max_distance: 800
-  audio_feature_type: cnn
-  modality_fuse: attention
-  fuse_attention_heads: 12
-  sim_type: cosine
-  attention_type: flash_attention
+  feature_grad_mult: 0.0
+  freeze_finetune_updates: 0
 task:
   _name: voicelm2_pretraining
   data: /mntcephfs/lab_data/maduo/datasets/format/librispeech/
+  fine_tuning: true
   label_dir: /mntcephfs/lab_data/maduo/datasets/format/librispeech//librispeech_lm_monophncode_using_monophn_dict_librispeech_frame_monophncode_using_wav2vec-u2_model
-  labels:
-  - speechphncode
-  - textphncode
-  label_rate: ${model.label_rate}
-  sample_rate: 16000
-  max_sample_size: 250000
-  min_sample_size: 32000
-  max_phone_size: 200
-  min_phone_size: 50
-  pad_audio: false
-  random_crop: true
   normalize: false
+  labels:
+  - ltr
+  - textphncode
+  single_target: true
+  text_drop: true
 criterion:
-  _name: voicelm2_criterion
-  pred_masked_weight: 1.0
-  pred_nomask_weight: 0.0
-  loss_weights:
-  - 10
+  _name: ctc
+  zero_infinity: true
 optimizer:
   _name: adam
   adam_betas: (0.9,0.98)
-  adam_eps: 1.0e-06
-  weight_decay: 0.01
+  adam_eps: 1.0e-08
 lr_scheduler:
-  _name: polynomial_decay
-  warmup_updates: 32000
+  _name: tri_stage
+  warmup_steps: 8000
+  hold_steps: 32000
+  decay_steps: 40000
+  final_lr_scale: 0.05
 scoring: null
 bpe: null
 tokenizer: null

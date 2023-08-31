@@ -21,25 +21,38 @@ from fairseq.models import (
     FairseqEncoder,
     FairseqEncoderDecoderModel,
     register_model,
+    FairseqIncrementalDecoder,
 )
-from fairseq.models.hubert.hubert import MASKING_DISTRIBUTION_CHOICES
+from fairseq.modules import (
+    LayerNorm,
+    PositionalEmbedding,
+    TransformerDecoderLayer,
+)
+
+from fairseq.models.wav2vec.wav2vec2 import (
+    EXTRACTOR_MODE_CHOICES,
+    MASKING_DISTRIBUTION_CHOICES,
+    LAYER_TYPE_CHOICES,
+)
+    
 from fairseq.tasks import FairseqTask
 from omegaconf import II, MISSING
 
-DBG = True if len(sys.argv) == 1 else False
+#DBG = True if len(sys.argv) == 1 else False
 
-if DBG:
-    from hubert import AVHubertModel
-    from decoder import TransformerDecoder
-else:
-    from .hubert import AVHubertModel
-    from .decoder import TransformerDecoder
+#if DBG:
+#    from hubert import AVHubertModel
+#    from decoder import TransformerDecoder
+#else:
+#    from .hubert import AVHubertModel
+#    from .decoder import TransformerDecoder
 
+#from .
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class AVHubertAsrConfig(FairseqDataclass):
+class Voicelm2AsrConfig(FairseqDataclass):
     w2v_path: str = field(default=MISSING, metadata={"help": "path to hubert model"})
     no_pretrained_weights: bool = field(
         default=False,
@@ -72,7 +85,7 @@ class AVHubertAsrConfig(FairseqDataclass):
 
     # masking
     apply_mask: bool = field(
-        default=False, metadata={"help": "apply masking during fine-tuning"}
+        default=True, metadata={"help": "apply masking during fine-tuning"}
     )
     mask_length: int = field(
         default=10, metadata={"help": "repeat the mask indices multiple times"}
@@ -139,18 +152,21 @@ class AVHubertAsrConfig(FairseqDataclass):
     normalize: bool = II("task.normalize")
     data: str = II("task.data")
 
+    feature_fuse_freeze = bool = field(
+        default=False,metadata={"""if false, it will update parameters in funetune, otherwise it will freeze parameters"""}
+    )
     # this holds the loaded hubert args
     w2v_args: Any = None
 
 
 @dataclass
-class AVHubertCtcConfig(AVHubertAsrConfig):
+class Voicelm2CtcConfig(Voicelm2AsrConfig):
     pass
 
 
-@register_model("av_hubert_ctc", dataclass=AVHubertCtcConfig)
-class AVHubertCtc(BaseFairseqModel):
-    def __init__(self, cfg: AVHubertCtcConfig, w2v_encoder: BaseFairseqModel):
+@register_model("voicelm2_ctc", dataclass=Voicelm2CtcConfig)
+class Voicelm2Ctc(BaseFairseqModel):
+    def __init__(self, cfg: Voicelm2CtcConfig, w2v_encoder: BaseFairseqModel):
         super().__init__()
         self.cfg = cfg
         self.w2v_encoder = w2v_encoder
@@ -160,7 +176,7 @@ class AVHubertCtc(BaseFairseqModel):
         return state_dict
 
     @classmethod
-    def build_model(cls, cfg: AVHubertCtcConfig, task: FairseqTask):
+    def build_model(cls, cfg: Voicelm2CtcConfig, task: FairseqTask):
         """Build a new model instance."""
         w2v_encoder = HubertEncoder(cfg, task.target_dictionary)
         return cls(cfg, w2v_encoder)
@@ -190,7 +206,7 @@ class AVHubertCtc(BaseFairseqModel):
 
 
 @dataclass
-class AVHubertSeq2SeqConfig(AVHubertAsrConfig):
+class Voicelm2Seq2SeqConfig(Voicelm2AsrConfig):
     decoder_embed_dim: int = field(
         default=768, metadata={"help": "decoder embedding dimension"}
     )
@@ -244,7 +260,7 @@ class AVHubertSeq2SeqConfig(AVHubertAsrConfig):
 
 
 class HubertEncoder(FairseqEncoder):
-    def __init__(self, cfg: AVHubertAsrConfig, tgt_dict=None):
+    def __init__(self, cfg: Voicelm2AsrConfig, tgt_dict=None):
         self.apply_mask = cfg.apply_mask
 
         arg_overrides = {
@@ -268,6 +284,15 @@ class HubertEncoder(FairseqEncoder):
 
         if cfg.w2v_args is None:
             state = checkpoint_utils.load_checkpoint_to_cpu(cfg.w2v_path, arg_overrides)
+
+            ## whether freeze parameter of feature_fuse layer
+            if cfg.feature_fuse_freeze:
+                print(f"cfg.feature_fuse_freeze: {cfg.feature_fuse_freeze}")
+                for name, param in state["model"].items():
+                    if name.startswith("feature_fuse"):
+                        param.requires_grad=False
+
+                    
             w2v_args = state.get("cfg", None)
             if w2v_args is None:
                 w2v_args = convert_namespace_to_omegaconf(state["args"])
@@ -295,16 +320,19 @@ class HubertEncoder(FairseqEncoder):
 
         model.remove_pretraining_modules()
 
+        ## whether freeze parameter of feature_fuse layer
+        #if cfg.feature_fuse_freeze:
+        #   pass 
         super().__init__(task.source_dictionary)
 
         d = model.encoder.embedding_dim
 
         self.w2v_model = model
-
+        
         self.final_dropout = nn.Dropout(cfg.final_dropout)
         self.freeze_finetune_updates = cfg.freeze_finetune_updates
         self.num_updates = 0
-
+        
         if tgt_dict is not None:
             self.proj = Linear(d, len(tgt_dict))
         elif getattr(cfg, "decoder_embed_dim", d) != d:
@@ -399,8 +427,8 @@ class HubertEncoderWrapper(FairseqEncoder):
         return encoder_out
 
 
-@register_model("av_hubert_seq2seq", dataclass=AVHubertSeq2SeqConfig)
-class AVHubertSeq2Seq(FairseqEncoderDecoderModel):
+@register_model("voicelm2_seq2seq", dataclass=Voicelm2Seq2SeqConfig)
+class Voicelm2Seq2Seq(FairseqEncoderDecoderModel):
     def __init__(self, encoder, decoder, tgt_dict, cfg):
         super().__init__(encoder, decoder)
         self.cfg = cfg
@@ -474,7 +502,7 @@ class AVHubertSeq2Seq(FairseqEncoderDecoderModel):
         decoder_embed_tokens = build_embedding(tgt_dict, cfg.decoder_embed_dim)
         decoder = TransformerDecoder(cfg, tgt_dict, decoder_embed_tokens)
 
-        return AVHubertSeq2Seq(encoder, decoder, tgt_dict, cfg)
+        return Voicelm2Seq2Seq(encoder, decoder, tgt_dict, cfg)
 
     def forward(self, **kwargs):
         ft = self.freeze_finetune_updates <= self.num_updates
@@ -508,3 +536,210 @@ def Linear(in_features, out_features, bias=True):
     if bias:
         nn.init.constant_(m.bias, 0.0)
     return m
+
+
+class TransformerDecoder(FairseqIncrementalDecoder):
+    """
+    Transformer decoder consisting of *args.decoder_layers* layers. Each layer
+    is a :class:`TransformerDecoderLayer`.
+
+    Args:
+        args (argparse.Namespace): parsed command-line arguments
+        dictionary (~fairseq.data.Dictionary): decoding dictionary
+        embed_tokens (torch.nn.Embedding): output embedding
+        no_encoder_attn (bool, optional): whether to attend to encoder outputs
+            (default: False).
+    """
+
+    def __init__(
+        self,
+        cfg,
+        dictionary,
+        embed_tokens,
+        no_encoder_attn=False,
+    ):
+        super().__init__(dictionary)
+
+        self.dropout = cfg.decoder_dropout
+        self.share_input_output_embed = cfg.share_decoder_input_output_embed
+
+        input_embed_dim = embed_tokens.embedding_dim
+        embed_dim = cfg.decoder_embed_dim
+        self.output_embed_dim = cfg.decoder_embed_dim
+
+        self.layerdrop = cfg.decoder_layerdrop
+
+        padding_idx = embed_tokens.padding_idx
+        self.max_target_positions = cfg.max_target_positions
+
+        self.embed_tokens = embed_tokens
+        # self.embed_scale = math.sqrt(embed_dim)  # todo: try with input_embed_dim
+        self.embed_scale = 1.0 if cfg.no_scale_embedding else math.sqrt(embed_dim)
+
+        self.project_in_dim = (
+            Linear(input_embed_dim, embed_dim, bias=False)
+            if embed_dim != input_embed_dim
+            else None
+        )
+
+        self.embed_positions = (
+            PositionalEmbedding(
+                cfg.max_target_positions,
+                embed_dim,
+                padding_idx,
+                learned=cfg.decoder_learned_pos,
+            )
+            if not cfg.no_token_positional_embeddings
+            else None
+        )
+
+        # TODO: update this when transformer gets converted to dataclass configs
+        transformer_cfg = copy.deepcopy(cfg)
+        # with open_dict(transformer_cfg):
+        transformer_cfg.dropout = transformer_cfg.decoder_dropout
+        transformer_cfg.attention_dropout = (
+            transformer_cfg.decoder_attention_dropout
+        )
+        transformer_cfg.activation_dropout = (
+            transformer_cfg.decoder_activation_dropout
+        )
+
+        self.layers = nn.ModuleList([])
+        self.layers.extend(
+            [
+                TransformerDecoderLayer(transformer_cfg, no_encoder_attn)
+                for _ in range(transformer_cfg.decoder_layers)
+            ]
+        )
+
+        if not self.share_input_output_embed:
+            self.embed_out = nn.Parameter(
+                torch.Tensor(len(dictionary), self.output_embed_dim)
+            )
+            nn.init.normal_(self.embed_out, mean=0, std=self.output_embed_dim ** -0.5)
+
+        if transformer_cfg.decoder_normalize_before:
+            self.layer_norm = LayerNorm(embed_dim)
+        else:
+            self.layer_norm = None
+
+    def forward(
+        self, prev_output_tokens, encoder_out=None, incremental_state=None, **unused
+    ):
+        """
+        Args:
+            prev_output_tokens (LongTensor): previous decoder outputs of shape
+                `(batch, tgt_len)`, for teacher forcing
+            encoder_out (Tensor, optional): output from the encoder, used for
+                encoder-side attention
+            incremental_state (dict): dictionary used for storing state during
+                :ref:`Incremental decoding`
+
+        Returns:
+            tuple:
+                - the decoder's output of shape `(batch, tgt_len, vocab)`
+                - a dictionary with any model-specific outputs
+        """
+        prev_output_tokens = prev_output_tokens.long()
+        x, extra = self.extract_features(
+            prev_output_tokens, encoder_out, incremental_state
+        )
+        x = self.output_layer(x)
+        return x, extra
+
+    def extract_features(
+        self, prev_output_tokens, encoder_out=None, incremental_state=None, **unused
+    ):
+        """
+        Similar to *forward* but only return features.
+
+        Returns:
+            tuple:
+                - the decoder's features of shape `(batch, tgt_len, embed_dim)`
+                - a dictionary with any model-specific outputs
+        """
+
+        # embed positions
+        positions = (
+            self.embed_positions(
+                prev_output_tokens, incremental_state=incremental_state
+            )
+            if self.embed_positions is not None
+            else None
+        )
+
+        if incremental_state is not None:
+            prev_output_tokens = prev_output_tokens[:, -1:]
+            if positions is not None:
+                positions = positions[:, -1:]
+
+        # embed tokens and positions
+        x = self.embed_scale * self.embed_tokens(prev_output_tokens)
+
+        if self.project_in_dim is not None:
+            x = self.project_in_dim(x)
+
+        if positions is not None:
+            x += positions
+        x = F.dropout(x, p=self.dropout, training=self.training)
+
+        # B x T x C -> T x B x C
+        x = x.transpose(0, 1)
+        attn = None
+
+        inner_states = [x]
+
+        # decoder layers
+        for layer in self.layers:
+            dropout_probability = np.random.random()
+            if not self.training or (dropout_probability > self.layerdrop):
+                x, attn, _ = layer(
+                    x,
+                    encoder_out["encoder_out"] if encoder_out is not None else None,
+                    encoder_out["padding_mask"] if encoder_out is not None else None,
+                    incremental_state,
+                    self_attn_mask=self.buffered_future_mask(x)
+                    if incremental_state is None
+                    else None,
+                )
+                inner_states.append(x)
+
+        if self.layer_norm:
+            x = self.layer_norm(x)
+
+        # T x B x C -> B x T x C
+        x = x.transpose(0, 1)
+
+        return x, {"attn": attn, "inner_states": inner_states}
+
+    def output_layer(self, features, **kwargs):
+        """Project features to the vocabulary size."""
+        # project back to size of vocabulary
+        emb_mat = self.embed_tokens.weight if self.share_input_output_embed else self.embed_out
+        return torch.matmul(features, emb_mat.transpose(0, 1))
+        # if self.share_input_output_embed:
+        #     return F.linear(features, self.embed_tokens.weight)
+        # else:
+        #     return F.linear(features, self.embed_out)
+
+    def max_positions(self):
+        """Maximum output length supported by the decoder."""
+        if self.embed_positions is None:
+            return self.max_target_positions
+        return min(self.max_target_positions, self.embed_positions.max_positions)
+
+    def buffered_future_mask(self, tensor):
+        dim = tensor.size(0)
+        if (
+            not hasattr(self, "_future_mask")
+            or self._future_mask is None
+            or self._future_mask.device != tensor.device
+            or self._future_mask.size(0) < dim
+        ):
+            self._future_mask = torch.triu(
+                utils.fill_with_neg_inf(tensor.new(dim, dim)), 1
+            )
+        return self._future_mask[:dim, :dim]
+
+    def upgrade_state_dict_named(self, state_dict, name):
+        return state_dict

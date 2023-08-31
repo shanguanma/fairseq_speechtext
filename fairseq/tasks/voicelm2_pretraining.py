@@ -22,6 +22,11 @@ from omegaconf import MISSING
 logger = logging.getLogger(__name__)
 
 
+from fairseq.models.hubert.voicelm2_sequence_generator import SequenceGenerator, SequenceGeneratorWithAlignment
+from fairseq import metrics, search
+from omegaconf import II
+from argparse import Namespace
+
 ## it will use letter unit to finetune via ctc loss
 ## or it will use code unit to pretrain via mlm loss.
 class LabelEncoder(object):
@@ -145,7 +150,7 @@ class Voicelm2PretrainingConfig(FairseqDataclass):
         default=False,
         metadata={"help": "pad audio to the longest one in the batch if true"},
     )
-    ### sthubert text part
+    ###  unpaired text part
     max_phone_size: Optional[int] = field(
         default=None,
         metadata={"help": "max phone sequeuce size to crop to for batching"},
@@ -212,13 +217,14 @@ class Voicelm2PretrainingTask(FairseqTask):
         return None
 
     @property
-    def target_dictionary(self) -> Optional[Dictionary]:
+    def target_dictionary(self) -> Optional[Dictionary]: ## it is used at fairseq_criterion.py 
         return self.state.target_dictionary
 
     @property
     def dictionaries(self) -> List[Dictionary]:
         # dict_list=[self.state.dictionaries,self.state.text_dictionary]
         # return dict_list
+        #return self.state.dictionaries[0] if self.cfg.fine_tuning else self.state.dictionaries 
         return self.state.dictionaries
 
     def load_dictionaries(self):
@@ -228,6 +234,7 @@ class Voicelm2PretrainingTask(FairseqTask):
             for label in self.cfg.labels
         ]
         return dictionaries[0] if self.cfg.fine_tuning else dictionaries
+        #return dictionaries
 
     def load_tokenizer(self):
         bpe_args = Namespace(
@@ -256,18 +263,21 @@ class Voicelm2PretrainingTask(FairseqTask):
 
     def load_dataset(self, split: str, **kwargs) -> None:
         manifest = f"{self.cfg.data}/{split}.tsv"
-        dicts = [self.target_dictionary] if self.cfg.fine_tuning else self.dictionaries
+        if self.cfg.fine_tuning:
+            dicts = [
+                Dictionary.load(f"{self.cfg.label_dir}/dict.{label}.txt")
+                for label in self.cfg.labels
+            ]
+        else:
+            dicts=self.dictionaries
+        #dicts = [self.target_dictionary] if self.cfg.fine_tuning else self.dictionaries
 
+    
         logger.info(f"dicts: {dicts}")
+        
         dicts_speech_label = [dicts[0]]  # remove text phn dictionary
-        dicts_text = [dicts[1]]  #
-        # ori_dicts = [dicts[0][0],dicts[1]]
-        # dicts=ori_dicts
-        # for dict1 in dicts:
-
-        #    logger.info(f"dict1: {dict1[0]}")
-        #    logger.info(f"dict1.pad(): {dict1[0].pad()}")
-        #    logger.info(f"dict1: {dict1[1]}")
+        dicts_text = [dicts[1]]  
+        #dicts_text = dicts_speech_label 
         pad_list = [dict.pad() for dict in dicts_speech_label]
         eos_list = [dict.eos() for dict in dicts_speech_label]
         # procs = [LabelEncoder(dict) for dict in dicts]
@@ -280,9 +290,11 @@ class Voicelm2PretrainingTask(FairseqTask):
                 LabelEncoderS2SToken(dict, bpe_tokenizer) for dict in dicts_speech_label
             ]
 
-        text_procs = [TextEncoder(dict) for dict in dicts]
+        text_procs = [TextEncoder(dict) for dict in dicts_text]
         paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
         logger.info(f"paths: {paths}")
+
+        
         # text_paths=[f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.texts_type]
         # hubert v1: pad_audio=True, random_crop=False;
         if self.cfg.fine_tuning:
@@ -313,7 +325,7 @@ class Voicelm2PretrainingTask(FairseqTask):
                     is_s2s=self.cfg.is_s2s,  ## choice ctc or seq2seq finetune flag
                     text_drop=self.cfg.text_drop,  ## whether unpaired text is used to finetune
                 )
-            else:  ## fintune case (in finetune case, i only use unpaired text code.)
+            else:  ## fintune case (in finetune case, i also use unpaired text code.)
                 self.datasets[split] = Voicelm2Dataset(
                     manifest,
                     manifest_text_path=paths[1],
