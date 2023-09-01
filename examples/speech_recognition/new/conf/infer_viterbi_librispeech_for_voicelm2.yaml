@@ -28,4 +28,5 @@ common_eval:
 dataset:
   max_tokens: 1100000
   gen_subset: ???
-
+common:
+    fp16: true

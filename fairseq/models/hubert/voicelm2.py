@@ -391,6 +391,9 @@ class Voicelm2Model(BaseFairseqModel):
     ) -> Dict[str, torch.Tensor]:
         """output layer is 1-based"""
         src_audio, src_text = source["audio"], source["text"]
+        src_audio = src_audio.to(torch.float16)
+        if  src_text is None:
+            src_text = src_text
 
         feature_audio = self.forward_features(
             src_audio, modality="audio"

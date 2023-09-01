@@ -152,9 +152,10 @@ class Voicelm2AsrConfig(FairseqDataclass):
     normalize: bool = II("task.normalize")
     data: str = II("task.data")
 
-    feature_fuse_freeze = bool = field(
-        default=False,metadata={"""if false, it will update parameters in funetune, otherwise it will freeze parameters"""}
+    feature_fuse_freeze: bool = field(
+            default=False, metadata={"help": """if false, it will update parameters in funetune, otherwise it will freeze parameters"""},
     )
+    #inference_mode: bool = field(default=True, metadata={"help": "it is diffence from finetune mode, because here the finetune model can accept two style label. inference_model=true, it will only accept one style label"})
     # this holds the loaded hubert args
     w2v_args: Any = None
 
@@ -287,10 +288,11 @@ class HubertEncoder(FairseqEncoder):
 
             ## whether freeze parameter of feature_fuse layer
             if cfg.feature_fuse_freeze:
-                print(f"cfg.feature_fuse_freeze: {cfg.feature_fuse_freeze}")
+                logger.info(f"set freeze feature_fuse layer: {cfg.feature_fuse_freeze}!!!!!!!!")
                 for name, param in state["model"].items():
                     if name.startswith("feature_fuse"):
                         param.requires_grad=False
+                        logger.info(f"feature_fuse layer parameter requires_grad is false, {param}")
 
                     
             w2v_args = state.get("cfg", None)
@@ -326,7 +328,7 @@ class HubertEncoder(FairseqEncoder):
         super().__init__(task.source_dictionary)
 
         d = model.encoder.embedding_dim
-
+        #self.inference_mode = cfg.inference_mode
         self.w2v_model = model
         
         self.final_dropout = nn.Dropout(cfg.final_dropout)
@@ -346,6 +348,7 @@ class HubertEncoder(FairseqEncoder):
         self.num_updates = num_updates
 
     def forward(self, source, padding_mask, tbc=True, **kwargs):
+        
         w2v_args = {
             "source": source,
             "padding_mask": padding_mask,

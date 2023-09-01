@@ -7,7 +7,7 @@ common:
   log_file: null
   aim_repo: null
   aim_run_hash: null
-  tensorboard_logdir: /mntnfs/lee_data1/maduo/exp/finetune/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_100h_asr_finetune_debug
+  tensorboard_logdir: /mntnfs/lee_data1/maduo/exp/finetune/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_100h_asr_finetune_text_drop_false_debug
   wandb_project: null
   azureml_logging: false
   seed: 1337
@@ -132,7 +132,7 @@ optimization:
   debug_param_names: false
 checkpoint:
   _name: null
-  save_dir: /mntnfs/lee_data1/maduo/exp/finetune/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_100h_asr_finetune_debug
+  save_dir: /mntnfs/lee_data1/maduo/exp/finetune/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_100h_asr_finetune_text_drop_false_debug
   restore_file: checkpoint_last.pt
   continue_once: null
   finetune_from_model: null
@@ -242,6 +242,7 @@ model:
   attention_dropout: 0.1
   feature_grad_mult: 0.0
   freeze_finetune_updates: 0
+  feature_fuse_freeze: false
 task:
   _name: voicelm2_pretraining
   data: /mntcephfs/lab_data/maduo/datasets/format/librispeech/
@@ -252,7 +253,7 @@ task:
   - ltr
   - textphncode
   single_target: true
-  text_drop: true
+  text_drop: false
 criterion:
   _name: ctc
   zero_infinity: true

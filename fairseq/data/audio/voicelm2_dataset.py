@@ -191,9 +191,15 @@ class Voicelm2Dataset(FairseqDataset):
         self.audio_root, self.audio_names, inds, tot, self.sizes = load_audio(
             manifest_path, max_keep_sample_size, min_keep_sample_size
         )
-        text_uttids, text_contents = load_text(
-            manifest_text_path, max_keep_phone_size, min_keep_phone_size
-        )
+        
+        if not text_drop and manifest_text_path is not None:
+            text_uttids, text_contents = load_text(
+                manifest_text_path, max_keep_phone_size, min_keep_phone_size
+            )
+        else:
+            text_uttids=None
+            text_contents=None
+        self.manifest_text_path = manifest_text_path
         self.text_uttids = text_uttids
         self.text_contents = text_contents
         self.sample_rate = sample_rate
@@ -308,15 +314,20 @@ class Voicelm2Dataset(FairseqDataset):
 
     def __getitem__(self, index):
         wav = self.get_audio(index)
-        # choose text
-        list_id = np.arange(len(self.text_uttids))
-        idx = np.random.choice(list_id)
-        while idx == index and len(list_id) > 1:
+        if self.text_uttids is not None:
+            # choose text
+            list_id = np.arange(len(self.text_uttids))
             idx = np.random.choice(list_id)
-        text = self.get_text(idx)
-        labels = self.get_labels(index)
+            while idx == index and len(list_id) > 1:
+                idx = np.random.choice(list_id)
+            text = self.get_text(idx)
+            labels = self.get_labels(index)
+            return {"id": index, "source": wav, "text": text, "label_list": labels}
+        else:
+            labels = self.get_labels(index)
+            return {"id": index, "source": wav, "label_list": labels}
         # logger.info(f"in __getitem__: text: {text}")
-        return {"id": index, "source": wav, "text": text, "label_list": labels}
+        #return {"id": index, "source": wav, "text": text, "label_list": labels}
 
     def __len__(self):
         return len(self.sizes)
@@ -349,9 +360,11 @@ class Voicelm2Dataset(FairseqDataset):
         collated_audios, padding_mask, audio_starts = self.collater_audio(
             audios, audio_size
         )
-        texts = [[s["text"] for s in samples]]
+        #texts = [[s["text"] for s in samples]]
         # logger.info(f"in collater, texts lengths : {len(texts)}, texts : {texts}") # texts lengths=1,
-        if not self.text_drop:  ## pretrain mode
+        if not self.text_drop and self.manifest_text_path is not None:  ## pretrain mode or finetune mode with unpaired text code
+            #logger.info(f"self.text_drop: {self.text_drop}, manifest_text_path: {self.manifest_text_path}")
+            texts = [[s["text"] for s in samples]]
             collated_texts, text_lengths_list, text_ntokens_list = self.collater_text(
                 texts, audio_size, audio_starts
             )
