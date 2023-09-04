@@ -304,7 +304,7 @@ class Voicelm2PretrainingTask(FairseqTask):
         logger.info(f"paths: {paths}")
         """
         ### prepared pretrain mode and finetune mode and inference mode
-        ## I hope both pretrain and finetuen mode  can accept two style label, and inference mode cant accept one style label
+        ## I hope both pretrain and finetuen mode  can accept two or more two style label, and inference mode cant accept one style label
         manifest = f"{self.cfg.data}/{split}.tsv"
         speech_procs=None
         if not self.cfg.inference_mode: ## finetune mode and pretrain mode
@@ -315,8 +315,8 @@ class Voicelm2PretrainingTask(FairseqTask):
                 Dictionary.load(f"{self.cfg.label_dir}/dict.{label}.txt")
                 for label in self.cfg.labels
             ]
-            dicts_speech_label = [dicts[0]]  # remove text phn dictionary
-            dicts_text = [dicts[1]]
+            dicts_speech_label = [dicts[0]] if len(dicts)==2 else  dicts[:-1]  # remove text phn dictionary
+            dicts_text = [dicts[-1]]
             pad_list = [dict.pad() for dict in dicts_speech_label]
             eos_list = [dict.eos() for dict in dicts_speech_label]
             if not self.cfg.is_s2s:
@@ -329,8 +329,8 @@ class Voicelm2PretrainingTask(FairseqTask):
                 ]
             text_procs = [TextEncoder(dict) for dict in dicts_text]
             paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
-            path_text=paths[1]
-            path_label=paths[0]
+            path_text=paths[-1]
+            path_label=paths[:-1]
         else: ## inference mode
             ## dict
             ## data path
