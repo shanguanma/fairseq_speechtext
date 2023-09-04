@@ -134,7 +134,7 @@ class TextModel(nn.Module):
         return x
 
 
-@register_model("voicelm2+", dataclass=Voicelm2Config1)
+@register_model("voicelm2plus", dataclass=Voicelm2Config1)
 class Voicelm2Model(BaseFairseqModel):
     def __init__(
         self,
@@ -221,7 +221,7 @@ class Voicelm2Model(BaseFairseqModel):
             torch.FloatTensor(cfg.encoder_embed_dim).uniform_()
         )
         
-        self.self.untie_final_proj = cfg.untie_final_proj
+        self.untie_final_proj = cfg.untie_final_proj
         self.layer_norm_first = cfg.layer_norm_first
 
         if self.layer_norm_first:
@@ -321,7 +321,7 @@ class Voicelm2Model(BaseFairseqModel):
         return state_dict
 
     @classmethod
-    def build_model(cls, cfg: Voicelm2Config, task: Voicelm2PretrainingTask):
+    def build_model(cls, cfg: Voicelm2Config1, task: Voicelm2PretrainingTask):
         """Build a new model instance."""
         logger.info(
             f"dictionary: {task.dictionaries[1].indices.items()}"
