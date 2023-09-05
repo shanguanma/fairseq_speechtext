@@ -27,6 +27,7 @@ from fairseq.modules import (
     LayerNorm,
     GumbelVectorQuantizer,
     MultiheadAttention2,
+    MHA,
     SamePad,
     TransposeLast,
 )
@@ -1034,28 +1035,52 @@ class TransformerSentenceEncoderLayer(nn.Module):
         rescale_init: bool = False,
         gru_rel_pos: bool = False,
         expand_attention_head_size: int = -1,
+        attention_type: str = "rel_attention",
     ) -> None:
         super().__init__()
         # Initialize parameters
         self.embedding_dim = embedding_dim
         self.dropout = dropout
         self.activation_dropout = activation_dropout
+        self.attention_type = attention_type
 
         # Initialize blocks
         self.activation_name = activation_fn
         self.activation_fn = utils.get_activation_fn(activation_fn)
-        self.self_attn = MultiheadAttention2(
-            self.embedding_dim,
-            num_attention_heads,
-            dropout=attention_dropout,
-            self_attention=True,
-            has_relative_attention_bias=has_relative_attention_bias,
-            num_buckets=num_buckets,
-            max_distance=max_distance,
-            rescale_init=rescale_init,
-            gru_rel_pos=gru_rel_pos,
-            expand_attention_head_size=expand_attention_head_size,
-        )
+        if self.attention_type == "rel_attention":
+            logger.info(f"using rel_attention now!")
+            self.self_attn = MultiheadAttention2(
+                self.embedding_dim,
+                num_attention_heads,
+                dropout=attention_dropout,
+                self_attention=True,
+                has_relative_attention_bias=has_relative_attention_bias,
+                num_buckets=num_buckets,
+                max_distance=max_distance,
+                rescale_init=rescale_init,
+                gru_rel_pos=gru_rel_pos,
+                expand_attention_head_size=expand_attention_head_size,
+            )
+
+        elif (
+            self.attention_type == "flash_attention"
+        ):  ## only suport torch.float16 and torch.bfloat16
+            logger.info(f"using flash_attention now!")
+            head_dim = self.embedding_dim // num_attention_heads
+            # logger.info(f"self.embedding_dim")
+            # logger.info(f"self.embedding_dim: {type(self.embedding_dim)}, head_dim type: {type(head_dim)}, head_dim: {head_dim}")
+            assert self.embedding_dim % head_dim == 0
+
+            self.self_attn = MHA(
+                self.embedding_dim,
+                num_attention_heads,
+                rotary_emb_dim=int(head_dim // 2),
+                use_flash_attn=True,
+                fused_bias_fc=False,
+                causal=False,
+                cross_attn=False,
+                dropout=attention_dropout,
+            )
 
         self.dropout1 = nn.Dropout(dropout)
         self.dropout2 = nn.Dropout(self.activation_dropout)
@@ -1087,19 +1112,31 @@ class TransformerSentenceEncoderLayer(nn.Module):
         LayerNorm is applied either before or after the self-attention/ffn
         modules similar to the original Transformer imlementation.
         """
-        residual = x
+        residual = x  # (T,B,C)
 
         if self.layer_norm_first:
             x = self.self_attn_layer_norm(x)
-            x, attn, pos_bias = self.self_attn(
-                query=x,
-                key=x,
-                value=x,
-                key_padding_mask=self_attn_padding_mask,
-                need_weights=False,
-                attn_mask=self_attn_mask,
-                position_bias=pos_bias,
-            )
+            if self.attention_type == "rel_attention":
+                x, attn, pos_bias = self.self_attn(
+                    query=x,
+                    key=x,
+                    value=x,
+                    key_padding_mask=self_attn_padding_mask,
+                    need_weights=False,
+                    attn_mask=self_attn_mask,
+                    position_bias=pos_bias,
+                )
+            elif self.attention_type == "flash_attention":
+                attn = None
+                pos_bias = None
+                x = self.self_attn(
+                    x,  # TXBXC
+                    x_kv=None,
+                    key_padding_mask=None,
+                    cu_seqlens=None,
+                    max_seqlen=None,
+                )
+
             x = self.dropout1(x)
             x = residual + x
 
@@ -1114,16 +1151,26 @@ class TransformerSentenceEncoderLayer(nn.Module):
             x = self.dropout3(x)
             x = residual + x
         else:
-            x, attn, pos_bias = self.self_attn(
-                query=x,
-                key=x,
-                value=x,
-                key_padding_mask=self_attn_padding_mask,
-                need_weights=need_weights,
-                attn_mask=self_attn_mask,
-                position_bias=pos_bias,
-            )
-
+            if self.attention_type == "rel_attention":
+                x, attn, pos_bias = self.self_attn(
+                    query=x,
+                    key=x,
+                    value=x,
+                    key_padding_mask=self_attn_padding_mask,
+                    need_weights=False,
+                    attn_mask=self_attn_mask,
+                    position_bias=pos_bias,
+                )
+            elif self.attention_type == "flash_attention":
+                attn = None
+                pos_bias = None
+                x = self.self_attn(
+                    x,  # TXBXC
+                    x_kv=None,
+                    key_padding_mask=None,
+                    cu_seqlens=None,
+                    max_seqlen=None,
+                )
             x = self.dropout1(x)
             x = residual + x
 
@@ -1192,6 +1239,7 @@ class TransformerEncoder(nn.Module):
                     max_distance=self.max_distance,
                     gru_rel_pos=args.gru_rel_pos,
                     expand_attention_head_size=args.expand_attention_head_size,
+                    attention_type=args.attention_type,
                 )
                 for i in range(args.encoder_layers)
             ]
@@ -1242,7 +1290,6 @@ class TransformerEncoder(nn.Module):
 
         # B x T x C -> T x B x C
         x = x.transpose(0, 1)
-
         layer_results = []
         z = None
         if tgt_layer is not None:
@@ -1254,7 +1301,7 @@ class TransformerEncoder(nn.Module):
             dropout_probability = np.random.random()
             if not self.training or (dropout_probability > self.layerdrop):
                 x, z, pos_bias = layer(
-                    x,
+                    x,  ## TXBXC
                     self_attn_padding_mask=padding_mask,
                     need_weights=False,
                     self_attn_mask=streaming_mask,

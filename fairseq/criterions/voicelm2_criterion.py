@@ -14,8 +14,11 @@ import torch.nn.functional as F
 from fairseq import metrics, utils
 from fairseq.criterions import FairseqCriterion, register_criterion
 from fairseq.dataclass import FairseqDataclass
-import  logging
+import logging
+
 logger = logging.getLogger(__name__)
+
+
 @dataclass
 class Voicelm2CriterionConfig(FairseqDataclass):
     pred_masked_weight: float = field(
@@ -38,7 +41,14 @@ class Voicelm2CriterionConfig(FairseqDataclass):
 
 @register_criterion("voicelm2_criterion", dataclass=Voicelm2CriterionConfig)
 class Voicelm2Criterion(FairseqCriterion):
-    def __init__(self, task, pred_masked_weight, pred_nomask_weight, loss_weights=None, log_keys=None):
+    def __init__(
+        self,
+        task,
+        pred_masked_weight,
+        pred_nomask_weight,
+        loss_weights=None,
+        log_keys=None,
+    ):
         super().__init__(task)
         self.pred_masked_weight = pred_masked_weight
         self.pred_nomask_weight = pred_nomask_weight
@@ -53,13 +63,16 @@ class Voicelm2Criterion(FairseqCriterion):
         3) logging outputs to display while training
         """
         net_output = model(target_list=sample["target_list"], **sample["net_input"])
-        loss = 0.
+        loss = 0.0
         sample_size = 0
         logging_output = {}
         reduction = "sum" if reduce else "none"
 
         loss_m_list = []
-        logp_m_list, targ_m_list = net_output['logit_m_list'], net_output['target_m_list']
+        logp_m_list, targ_m_list = (
+            net_output["logit_m_list"],
+            net_output["target_m_list"],
+        )
         for i, (logp_m, targ_m) in enumerate(zip(logp_m_list, targ_m_list)):
             loss_m = F.cross_entropy(logp_m, targ_m, reduction=reduction)
             loss_m_list.append(loss_m)
@@ -69,7 +82,10 @@ class Voicelm2Criterion(FairseqCriterion):
             sample_size += targ_m_list[0].numel()
 
         loss_u_list = []
-        logp_u_list, targ_u_list = net_output['logit_u_list'], net_output['target_u_list']
+        logp_u_list, targ_u_list = (
+            net_output["logit_u_list"],
+            net_output["target_u_list"],
+        )
         for i, (logp_u, targ_u) in enumerate(zip(logp_u_list, targ_u_list)):
             loss_u = F.cross_entropy(logp_u, targ_u, reduction=reduction)
             loss_u_list.append(loss_u)
@@ -86,7 +102,9 @@ class Voicelm2Criterion(FairseqCriterion):
                 names = [names]
             if len(self.loss_weights) == 1 and len(extra_losses) != 1:
                 self.loss_weights = [self.loss_weights[0]] * len(extra_losses)
-            assert len(extra_losses) == len(self.loss_weights), f"{len(extra_losses)}, {len(self.loss_weights)}"
+            assert len(extra_losses) == len(
+                self.loss_weights
+            ), f"{len(extra_losses)}, {len(self.loss_weights)}"
             for p, n, coef in zip(extra_losses, names, self.loss_weights):
                 if coef != 0 and p is not None:
                     p = coef * p.float() * sample_size
@@ -108,13 +126,15 @@ class Voicelm2Criterion(FairseqCriterion):
         with torch.no_grad():
             for i, logp_m in enumerate(logp_m_list):
                 # corr_m, count_m = compute_correct(logp_m)
-                #logger.info(f"i: {i},  logp_m: {logp_m}")
+                # logger.info(f"i: {i},  logp_m: {logp_m}")
                 if logp_m.numel() == 0:
                     corr_m, count_m = 0, 0
                 else:
-                    #logger.info(f"targ_m_list: {targ_m_list},its len: {len(targ_m_list)}")
-                    #logger.info(f"logp_m_list: {logp_m_list},its len: {len(logp_m_list)}")
-                    corr_m, count_m = (logp_m.argmax(dim=-1)==targ_m_list[i]).sum().item(), len(targ_m_list[i])
+                    # logger.info(f"targ_m_list: {targ_m_list},its len: {len(targ_m_list)}")
+                    # logger.info(f"logp_m_list: {logp_m_list},its len: {len(logp_m_list)}")
+                    corr_m, count_m = (
+                        logp_m.argmax(dim=-1) == targ_m_list[i]
+                    ).sum().item(), len(targ_m_list[i])
                 logging_output[f"correct_m_{i}"] = corr_m
                 logging_output[f"count_m_{i}"] = count_m
 
@@ -122,7 +142,9 @@ class Voicelm2Criterion(FairseqCriterion):
                 if logp_u.numel() == 0:
                     corr_u, count_u = 0, 0
                 else:
-                    corr_u, count_u = (logp_u.argmax(dim=-1)==targ_u_list[i]).sum().item(), len(targ_u_list[i])
+                    corr_u, count_u = (
+                        logp_u.argmax(dim=-1) == targ_u_list[i]
+                    ).sum().item(), len(targ_u_list[i])
                 logging_output[f"correct_u_{i}"] = corr_u
                 logging_output[f"count_u_{i}"] = count_u
 
@@ -135,12 +157,20 @@ class Voicelm2Criterion(FairseqCriterion):
         ntokens = sum(log.get("ntokens", 0) for log in logging_outputs)
         sample_size = sum(log.get("sample_size", 0) for log in logging_outputs)
 
-        metrics.log_scalar("loss", loss_sum / sample_size / math.log(2), sample_size, round=3)
+        metrics.log_scalar(
+            "loss", loss_sum / sample_size / math.log(2), sample_size, round=3
+        )
         if sample_size != ntokens:
-            metrics.log_scalar("nll_loss", loss_sum / ntokens / math.log(2), ntokens, round=3)
-            metrics.log_derived("ppl", lambda meters: utils.get_perplexity(meters["nll_loss"].avg))
+            metrics.log_scalar(
+                "nll_loss", loss_sum / ntokens / math.log(2), ntokens, round=3
+            )
+            metrics.log_derived(
+                "ppl", lambda meters: utils.get_perplexity(meters["nll_loss"].avg)
+            )
         else:
-            metrics.log_derived("ppl", lambda meters: utils.get_perplexity(meters["loss"].avg))
+            metrics.log_derived(
+                "ppl", lambda meters: utils.get_perplexity(meters["loss"].avg)
+            )
 
         counts = {}
         for lk in logging_outputs[0].keys():

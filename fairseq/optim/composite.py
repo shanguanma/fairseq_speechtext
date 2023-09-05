@@ -117,17 +117,17 @@ class FairseqCompositeOptimizer(FairseqOptimizer):
                 optimizer_config = copy.deepcopy(group_cfg.optimizer)
                 scheduler_config = copy.deepcopy(group_cfg.lr_scheduler)
                 explicit_group_present = False
-            #print(f"group_cfg: {group_cfg}")
-            #if getattr(group_cfg, "lr_float", None) is not None:
-            #optimizer_config.lr = group_cfg.lr
+            # print(f"group_cfg: {group_cfg}")
+            # if getattr(group_cfg, "lr_float", None) is not None:
+            # optimizer_config.lr = group_cfg.lr
             if getattr(group_cfg, "lr_float", None) is not None:
                 with open_dict(optimizer_config):
-                    #print(f"group_cfg: {group_cfg}, group_cfg.lr_float: {group_cfg.lr_float}")
+                    # print(f"group_cfg: {group_cfg}, group_cfg.lr_float: {group_cfg.lr_float}")
                     optimizer_config.lr = [group_cfg.lr_float]
             else:
                 with open_dict(optimizer_config):
                     optimizer_config.lr = group_cfg.lr
-                    #print(f"group_cfg: {group_cfg}")
+                    # print(f"group_cfg: {group_cfg}")
             if group in overrides and "optimizer" in overrides[group]:
                 with open_dict(optimizer_config):
                     if "lr_scale" in overrides[group]["optimizer"]:
@@ -157,8 +157,8 @@ class FairseqCompositeOptimizer(FairseqOptimizer):
                             )
 
             with open_dict(scheduler_config):
-                #print(f"scheduler_config: {scheduler_config}")
-                #print(f"optimizer_config: {optimizer_config}")
+                # print(f"scheduler_config: {scheduler_config}")
+                # print(f"optimizer_config: {optimizer_config}")
                 scheduler_config.lr = optimizer_config.lr
             self.optimizers[group] = _build_optimizer(optimizer_config, group_params)
             self.optimizers_config[group] = optimizer_config

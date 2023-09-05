@@ -140,7 +140,7 @@ def verify_label_lengths(
 
 
 ### The version of this dataset requires number of text utternce same as  number of speech utterance.
-### however,it is random text utterances of in per batch. 
+### however,it is random text utterances of in per batch.
 ### and add text ntokens into batch, this parameter is only used by computing ctc loss for text part
 class StHubertDataset2(FairseqDataset):
     def __init__(

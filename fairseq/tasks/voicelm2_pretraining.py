@@ -21,6 +21,12 @@ from omegaconf import MISSING
 
 logger = logging.getLogger(__name__)
 
+
+from fairseq.models.hubert.voicelm2_sequence_generator import SequenceGenerator, SequenceGeneratorWithAlignment
+from fairseq import metrics, search
+from omegaconf import II
+from argparse import Namespace
+
 ## it will use letter unit to finetune via ctc loss
 ## or it will use code unit to pretrain via mlm loss.
 class LabelEncoder(object):
@@ -33,6 +39,8 @@ class LabelEncoder(object):
             append_eos=False,
             add_if_not_exist=False,
         )
+
+
 ## it will use bpe unit to finetune via seq2seq cross entropy loss.
 class LabelEncoderS2SToken(object):
     def __init__(self, dictionary: Dictionary, bpe_tokenizer) -> None:
@@ -42,7 +50,9 @@ class LabelEncoderS2SToken(object):
     def __call__(self, label: str) -> List[str]:
         label = self.bpe_tokenizer.encode(label.lower())
         return self.dictionary.encode_line(
-            label, append_eos=True, add_if_not_exist=False,
+            label,
+            append_eos=True,
+            add_if_not_exist=False,
         ).long()
 
     def decode(self, tok, symbols_ignore=None):
@@ -50,6 +60,7 @@ class LabelEncoderS2SToken(object):
         if self.bpe_tokenizer:
             tok = self.bpe_tokenizer.decode(tok)
         return tok
+
 
 class TextEncoder(object):
     def __init__(self, dictionary: Dictionary) -> None:
@@ -139,7 +150,7 @@ class Voicelm2PretrainingConfig(FairseqDataclass):
         default=False,
         metadata={"help": "pad audio to the longest one in the batch if true"},
     )
-    ### sthubert text part
+    ###  unpaired text part
     max_phone_size: Optional[int] = field(
         default=None,
         metadata={"help": "max phone sequeuce size to crop to for batching"},
@@ -155,11 +166,24 @@ class Voicelm2PretrainingConfig(FairseqDataclass):
         },
     )
 
-    is_s2s: bool = field(default=False, metadata={'help': 'if true, seq2seq fine-tuning only, else ctc finetune only'})
-    tokenizer_bpe_name: Optional[str] = field(default=None, metadata={'help': 'tokenizer model name'})
-    tokenizer_bpe_model: Optional[str] = field(default=None, metadata={'help': 'tokenizer model path'})
-    text_drop: bool= field(default=False, metadata={"help":'''if it is true, speech and paired text are used to finetune model, unpair text is missing.
-                                                    if it is false, speech and paired code label and unpair text code are used to pretrain model.'''})
+    is_s2s: bool = field(
+        default=False,
+        metadata={"help": "if true, seq2seq fine-tuning only, else ctc finetune only"},
+    )
+    tokenizer_bpe_name: Optional[str] = field(
+        default=None, metadata={"help": "tokenizer model name"}
+    )
+    tokenizer_bpe_model: Optional[str] = field(
+        default=None, metadata={"help": "tokenizer model path"}
+    )
+    text_drop: bool = field(
+        default=False,
+        metadata={
+            "help": """if it is true, speech and paired text are used to finetune model, unpair text is missing.
+                                                    if it is false, speech and paired code label and unpair text code are used to pretrain model."""
+        },
+    )
+    inference_mode: bool = field(default=False, metadata={"help": "it is diffence from finetune mode, because here the finetune model can accept two style label. inference_model=true, it will only accept one style label"})
 
 
 @register_task("voicelm2_pretraining", dataclass=Voicelm2PretrainingConfig)
@@ -194,13 +218,14 @@ class Voicelm2PretrainingTask(FairseqTask):
         return None
 
     @property
-    def target_dictionary(self) -> Optional[Dictionary]:
+    def target_dictionary(self) -> Optional[Dictionary]: ## it is used at fairseq_criterion.py 
         return self.state.target_dictionary
 
     @property
     def dictionaries(self) -> List[Dictionary]:
         # dict_list=[self.state.dictionaries,self.state.text_dictionary]
         # return dict_list
+        #return self.state.dictionaries[0] if self.cfg.fine_tuning else self.state.dictionaries 
         return self.state.dictionaries
 
     def load_dictionaries(self):
@@ -210,9 +235,15 @@ class Voicelm2PretrainingTask(FairseqTask):
             for label in self.cfg.labels
         ]
         return dictionaries[0] if self.cfg.fine_tuning else dictionaries
+        #return dictionaries
 
     def load_tokenizer(self):
-        bpe_args = Namespace(**{'bpe': self.cfg.tokenizer_bpe_name, f"{self.cfg.tokenizer_bpe_name}_model": self.cfg.tokenizer_bpe_model})
+        bpe_args = Namespace(
+            **{
+                "bpe": self.cfg.tokenizer_bpe_name,
+                f"{self.cfg.tokenizer_bpe_name}_model": self.cfg.tokenizer_bpe_model,
+            }
+        )
         bpe_tokenizer = encoders.build_bpe(bpe_args)
         return bpe_tokenizer
 
@@ -232,46 +263,115 @@ class Voicelm2PretrainingTask(FairseqTask):
         return self.cfg.label_dir
 
     def load_dataset(self, split: str, **kwargs) -> None:
+        """
         manifest = f"{self.cfg.data}/{split}.tsv"
-        dicts = [self.target_dictionary] if self.cfg.fine_tuning else self.dictionaries
+        if self.cfg.fine_tuning:
+            dicts = [
+                Dictionary.load(f"{self.cfg.label_dir}/dict.{label}.txt")
+                for label in self.cfg.labels
+            ]
+        else:
+            dicts=self.dictionaries
+        #dicts = [self.target_dictionary] if self.cfg.fine_tuning else self.dictionaries
 
+    
         logger.info(f"dicts: {dicts}")
-        dicts_speech_label = [dicts[0]]  # remove text phn dictionary
-        dicts_text = [dicts[1]] # 
-        # ori_dicts = [dicts[0][0],dicts[1]]
-        # dicts=ori_dicts
-        # for dict1 in dicts:
-
-        #    logger.info(f"dict1: {dict1[0]}")
-        #    logger.info(f"dict1.pad(): {dict1[0].pad()}")
-        #    logger.info(f"dict1: {dict1[1]}")
+        if len(dicts)==2: ##  finetune mode
+            dicts_speech_label = [dicts[0]]  # remove text phn dictionary
+            dicts_text = [dicts[1]]  
+        else:
+            dicts_speech_label = [dicts[0]]
+            dicts_text = dicts_speech_label # unparied text drop
+        #dicts_text = dicts_speech_label 
         pad_list = [dict.pad() for dict in dicts_speech_label]
         eos_list = [dict.eos() for dict in dicts_speech_label]
-        #procs = [LabelEncoder(dict) for dict in dicts]
+        # procs = [LabelEncoder(dict) for dict in dicts]
         if not self.cfg.is_s2s:
             procs = [LabelEncoder(dict) for dict in dicts_speech_label]
         else:
             logger.info(f"Using tokenizer")
             bpe_tokenizer = self.s2s_tokenizer
-            procs = [LabelEncoderS2SToken(dict, bpe_tokenizer) for dict in dicts_speech_label]
+            procs = [
+                LabelEncoderS2SToken(dict, bpe_tokenizer) for dict in dicts_speech_label
+            ]
 
-        text_procs = [TextEncoder(dict) for dict in dicts]
+        text_procs = [TextEncoder(dict) for dict in dicts_text]
         paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
+        if len(paths)==2:
+            path_text=paths[1]
+            path_label=paths[0]
+        elif 
         logger.info(f"paths: {paths}")
-        # text_paths=[f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.texts_type]
+        """
+        ### prepared pretrain mode and finetune mode and inference mode
+        ## I hope both pretrain and finetuen mode  can accept two or more two style label, and inference mode cant accept one style label
+        manifest = f"{self.cfg.data}/{split}.tsv"
+        speech_procs=None
+        if not self.cfg.inference_mode: ## finetune mode and pretrain mode
+            ## dict
+            ## data path
+            ## data proccess
+            dicts = [
+                Dictionary.load(f"{self.cfg.label_dir}/dict.{label}.txt")
+                for label in self.cfg.labels
+            ]
+            dicts_speech_label = [dicts[0]] if len(dicts)==2 else  dicts[:-1]  # remove text phn dictionary
+            dicts_text = [dicts[-1]]
+            pad_list = [dict.pad() for dict in dicts_speech_label]
+            eos_list = [dict.eos() for dict in dicts_speech_label]
+            if not self.cfg.is_s2s:
+                speech_procs = [LabelEncoder(dict) for dict in dicts_speech_label]
+            else:
+                logger.info(f"Using tokenizer")
+                bpe_tokenizer = self.s2s_tokenizer
+                speech_procs = [
+                    LabelEncoderS2SToken(dict, bpe_tokenizer) for dict in dicts_speech_label
+                ]
+            text_procs = [TextEncoder(dict) for dict in dicts_text]
+            paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
+            path_text=paths[-1]
+            path_label=paths[:-1]
+        else: ## inference mode
+            ## dict
+            ## data path
+            ## data proccess
+            dicts = [
+                Dictionary.load(f"{self.cfg.label_dir}/dict.{label}.txt")
+                for label in self.cfg.labels
+            ]
+            dicts_speech_label = [dicts[0]]  # remove text phn dictionary
+            dicts_text = None
+            pad_list = [dict.pad() for dict in dicts_speech_label]
+            eos_list = [dict.eos() for dict in dicts_speech_label]
+            if not self.cfg.is_s2s:
+                speech_procs = [LabelEncoder(dict) for dict in dicts_speech_label]
+            else:
+                logger.info(f"Using tokenizer")
+                bpe_tokenizer = self.s2s_tokenizer
+                speech_procs = [
+                    LabelEncoderS2SToken(dict, bpe_tokenizer) for dict in dicts_speech_label
+                ]
+            text_procs = None
+            paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
+            path_text=None
+            path_label=paths[0]         
+  
+
         # hubert v1: pad_audio=True, random_crop=False;
         if self.cfg.fine_tuning:
-            if self.cfg.text_drop:  ## normal fintune case(actual using speech and pair text to finetune, unpair text feature is setting 0 )
+            if (
+                self.cfg.text_drop
+            ):  ## normal fintune case(actual using speech and pair text to finetune, unpair text feature is setting 0 )
                 self.datasets[split] = Voicelm2Dataset(
                     manifest,
-                    manifest_text_path=paths[1],
+                    manifest_text_path=path_text,
                     sample_rate=self.cfg.sample_rate,
-                    label_paths=[paths[0]],
+                    label_paths=[path_label],
                     label_rates=self.cfg.label_rate,
                     pad_list=pad_list,
                     eos_list=eos_list,
                     text_seq=self.cfg.text_seq,
-                    label_processors=procs,
+                    label_processors=speech_procs,
                     text_processors=text_procs,
                     max_keep_sample_size=self.cfg.max_sample_size,
                     min_keep_sample_size=self.cfg.min_sample_size,
@@ -283,20 +383,20 @@ class Voicelm2PretrainingTask(FairseqTask):
                     store_labels=False,
                     random_crop=self.cfg.random_crop,
                     single_target=self.cfg.single_target,
-                    is_s2s=self.cfg.is_s2s, ## choice ctc or seq2seq finetune flag
-                    text_drop=self.cfg.text_drop, ## whether unpaired text is used to finetune
+                    is_s2s=self.cfg.is_s2s,  ## choice ctc or seq2seq finetune flag
+                    text_drop=self.cfg.text_drop,  ## whether unpaired text is used to finetune
                 )
-            else:   ## fintune case (in finetune case, i only use unpaired text code.)
+            else:  ## fintune case (in finetune case, i also use unpaired text code.)
                 self.datasets[split] = Voicelm2Dataset(
                     manifest,
-                    manifest_text_path=paths[1],
+                    manifest_text_path=path_text,
                     sample_rate=self.cfg.sample_rate,
-                    label_paths=[paths[0]],
+                    label_paths=[path_label],
                     label_rates=self.cfg.label_rate,
                     pad_list=pad_list,
                     eos_list=eos_list,
                     text_seq=self.cfg.text_seq,
-                    label_processors=procs,
+                    label_processors=speech_procs,
                     text_processors=text_procs,
                     max_keep_sample_size=self.cfg.max_sample_size,
                     min_keep_sample_size=self.cfg.min_sample_size,
@@ -308,20 +408,20 @@ class Voicelm2PretrainingTask(FairseqTask):
                     store_labels=False,
                     random_crop=self.cfg.random_crop,
                     single_target=self.cfg.single_target,
-                    is_s2s=self.cfg.is_s2s, ## choice ctc or seq2seq finetune flag
-                    text_drop=self.cfg.text_drop, ## whether unpaired text is used to finetune
+                    is_s2s=self.cfg.is_s2s,  ## choice ctc or seq2seq finetune flag
+                    text_drop=self.cfg.text_drop,  ## whether unpaired text is used to finetune
                 )
-        else: ## pretrain case
+        else:  ## pretrain case
             self.datasets[split] = Voicelm2Dataset(
                 manifest,
-                manifest_text_path=paths[1],
+                manifest_text_path=path_text,
                 sample_rate=self.cfg.sample_rate,
-                label_paths=[paths[0]],
+                label_paths=[path_label],
                 label_rates=self.cfg.label_rate,
                 pad_list=pad_list,
                 eos_list=eos_list,
                 text_seq=self.cfg.text_seq,
-                label_processors=procs,
+                label_processors=speech_procs,
                 text_processors=text_procs,
                 max_keep_sample_size=self.cfg.max_sample_size,
                 min_keep_sample_size=self.cfg.min_sample_size,
@@ -345,7 +445,12 @@ class Voicelm2PretrainingTask(FairseqTask):
 
     ## it is only used to seq2seq decoding.
     def build_generator(
-        self, models, args, seq_gen_cls=None, extra_gen_cls_kwargs=None, prefix_allowed_tokens_fn=None,
+        self,
+        models,
+        args,
+        seq_gen_cls=None,
+        extra_gen_cls_kwargs=None,
+        prefix_allowed_tokens_fn=None,
     ):
         """
         Build a :class:`~fairseq.SequenceGenerator` instance for this
@@ -462,4 +567,4 @@ class Voicelm2PretrainingTask(FairseqTask):
             no_repeat_ngram_size=getattr(args, "no_repeat_ngram_size", 0),
             search_strategy=search_strategy,
             **extra_gen_cls_kwargs,
-        ) 
+        )

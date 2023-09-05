@@ -395,7 +395,9 @@ class StHubertModel(BaseFairseqModel):
         pathss = "/workspace2/maduo/dataset/format/librispeech"
         import os
 
-        logger.info(f"dictionary: {task.dictionaries[1].indices.items()}") # dictionary: dict_items([('<s>', 0), ('<pad>', 1), ('</s>', 2), ('<unk>', 3), ('0', 4), ('1', 5), ('2', 6), ('3', 7), ('4', 8), ('5', 9), ('6', 10), ('7', 11), ('8', 12), ('9', 13), ('10', 14), ('11', 15), ('12', 16), ('13', 17), ('14', 18), ('15', 19), ('16', 20), ('17', 21), ('18', 22), ('19', 23), ('20', 24), ('21', 25), ('22', 26), ('23', 27), ('24', 28), ('25', 29), ('26', 30), ('27', 31), ('28', 32), ('29', 33), ('30', 34), ('31', 35), ('32', 36), ('33', 37), ('34', 38), ('35', 39), ('36', 40), ('37', 41), ('38', 42), ('39', 43), ('40', 44)])
+        logger.info(
+            f"dictionary: {task.dictionaries[1].indices.items()}"
+        )  # dictionary: dict_items([('<s>', 0), ('<pad>', 1), ('</s>', 2), ('<unk>', 3), ('0', 4), ('1', 5), ('2', 6), ('3', 7), ('4', 8), ('5', 9), ('6', 10), ('7', 11), ('8', 12), ('9', 13), ('10', 14), ('11', 15), ('12', 16), ('13', 17), ('14', 18), ('15', 19), ('16', 20), ('17', 21), ('18', 22), ('19', 23), ('20', 24), ('21', 25), ('22', 26), ('23', 27), ('24', 28), ('25', 29), ('26', 30), ('27', 31), ('28', 32), ('29', 33), ('30', 34), ('31', 35), ('32', 36), ('33', 37), ('34', 38), ('35', 39), ('36', 40), ('37', 41), ('38', 42), ('39', 43), ('40', 44)])
         # with open(os.path.join(pathss, "hubert_iter1_kmdict_model.txt"), "w") as f:
         #    for sym, num in task.dictionaries[0].indices.items():
         #        f.write(f"{sym} {num}\n")
@@ -506,7 +508,7 @@ class StHubertModel(BaseFairseqModel):
             # account for padding while computing the representation
             x = x * (1 - encoder_padding_mask.unsqueeze(-1).type_as(x))
         """
-        #logger.info(f"in forward_text, source_text:  {source_text}, source_text shape : {source_text.shape}")
+        # logger.info(f"in forward_text, source_text:  {source_text}, source_text shape : {source_text.shape}")
         token_embedding = self.embed_tokens(source_text)
         x = embed = token_embedding
         # if self.embed_positions is not None:

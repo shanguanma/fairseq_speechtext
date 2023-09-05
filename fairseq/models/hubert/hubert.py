@@ -528,7 +528,7 @@ class HubertModel(BaseFairseqModel):
         self,
         source: torch.Tensor,
         padding_mask: Optional[torch.Tensor] = None,
-        mask: bool = False,
+        mask: bool = False, ## it is setted by apply_mask config of hubert_asr.py, offical default is true.
         ret_conv: bool = False,
         output_layer: Optional[int] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:

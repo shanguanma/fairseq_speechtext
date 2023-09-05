@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 # is is called by voicelm
 
+
 @dataclass
 class ILSHubertConfig(HubertConfig2):
     # relative position embedding
@@ -47,8 +48,8 @@ class ILSHubertConfig(HubertConfig2):
 
     # ILS-SSL params
     weighted_sum: bool = field(default=False)
-    predict_layers: str = field(default="[12]")
-    separate_label_embeds: bool = field(default=False)
+    predict_layers: str = field(default="[7,12]")
+    separate_label_embeds: bool = field(default=True)
     separate_layer_targets: bool = field(default=False)
     km4_bpekm7_km12: bool = field(default=False)
     bpekm7_km12: bool = field(default=False)

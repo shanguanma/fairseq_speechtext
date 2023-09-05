@@ -39,9 +39,8 @@ class FairseqAdamConfig(FairseqDataclass):
     # TODO common vars below in parent
     tpu: bool = II("common.tpu")
     lr: List[float] = II("optimization.lr")
-    amsgrad: bool = field(
-        default=False, metadata={"help": "for wav2vec-u2"}
-    ) ## md add 
+    amsgrad: bool = field(default=False, metadata={"help": "for wav2vec-u2"})  ## md add
+
 
 @register_optimizer("adam", dataclass=FairseqAdamConfig)
 class FairseqAdam(FairseqOptimizer):

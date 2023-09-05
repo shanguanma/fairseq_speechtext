@@ -29,7 +29,7 @@ from fairseq.models.wav2vec.wav2vec2 import (
 from fairseq.models.wavlm.wavlm import (
     ConvFeatureExtractionModel,
     TransformerEncoder,
-    WavLMConfig,    
+    WavLMConfig,
 )
 
 from fairseq.modules import GradMultiply, LayerNorm
@@ -40,6 +40,7 @@ from fairseq.tasks.sthubert_pretraining2 import (
 )
 
 logger = logging.getLogger(__name__)
+
 
 ## it is similar to speechlm.
 @dataclass
@@ -73,7 +74,7 @@ class StHubertConfig2(FairseqDataclass):
         default="transformer", metadata={"help": "layer type in encoder"}
     )
     # relative position embedding , it is transformer of wavlm , it has relative positon embedding
-    #                               it is also used at ILS-SSL model.        
+    #                               it is also used at ILS-SSL model.
     relative_position_embedding: bool = field(
         default=True,
         metadata={
@@ -259,7 +260,7 @@ class StHubertConfig2(FairseqDataclass):
         metadata={"help": "Positional encoding type to use in conformer"},
     )
     fp16: bool = field(default=False, metadata={"help": "If fp16 is being used"})
-    
+
     # embedding mixing for speech  part
     mix_with_unit: bool = field(
         default=True,
@@ -271,18 +272,20 @@ class StHubertConfig2(FairseqDataclass):
     )
     l2_embedding: bool = field(
         default=False,
-        metadata={"help": "compute l2 loss between unit embedding and unit hidden state"},
+        metadata={
+            "help": "compute l2 loss between unit embedding and unit hidden state"
+        },
     )
 
     # text  part
-    #max_source_positions: int = field(
+    # max_source_positions: int = field(
     #    default=512,
     #    metadata={"help": "Maximum input length supported by the transformer encoder"},
-    #)
-    #text_dropout: float = field(
+    # )
+    # text_dropout: float = field(
     #    default=0.1,
     #    metadata={"help": "dropout probability for the TextModel embedding feature"},
-    #)
+    # )
     text_embed_dim: int = field(
         default=768, metadata={"help": "text net part embedding dimension"}
     )
@@ -299,19 +302,20 @@ class StHubertConfig2(FairseqDataclass):
     mask_u2t: bool = field(
         default=True,
         metadata={"help": "mask the unit input in unit-to-text task"},
-    )   
+    )
     ## mask lm loss
     compute_mum: bool = field(
         default=False,
         metadata={"help": "compute MLM loss in unit-to-text task"},
-    )   
+    )
     ### shared transformer config
-    ### it is common network, 
-    shared_transformer: WavLMConfig=WavLMConfig()  
-    add_unit_encoder:  bool = field(
+    ### it is common network,
+    shared_transformer: WavLMConfig = WavLMConfig()
+    add_unit_encoder: bool = field(
         default=True,
         metadata={"help": "add shared transfromer network"},
     )
+
 
 @register_model("sthubert2", dataclass=StHubertConfig2)
 class StHubertModel2(BaseFairseqModel):
@@ -324,13 +328,13 @@ class StHubertModel2(BaseFairseqModel):
         super().__init__()
         logger.info(f"StHubertModel Config: {cfg}")
         self.cfg = cfg
-        self.mask_u2t = cfg.mask_u2t # bool, for text
-        self.compute_mum = cfg.compute_mum # bool for text
-        self.add_text_ctc  = cfg.add_text_ctc  # bool for text
-        self.mix_with_unit = cfg.mix_with_unit # bool for speech
-        self.use_pred_unit = cfg.use_pred_unit # bool for speech
-        self.l2_embedding = cfg.l2_embedding # bool for speech    
-        self.add_unit_encoder = cfg.add_unit_encoder # bool for 
+        self.mask_u2t = cfg.mask_u2t  # bool, for text
+        self.compute_mum = cfg.compute_mum  # bool for text
+        self.add_text_ctc = cfg.add_text_ctc  # bool for text
+        self.mix_with_unit = cfg.mix_with_unit  # bool for speech
+        self.use_pred_unit = cfg.use_pred_unit  # bool for speech
+        self.l2_embedding = cfg.l2_embedding  # bool for speech
+        self.add_unit_encoder = cfg.add_unit_encoder  # bool for
 
         self.padding_idx = 1
         feature_enc_layers = eval(cfg.conv_feature_layers)  # noqa
@@ -347,13 +351,13 @@ class StHubertModel2(BaseFairseqModel):
         self.embed_tokens = torch.nn.Embedding(
             len(dictionaries[1]), cfg.text_embed_dim, padding_idx=self.padding_idx
         )
-        #self.embed_positions = PositionalEmbedding(
+        # self.embed_positions = PositionalEmbedding(
         #    cfg.max_source_positions,
         #    cfg.text_embed_dim,
         #    padding_idx=self.padding_idx,
         #    learned=True,
-        #)
-        #self.layernorm_embedding = torch.nn.LayerNorm(cfg.text_embed_dim)
+        # )
+        # self.layernorm_embedding = torch.nn.LayerNorm(cfg.text_embed_dim)
 
         if not task_cfg.fine_tuning:
             ## pretrain case
@@ -389,7 +393,7 @@ class StHubertModel2(BaseFairseqModel):
         self.dropout_features = nn.Dropout(cfg.dropout_features)
 
         self.feature_grad_mult = cfg.feature_grad_mult
-        
+
         self.text_ctc_conv_kernel = cfg.text_ctc_conv_kernel
 
         if not task_cfg.fine_tuning:
@@ -406,22 +410,21 @@ class StHubertModel2(BaseFairseqModel):
 
         # modality-specific positional encodings
         ## add releated postion encoding layer for text and speech
-        #self.speech_pos = make_conv_pos(
+        # self.speech_pos = make_conv_pos(
         #    cfg.encoder_embed_dim, cfg.conv_pos, cfg.conv_pos_groups
-        #)
-        #self.text_pos = make_conv_pos(
+        # )
+        # self.text_pos = make_conv_pos(
         #    cfg.text_embed_dim, cfg.conv_pos, cfg.conv_pos_groups
-        #)  ## (TODO) add text embedding layer and its dimension
+        # )  ## (TODO) add text embedding layer and its dimension
 
         self.encoder = TransformerEncoder(cfg)
 
         ### shared network,
-        self.shared_encoder=TransformerEncoder(cfg.shared_transformer)
-        
+        self.shared_encoder = TransformerEncoder(cfg.shared_transformer)
 
-        ### add text branch ctc head    
+        ### add text branch ctc head
         ctc_head_output_dim = len(dictionaries[1])
-        self.unit_encoder_ctc_head = CTClayer(cfg,ctc_head_output_dim)
+        self.unit_encoder_ctc_head = CTClayer(cfg, ctc_head_output_dim)
         self.layer_norm = LayerNorm(self.embed)
         if not task_cfg.fine_tuning:
             self.target_glu = None
@@ -430,17 +433,19 @@ class StHubertModel2(BaseFairseqModel):
                     nn.Linear(self.final_dim, self.final_dim * 2), nn.GLU()
                 )
 
-            self.final_proj_list = nn.ModuleList([
-            nn.Linear(cfg.encoder_embed_dim, self.final_dim) for _ in dictionaries
-        ])
+            self.final_proj_list = nn.ModuleList(
+                [nn.Linear(cfg.encoder_embed_dim, self.final_dim) for _ in dictionaries]
+            )
         # modules below are not needed during fine-tuning
         self.num_classes = [len(d) for d in dictionaries]
-        self.label_embs_list = nn.ParameterList([
-            nn.Parameter(torch.FloatTensor(n, self.final_dim)) for n in self.num_classes
-        ])
+        self.label_embs_list = nn.ParameterList(
+            [
+                nn.Parameter(torch.FloatTensor(n, self.final_dim))
+                for n in self.num_classes
+            ]
+        )
         for i in range(len(self.num_classes)):
             nn.init.uniform_(self.label_embs_list[i])
-
 
     def upgrade_state_dict_named(self, state_dict, name):
         """Upgrade a (possibly old) state dict for new versions of fairseq."""
@@ -508,7 +513,6 @@ class StHubertModel2(BaseFairseqModel):
 
         return x, mask_indices
 
-
     def forward_features(self, source: torch.Tensor) -> torch.Tensor:
         if self.feature_grad_mult > 0:
             features = self.feature_extractor(source)
@@ -532,32 +536,36 @@ class StHubertModel2(BaseFairseqModel):
     ) -> Dict[str, torch.Tensor]:
         """output layer is 1-based"""
         if source_text is None:  ## 1. finetune case,
-                                 ## 2.and compute loss  for only speech branch in pretraing
-            #logger.info(f"now, i am here!.it is running forward_speech")
+            ## 2.and compute loss  for only speech branch in pretraing
+            # logger.info(f"now, i am here!.it is running forward_speech")
             result_speech = self.forward_speech(
                 source,
                 target_list=target_list,
-                padding_mask=padding_mask, # only  for speech
+                padding_mask=padding_mask,  # only  for speech
             )
             result = {"result_speech": result_speech}
             return result
         else:
             assert source is not None and source_text is not None
-            #logger.info(f"now, i am here!.it are running forward_speech and forward_text")
+            # logger.info(f"now, i am here!.it are running forward_speech and forward_text")
             result_speech = self.forward_speech(
                 source,
                 target_list=target_list,
                 padding_mask=padding_mask,
-            )  
+            )
             result_text = self.forward_text(
                 source_text=source_text[0],
                 source_text_lengths=source_text_lengths,
                 mask=self.mask_u2t,
             )
-            result={"result_speech": result_speech,"result_text": result_text}
+            result = {"result_speech": result_speech, "result_text": result_text}
             return result
+
     def forward_text(
-        self, source_text, source_text_lengths: Optional[torch.Tensor] = None,  mask=True,
+        self,
+        source_text,
+        source_text_lengths: Optional[torch.Tensor] = None,
+        mask=True,
     ):
         """
         Args:
@@ -566,37 +574,37 @@ class StHubertModel2(BaseFairseqModel):
             source_text_lengths (torch.LongTensor): lengths of each source sentence of
                 shape `(batch)`
         """
-        #logger.info(f"in forward_text, source_text:  {source_text}")
-         
+        # logger.info(f"in forward_text, source_text:  {source_text}")
+
         padding_mask = source_text == self.padding_idx
         token_embedding = self.embed_tokens(source_text)
         x = embed = token_embedding
-        #if self.embed_positions is not None:
+        # if self.embed_positions is not None:
         #    x = embed + self.embed_positions(source_text)
-        #if self.layernorm_embedding is not None:
+        # if self.layernorm_embedding is not None:
         #    x = self.layernorm_embedding(x)
-        #x = F.dropout(x, self.cfg.text_dropout)
+        # x = F.dropout(x, self.cfg.text_dropout)
         if mask:
             logger.info(f"it is use mask_u2t=True  for text")
             x, mask_indices = self.apply_mask(x, padding_mask, [source_text])
-        
-        out,_ = self.shared_encoder(x, padding_mask) ## BXTXC
-        #logger.info(f"padding_mask: {padding_mask}, padding_mask shape: {padding_mask.shape}")
-        result={}   
-        result["shared_encoder_out_text"] =  out 
+
+        out, _ = self.shared_encoder(x, padding_mask)  ## BXTXC
+        # logger.info(f"padding_mask: {padding_mask}, padding_mask shape: {padding_mask.shape}")
+        result = {}
+        result["shared_encoder_out_text"] = out
         if self.compute_mum:
             logger.info(f"it is use comput_mum=True  for text")
             code_logit_m_list, code_logit_u_list = self.compute_hubert_logits_simple(
-                out, 
-                source_text, 
-                self.final_proj_list[-1], 
+                out,
+                source_text,
+                self.final_proj_list[-1],
                 self.label_embs_list[-1],
                 padding_mask,
                 mask_indices,
             )
             result["logit_m_list"] = code_logit_m_list
             result["logit_u_list"] = code_logit_u_list
-        
+
         if self.add_text_ctc:
             logger.info(f"it is use add_text_ctc=True  for text")
             result["shared_encoder_out_ctc"] = [self.unit_encoder_ctc_head(out)]
@@ -604,12 +612,14 @@ class StHubertModel2(BaseFairseqModel):
                 self.downsample_ctc_padding_mask(padding_mask)
             ]
         return result
+
     def downsample_ctc_padding_mask(self, padding_mask):
         """
         padding_mask: (B, T)
         """
         stride = self.text_ctc_conv_kernel // 2
         return padding_mask[:, ::stride]
+
     def forward_targets(
         self,
         features: torch.Tensor,
@@ -640,14 +650,13 @@ class StHubertModel2(BaseFairseqModel):
     def forward_speech(
         self,
         source: torch.Tensor,
-        #source_text: torch.Tensor,
+        # source_text: torch.Tensor,
         target_list: Optional[List[torch.Tensor]] = None,
         padding_mask: Optional[torch.Tensor] = None,
         mask: bool = True,
         features_only: bool = False,
         output_layer: Optional[int] = None,
     ) -> Dict[str, torch.Tensor]:
-    
         """output layer is 1-based"""
         # logger.info(f"source shape: {source.shape}")
         # logger.info(f"source_text shape: {source_text.shape}")
@@ -686,10 +695,10 @@ class StHubertModel2(BaseFairseqModel):
             padding_mask=padding_mask,
             layer=None if output_layer is None else output_layer - 1,
         )
-        
+
         if features_only:
             return {"x": x, "padding_mask": padding_mask, "features": features}
-        
+
         logit_m_list, logit_u_list = self.compute_hubert_logits_simple(
             x,
             target_list[0],
@@ -697,8 +706,8 @@ class StHubertModel2(BaseFairseqModel):
             self.label_embs_list[0],
             padding_mask,
             mask_indices,
-        )     
-        #logger.info(f"logit_m_list: {logit_m_list}, its length is {len(logit_m_list)}")    
+        )
+        # logger.info(f"logit_m_list: {logit_m_list}, its length is {len(logit_m_list)}")
         result = {
             "logit_m_list": logit_m_list,
             "logit_u_list": logit_u_list,
@@ -707,32 +716,34 @@ class StHubertModel2(BaseFairseqModel):
         }
         if self.add_unit_encoder:
             src_tokens, x_emb, l2_loss = self.swap_embedding(
-                x, 
-                padding_mask, 
+                x,
+                padding_mask,
                 target_list[0],
                 mask_indices=mask_indices,
                 mix_with_unit=self.mix_with_unit,
                 use_pred_unit=self.use_pred_unit,
                 l2_embedding=self.l2_embedding,
             )
-            out,_ = self.shared_encoder(x_emb, padding_mask) ## BXTXC
-            result['shared_encoder_out_speech'] = out  # [(T, B, D)]
+            out, _ = self.shared_encoder(x_emb, padding_mask)  ## BXTXC
+            result["shared_encoder_out_speech"] = out  # [(T, B, D)]
             if self.l2_embedding:
-                result['embedding_l2_loss_speech'] = l2_loss
+                result["embedding_l2_loss_speech"] = l2_loss
             ### mask lm for speech part again
             code_logit_m_list, code_logit_u_list = self.compute_hubert_logits_simple(
-                out, 
-                target_list[-1], 
-                self.final_proj_list[-1], 
+                out,
+                target_list[-1],
+                self.final_proj_list[-1],
                 self.label_embs_list[-1],
                 padding_mask,
                 mask_indices,
             )
-            result['logit_m_list'] += code_logit_m_list
-            result['logit_u_list'] += code_logit_u_list
+            result["logit_m_list"] += code_logit_m_list
+            result["logit_u_list"] += code_logit_u_list
 
         return result
-    def swap_embedding(self,
+
+    def swap_embedding(
+        self,
         x,
         padding_mask,
         target=None,
@@ -740,7 +751,7 @@ class StHubertModel2(BaseFairseqModel):
         mix_with_unit=False,
         use_pred_unit=False,
         l2_embedding=False,
-        remask=False
+        remask=False,
     ):
         """
         1. Mix with units if needed (default: True)
@@ -752,11 +763,17 @@ class StHubertModel2(BaseFairseqModel):
             soft_embeddings, (B, T, D)
             l2_loss, a loss
         """
-        soft_embeddings = self.final_proj_list[0](x) if x.size(-1) == self.final_dim else x
+        soft_embeddings = (
+            self.final_proj_list[0](x) if x.size(-1) == self.final_dim else x
+        )
         if padding_mask is None:
-            padding_mask = soft_embeddings.new_zeros(soft_embeddings.size(0), soft_embeddings.size(1), dtype=torch.long)
+            padding_mask = soft_embeddings.new_zeros(
+                soft_embeddings.size(0), soft_embeddings.size(1), dtype=torch.long
+            )
         if use_pred_unit:
-            src_tokens = self.compute_pred(self.final_proj_list[0](x), self.label_embs_list[0]).argmax(dim=-1)
+            src_tokens = self.compute_pred(
+                self.final_proj_list[0](x), self.label_embs_list[0]
+            ).argmax(dim=-1)
             src_tokens[padding_mask] = self.padding_idx
         if target is not None:
             src_tokens = target
@@ -764,15 +781,22 @@ class StHubertModel2(BaseFairseqModel):
             src_tokens = padding_mask.long()
 
         if l2_embedding | mix_with_unit:
-            unit_embeddings = self.embed_tokens(src_tokens)    # (B, T, D)
-        
+            unit_embeddings = self.embed_tokens(src_tokens)  # (B, T, D)
+
         l2_loss = 0
         if l2_embedding:
             if mask_indices is not None:
-                l2_loss = (soft_embeddings - unit_embeddings)[mask_indices].float().pow(2).mean(dim=-1)
+                l2_loss = (
+                    (soft_embeddings - unit_embeddings)[mask_indices]
+                    .float()
+                    .pow(2)
+                    .mean(dim=-1)
+                )
                 scale = unit_embeddings[mask_indices].float().pow(2).sum(dim=-1)
             else:
-                l2_loss = (soft_embeddings - unit_embeddings).float().pow(2).mean(dim=-1)
+                l2_loss = (
+                    (soft_embeddings - unit_embeddings).float().pow(2).mean(dim=-1)
+                )
                 scale = unit_embeddings.float().pow(2).sum(dim=-1)
             l2_loss = (l2_loss / scale).mean()
 
@@ -800,34 +824,46 @@ class StHubertModel2(BaseFairseqModel):
             soft_embeddings[swap_indices] = unit_embeddings[swap_indices]
 
         soft_embeddings = soft_embeddings * (1 - padding_mask.unsqueeze(-1).type_as(x))
-        return src_tokens, soft_embeddings, l2_loss   
-      
+        return src_tokens, soft_embeddings, l2_loss
+
     def compute_pred(self, proj_x, label_embs):
         if self.target_glu:
             label_embs = self.target_glu(label_embs)
-        x = F.normalize(proj_x.float(), dim=-1)                 # (S, D)
-        label_embs = F.normalize(label_embs.float(), dim=-1)    # (C, D)
+        x = F.normalize(proj_x.float(), dim=-1)  # (S, D)
+        label_embs = F.normalize(label_embs.float(), dim=-1)  # (C, D)
         logits = torch.matmul(x, label_embs.T).type_as(proj_x)  # (S, C)
         logits /= self.logit_temp
-        return logits 
+        return logits
 
-    def compute_hubert_logits_simple(self, x, target, final_proj, label_embs, padding_mask, mask_indices):
+    def compute_hubert_logits_simple(
+        self, x, target, final_proj, label_embs, padding_mask, mask_indices
+    ):
         if not self.skip_masked:
-            masked_indices = torch.logical_and(~padding_mask, mask_indices) ## remove padding position mask
+            masked_indices = torch.logical_and(
+                ~padding_mask, mask_indices
+            )  ## remove padding position mask
             proj_x_m = final_proj(x[masked_indices])
-            logit_m_list = [self.compute_pred_offical(proj_x=proj_x_m, target=target[masked_indices], label_embs=label_embs)]
+            logit_m_list = [
+                self.compute_pred_offical(
+                    proj_x=proj_x_m,
+                    target=target[masked_indices],
+                    label_embs=label_embs,
+                )
+            ]
         else:
             logit_m_list = [None]
 
         if not self.skip_nomask:
             nomask_indices = torch.logical_and(~padding_mask, ~mask_indices)
             proj_x_u = final_proj(x[nomask_indices])
-            logit_u_list = [self.compute_pred_offical(proj_x_u, target[nomask_indices], label_embs)]
+            logit_u_list = [
+                self.compute_pred_offical(proj_x_u, target[nomask_indices], label_embs)
+            ]
         else:
             logit_u_list = [None]
 
         return logit_m_list, logit_u_list
-    
+
     def compute_nce(self, x, pos, negs):
         neg_is_pos = (pos == negs).all(-1)
         pos = pos.unsqueeze(0)
@@ -840,7 +876,7 @@ class StHubertModel2(BaseFairseqModel):
         logits = logits.transpose(0, 1)  # (num_x, num_cls+1)
         return logits
 
-    def compute_pred_offical(self,proj_x, target, label_embs):
+    def compute_pred_offical(self, proj_x, target, label_embs):
         # compute logits for the i-th label set
         y = torch.index_select(label_embs, 0, target.long())
         negs = label_embs.unsqueeze(1).expand(-1, proj_x.size(0), -1)
@@ -852,7 +888,7 @@ class StHubertModel2(BaseFairseqModel):
         # negs: (Neg, S, D)
         # print(f"in compute_pred: proj_x shape: {proj_x.shape} , y shape: {y.shape} ")
         return self.compute_nce(proj_x, y, negs)
-     
+
     ## for fintune stage
     def extract_features(
         self,
@@ -864,9 +900,8 @@ class StHubertModel2(BaseFairseqModel):
         output_layer: Optional[int] = None,
         **kwargs,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
-        
         features = self.forward_features(source)
-        #if target_list is not None:
+        # if target_list is not None:
         #    features, target_list = self.forward_targets(features, target_list)
 
         features_pen = features.float().pow(2).mean()
@@ -896,35 +931,33 @@ class StHubertModel2(BaseFairseqModel):
             padding_mask=padding_mask,
             layer=None if output_layer is None else output_layer - 1,
         )
-        out,_ = self.shared_encoder(x, padding_mask) ## BXTXC    
-        
+        out, _ = self.shared_encoder(x, padding_mask)  ## BXTXC
+
         return out, padding_mask
 
-
- 
     def get_logits(self, net_output, is_masked=True):
         if is_masked:
-            logits_lists=[]
+            logits_lists = []
             if "result_speech" in net_output:
                 logits_lists.append(net_output["result_speech"]["logit_m_list"])
             if "result_text" in net_output:
-                #logger.info(f'text logit_m_list: {net_output["result_text"]["logit_m_list"]}')
+                # logger.info(f'text logit_m_list: {net_output["result_text"]["logit_m_list"]}')
                 logits_lists.append(net_output["result_text"]["logit_m_list"])
         else:
-            logits_lists=[]
+            logits_lists = []
             if "result_speech" in net_output:
                 logits_lists.append(net_output["result_speech"]["logit_u_list"])
             if "result_text" in net_output:
-                #logger.info(f'text logit_u_list: {net_output["result_text"]["logit_u_list"]}')
+                # logger.info(f'text logit_u_list: {net_output["result_text"]["logit_u_list"]}')
                 logits_lists.append(net_output["result_text"]["logit_u_list"])
-        assert len(logits_lists)<=2
-        logits_list=[]
+        assert len(logits_lists) <= 2
+        logits_list = []
         for lists in logits_lists:
             for x in lists:
                 if x is not None:
                     logits_list.append(x.float())
-        #logger.info(f"logits_list: {logits_list}, its length is {len(logits_list)}")             
-        
+        # logger.info(f"logits_list: {logits_list}, its length is {len(logits_list)}")
+
         return logits_list
 
     def get_targets(self, net_output, is_masked=True):
@@ -947,44 +980,51 @@ class StHubertModel2(BaseFairseqModel):
 
     def remove_pretraining_modules(self):
         self.target_glu = None
-        #self.final_proj_list = None
-        #self.text_modality_bias = None
-        #self.text_pos = None
-        #self.embed_tokens = None
-        #self.embed_positions = None
-        #self.layernorm_embedding = None
+        # self.final_proj_list = None
+        # self.text_modality_bias = None
+        # self.text_pos = None
+        # self.embed_tokens = None
+        # self.embed_positions = None
+        # self.layernorm_embedding = None
+
 
 class CTClayer(nn.Module):
-    def __init__(self,cfg,output_dim):
+    def __init__(self, cfg, output_dim):
         super().__init__()
-        self.cfg = cfg 
+        self.cfg = cfg
         self.output_dim = output_dim
         self.conv = nn.Conv1d(
-            self.cfg.shared_transformer.encoder_embed_dim, self.cfg.shared_transformer.encoder_embed_dim,
+            self.cfg.shared_transformer.encoder_embed_dim,
+            self.cfg.shared_transformer.encoder_embed_dim,
             2,
             stride=1,
             bias=False,
             padding=1,
         )
-        self.dropout=nn.Dropout(p=0.1)
+        self.dropout = nn.Dropout(p=0.1)
         self.layernorm = LayerNorm(self.cfg.shared_transformer.encoder_embed_dim)
         self.activation = nn.GELU()
-        self.output_layer = nn.Linear(self.cfg.shared_transformer.encoder_embed_dim, self.output_dim)
-    def forward(self,x):
+        self.output_layer = nn.Linear(
+            self.cfg.shared_transformer.encoder_embed_dim, self.output_dim
+        )
+
+    def forward(self, x):
         # input x shape: BXTXC
-        x = x.permute(0,2,1) # BXTXC ->BXCXT
-        x = self.conv(x) # BXCXT
-        x = x.permute(0,2,1) # BXCXT -> BXTXC
+        x = x.permute(0, 2, 1)  # BXTXC ->BXCXT
+        x = self.conv(x)  # BXCXT
+        x = x.permute(0, 2, 1)  # BXCXT -> BXTXC
         x = self.dropout(x)
         x = self.layernorm(x)
         x = self.activation(x)
-        x = self.output_layer(x) # BX T X output_dim
+        x = self.output_layer(x)  # BX T X output_dim
         return x
+
 
 class Rotate3D(nn.Module):
     """
     (T, B, D) --> (B, D, T) --> (D, T, B) --> (T, B, D)
     """
+
     def __init__(self):
         super().__init__()
 
