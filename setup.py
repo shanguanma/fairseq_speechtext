@@ -185,7 +185,6 @@ def do_setup(package_data):
             "regex",
             "sacrebleu>=1.4.12",
             # "torch>=1.13",
-            # "torch==1.11.0",
             "torch==2.0.1",
             "tqdm",
             "bitarray",
