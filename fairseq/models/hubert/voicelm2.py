@@ -27,21 +27,21 @@ from fairseq.models.wavlm.wavlm import (
 
 from fairseq.modules import GradMultiply, LayerNorm
 from fairseq.modules import PositionalEmbedding
-from fairseq.models.hubert.hubert2 import HubertConfig2, HubertModel2  ##(TODO) check
+from fairseq.models.hubert.hubert2 import HubertConfig2, HubertModel2  
 from fairseq.modules import GradMultiply, LayerNorm
 from fairseq.tasks.voicelm2_pretraining import (
     Voicelm2PretrainingConfig,
     Voicelm2PretrainingTask,
-)  ##(TODO) check
+)
 
 
 logger = logging.getLogger(__name__)
 
-##1.auido branch: cnn feature(50Hz) or fbank(104dims, 25Hz)
+##1.auido branch: cnn feature(50Hz) or fbank(104dims, 25Hz)(todo)
 ##2.text branch: embedding + ffn
-##3 fusion type: residual cross self-attention,
-##4.audio branch: mask loss and unmask loss
-##5.text branch: mask loss(todo)
+##3 fusion type: residual cross self-attention(support flash_attention ),
+##4.audio branch: mask loss 
+##5.text branch: mask loss
 
 
 @dataclass
@@ -98,10 +98,14 @@ class Voicelm2Config(HubertConfig2):
                     and Memory-Efficient multi head attention, but require cuda>=11.4, pytorch>=1.12"""
         },
     )
-    multi_label_target: bool = field(
-            default = False,
-            metadata = {"help": "if it is false, it will compute mlm loss on last layer represent and label."''}
-            )
+    text_mlm_loss: bool  = field(
+            default=False,
+            metadata = {"help": "if true, it will  comput  unpaired text branch  masked lm loss."},)
+
+    predict_layers: str = field(default="[12]") # set [7,12], interget voicelm 
+    separate_label_embeds: bool = field(default=False) # set True
+    separate_layer_targets: bool = field(default=False)
+    phnkm7_km12: bool = field(default=False) # set True
 
 class TextModel(nn.Module):
     def __init__(self, input_dim=None, cfg=None, padding_idx=None):
@@ -124,7 +128,7 @@ class TextModel(nn.Module):
         return x
 
 
-@register_model("voicelm2", dataclass=Voicelm2Config)
+@register_model("voicelm2", dataclass=Voicelm2Config1)
 class Voicelm2Model(BaseFairseqModel):
     def __init__(
         self,
@@ -133,13 +137,19 @@ class Voicelm2Model(BaseFairseqModel):
         dictionaries: List[Dictionary],
     ) -> None:
         super().__init__()
-        logger.info(f"voicelm2 Config: {cfg}")
+        #logger.info(f"voicelm2 Config: {cfg}")
         self.padding_idx = 1
         self.sim_type = cfg.sim_type
         self.modality_fuse = cfg.modality_fuse
         self.encoder_embed_dim = cfg.encoder_embed_dim
         feature_enc_layers = eval(cfg.conv_feature_layers)  # noqa
         self.embed = feature_enc_layers[-1][0]
+        self.predict_layers = eval(cfg.predict_layers)
+        self.separate_label_embeds = cfg.separate_label_embeds
+        self.separate_layer_targets = cfg.separate_layer_targets
+        self.phnkm7_km12 = cfg.phnkm7_km12
+        self.text_mlm_loss = cfg.text_mlm_loss
+        self.fuse_attention_heads = cfg.fuse_attention_heads
         if cfg.audio_feature_type == "cnn":
             self.feature_extractor_audio = ConvFeatureExtractionModel(
                 conv_layers=feature_enc_layers,
@@ -157,12 +167,12 @@ class Voicelm2Model(BaseFairseqModel):
         )
 
         if self.modality_fuse == "attention":
-            self.feature_fuse = nn.MultiheadAttention(
+            self.feature_fuse = nn.MultiheadAttention( 
                 embed_dim=cfg.encoder_embed_dim,
                 num_heads=cfg.fuse_attention_heads,
                 batch_first=True,
             )
-        else:
+        elif self.modality_fuse == "flash_attention":
             pass
 
         feature_ds_rate = np.prod([s for _, _, s in feature_enc_layers])
@@ -173,7 +183,7 @@ class Voicelm2Model(BaseFairseqModel):
             if self.embed != self.encoder_embed_dim
             else None
         )
-
+        
         self.mask_prob = cfg.mask_prob
         self.mask_selection = cfg.mask_selection
         self.mask_other = cfg.mask_other
@@ -196,14 +206,48 @@ class Voicelm2Model(BaseFairseqModel):
         self.skip_masked = cfg.skip_masked
         self.skip_nomask = cfg.skip_nomask
 
-        ## text
-        # `self.text_mask_type = cfg.text_mask_type
 
         final_dim = cfg.final_dim if cfg.final_dim > 0 else cfg.encoder_embed_dim
 
         self.mask_emb = nn.Parameter(
             torch.FloatTensor(cfg.encoder_embed_dim).uniform_()
         )
+        
+        self.untie_final_proj = cfg.untie_final_proj
+        self.layer_norm_first = cfg.layer_norm_first
+
+        if self.layer_norm_first:
+            self.post_layer_norm = torch.nn.Sequential(
+                *[
+                    LayerNorm(cfg.encoder_embed_dim)
+                    for _ in range(len(self.predict_layers))
+                ]
+            )
+
+        if self.separate_label_embeds:
+            if self.separate_layer_targets or not self.untie_final_proj:
+                self.final_proj = torch.nn.Sequential(
+                    *[
+                        nn.Linear(cfg.encoder_embed_dim, cfg.final_dim)
+                        for _ in range(len(self.predict_layers))
+                    ]
+                )
+            else:
+                self.final_proj = torch.nn.Sequential(
+                    *[
+                        nn.Linear(
+                            cfg.encoder_embed_dim, cfg.final_dim * len(dictionaries)
+                        )
+                        for _ in range(len(self.predict_layers))
+                    ]
+                )
+        else:
+            if self.separate_layer_targets or not self.untie_final_proj:
+                self.final_proj = nn.Linear(cfg.encoder_embed_dim, cfg.final_dim)
+            else:
+                self.final_proj = nn.Linear(
+                    cfg.encoder_embed_dim, cfg.final_dim * len(dictionaries)
+                )
 
         self.encoder = TransformerEncoder(cfg)
         self.layer_norm = LayerNorm(cfg.encoder_embed_dim)
@@ -213,15 +257,20 @@ class Voicelm2Model(BaseFairseqModel):
             self.target_glu = nn.Sequential(
                 nn.Linear(final_dim, final_dim * 2), nn.GLU()
             )
-
-        self.untie_final_proj = cfg.untie_final_proj
-        if self.untie_final_proj:
-            self.final_proj = nn.Linear(
-                cfg.encoder_embed_dim, final_dim * len(dictionaries)
+        if self.text_mlm_loss:
+            self.final_text_proj = nn.Linear(cfg.encoder_embed_dim, cfg.final_dim)
+            self.text_num_classes = [len(d) for d in [dictionaries[-1]]] ## unpaired text dictionary
+            self.text_label_embs = nn.Parameter(
+                torch.FloatTensor(sum(self.text_num_classes), cfg.final_dim)
             )
+            nn.init.uniform_(self.text_label_embs)
+            
         else:
-            self.final_proj = nn.Linear(cfg.encoder_embed_dim, final_dim)
+            self.final_text_proj = None
+            self.text_label_embs = None
+            self.text_num_classes = None
 
+        """
         # modules below are not needed during fine-tuning
         if any([d is None for d in dictionaries]):
             logger.info("cannot find dictionary. assume will be used for fine-tuning")
@@ -236,7 +285,27 @@ class Voicelm2Model(BaseFairseqModel):
                 torch.FloatTensor(sum(self.num_classes), final_dim)
             )
             nn.init.uniform_(self.label_embs_concat)
-
+        """
+        # modules below are not needed during fine-tuning
+        if any([d is None for d in dictionaries]):
+            logger.info("cannot find dictionary. assume will be used for fine-tuning")
+        else:
+            self.num_classes = [len(d) for d in dictionaries[:-1]] ## remove unpaired text dictionary
+            layer_dim = (
+                len(self.predict_layers)
+                if self.separate_layer_targets or self.separate_label_embeds
+                else 1
+            )
+            embed_dim = (
+                sum(self.num_classes)
+                if not self.separate_layer_targets
+                else max(self.num_classes)
+            )
+            self.label_embs_concat = nn.Parameter(
+                torch.FloatTensor(layer_dim, embed_dim, cfg.final_dim)
+            )
+            nn.init.uniform_(self.label_embs_concat)
+       
     def upgrade_state_dict_named(self, state_dict, name):
         """Upgrade a (possibly old) state dict for new versions of fairseq."""
 
@@ -244,7 +313,7 @@ class Voicelm2Model(BaseFairseqModel):
         return state_dict
 
     @classmethod
-    def build_model(cls, cfg: Voicelm2Config, task: Voicelm2PretrainingTask):
+    def build_model(cls, cfg: Voicelm2Config1, task: Voicelm2PretrainingTask):
         """Build a new model instance."""
         logger.info(
             f"dictionary: {task.dictionaries[1].indices.items()}"
@@ -303,9 +372,15 @@ class Voicelm2Model(BaseFairseqModel):
                 enable_math=False
             ):  ## it default is enable_flash=True,
                 ## enable_math=True, enable_mem_efficient=True
-                features = F.scaled_dot_product_attention(
+                B, T, F = feature_audio.shape
+                S = feature_text.size(1)
+                feature_audio = feature_audio.view(B,self.fuse_attention_heads, T, -1)
+                feature_text = feature_text.view(B,self.fuse_attention_heads, S, -1)
+                features = F.scaled_dot_product_attention( # ## its inputs require: q,k,v : (B, heads,seq,head_dim)
                     query=feature_audio, key=feature_text, value=feature_text
-                )
+                ) # (B, heads, T, F//heads)
+                feature_audio = feature_audio.reshape(B,T,-1)
+                features = features.reshape(B,T,-1)
         features = feature_audio + features  ## residual add
 
         # logger.info(f"last  features shape: {features.shape}") # [B,T,F]
@@ -328,50 +403,139 @@ class Voicelm2Model(BaseFairseqModel):
         # x: (B, T, F), float
         # padding_mask: (B, T), bool
         # mask_indices: (B, T), bool
-        x, _ = self.encoder(
-            x,  # (B,T,F)
-            padding_mask=padding_mask,
-            layer=None if output_layer is None else output_layer - 1,
+        x, layer_results = self.encoder(
+            x, padding_mask=padding_mask, layer=self.predict_layers
         )
-        # x:(B,T,F)
+
+        result = {
+            "x": x,
+            "padding_mask": padding_mask,
+            "features": features,
+            "layer_results": layer_results, #  [[T,B,C],[T,B,C]]
+        }
+
+        ## for  speech branch  loss
         if features_only:
-            return {"x": x, "padding_mask": padding_mask, "features": features}
+            if self.layer_norm_first and output_layer is not None:
+                result["x"] = self.post_layer_norm[-1](x)
+            return result
 
-        label_embs_list = self.label_embs_concat.split(self.num_classes, 0)
-        proj_x = self.final_proj(x)  # (B,T,F)
-        if self.untie_final_proj:
-            proj_x_list = proj_x.chunk(
-                len(self.num_classes), dim=-1
-            )  # len(proj_x_list) = len(self.num_classes)
-        else:
-            proj_x_list = [proj_x for _ in self.num_classes]
-        logit_list = [
-            self.compute_logits(proj, emb).view(-1, num_class)
-            for proj, emb, num_class in zip(
-                proj_x_list, label_embs_list, self.num_classes
+        layer_results = [
+            layer_x.transpose(0, 1) for i, (layer_x, _) in enumerate(layer_results)
+        ] #  [[T,B,C],[T,B,C]] -> [[B,T,C],[B,T,C]]
+        if not (x == layer_results[-1]).all():
+            print(
+                "{} {} {} {}".format(
+                    (x == layer_results[-1]).shape,
+                    (x == layer_results[-1]).float().sum(),
+                    (x - layer_results[-1]).float().sum(),
+                    (x - layer_results[-1]).float().abs().max(),
+                )
             )
-        ]  # [[B*T, V]]
-        if not self.skip_masked:
-            mask = torch.logical_and(mask_indices, ~padding_mask).view(-1)  # [B*T]
-            logit_m_list = [logit[mask] for logit in logit_list]
-            target_m_list = [target.view(-1)[mask].long() for target in target_list]
-        else:
-            logit_m_list = [None for _ in target_list]
 
-        if not self.skip_nomask:
-            unmask = torch.logical_and(~mask_indices, ~padding_mask).view(-1)  # [B*T]
-            logit_u_list = [logit[unmask] for logit in logit_list]
-            target_u_list = [target.view(-1)[unmask].long() for target in target_list]
-        else:
-            logit_u_list = [None for _ in target_list]
-        # logger.info(f"logit_m_list  len: {len(logit_m_list)}") # its length is same as len(self.num_classes),
-        # it should be is 1
-        # logger.info(f"logit_u_list  len: {len(logit_u_list)}") # its length is same as len(self.num_classes),
-        # it should be is 1
-        # logger.info(f"target_m_list  len: {len(target_m_list)}") # its length is same as len(self.num_classes),
-        # it should be is 1
-        # logger.info(f"target_u_list  len: {len(target_u_list)}") # its length is same as len(self.num_classes),
-        # it should be is 1
+        if self.layer_norm_first:
+            layer_results = [
+                layernorm(x)
+                for x, layernorm in zip(layer_results, self.post_layer_norm)
+            ]
+        logit_m_list = []
+        logit_u_list = []
+        target_m_list = []
+        target_u_list = []
+        if self.separate_layer_targets:
+            assert len(layer_results) == len(self.final_proj)
+            assert len(layer_results) == len(self.label_embs_concat)
+
+        for i, layer_x in enumerate(
+            layer_results
+        ):  # , final_proj, label_embs in zip(layer_results, self.final_proj, label_embs_concat):
+            if self.separate_label_embeds:
+                final_proj = self.final_proj[i]
+            else:
+                final_proj = self.final_proj
+
+            if self.separate_label_embeds or self.separate_layer_targets:
+                label_embs = self.label_embs_concat[i]
+            else:
+                label_embs = self.label_embs_concat[0]
+
+            if not self.separate_layer_targets:
+                label_embs_list = label_embs.split(self.num_classes, 0)
+            else:
+                label_embs_list = [label_embs[: self.num_classes[i]]]
+
+            proj_x = final_proj(layer_x) 
+            if self.untie_final_proj:
+                proj_x_list = proj_x.chunk(
+                    len(self.num_classes), dim=-1
+                )  # len(proj_x_list) = len(self.num_classes)
+            else:
+                proj_x_list = [proj_x for _ in self.num_classes]
+            logit_list = [
+                self.compute_logits(proj, emb).view(-1, num_class)
+                for proj, emb, num_class in zip(
+                    proj_x_list, label_embs_list, self.num_classes
+                )
+            ]  # [[B*T, V]]
+            if not self.skip_masked:
+                mask = torch.logical_and(mask_indices, ~padding_mask).view(-1)  # [B*T]
+                logit_m_list += [logit[mask] for logit in logit_list]
+                target_m_list += [target.view(-1)[mask].long() for target in target_list]
+            else:
+                logit_m_list += [None for _ in target_list]
+
+            if not self.skip_nomask:
+                unmask = torch.logical_and(~mask_indices, ~padding_mask).view(-1)  # [B*T]
+                logit_u_list += [logit[unmask] for logit in logit_list]
+                target_u_list += [target.view(-1)[unmask].long() for target in target_list]
+            else:
+                logit_u_list += [None for _ in target_list]
+
+        ## Assume two style target label: ["bpekm","km"] ,two specify layer: [7,12]
+        ## so logit_m_list has four elements: they are [bpekm_7,km_7,bpekm_12, km_12]
+        ## Assume two style target label: ["bpekm","km"] ,two specify layer: [4, 7,12]
+        ## so logit_m_list has six elements: they are [bpekm_4, km_4, bpekm_7, km_7, bpekm_12, km_12]
+        ## if we only  want to logit_m_list has three elements:  they are [km_4,bpekm_7, km_12], how to do it?
+        logit_m_list_1 = []
+        logit_u_list_1 = []
+        target_m_list_1 = []
+        target_u_list_1 = []
+        if self.phnkm7_km12:
+            logit_m_list_1.append(logit_m_list[0])
+            logit_m_list_1.append(logit_m_list[3])
+            logit_m_list = logit_m_list_1
+            logit_u_list_1.append(logit_u_list[0])
+            logit_u_list_1.append(logit_u_list[3])
+            logit_u_list = logit_u_list_1
+            
+            target_m_list_1.append(target_m_list[0])
+            target_m_list_1.append(target_m_list[3])
+            target_m_list = target_m_list_1
+            target_u_list_1.append(target_u_list[0])
+            target_u_list_1.append(target_u_list[3])
+            target_u_list = target_u_list_1
+
+        
+        if self.text_mlm_loss:
+            ##(TODO)maybe add espent style mask_uniform
+            text_padding_mask = torch.BoolTensor(src_text.shape).fill_(False).to(src_text.device) ## ignore padding effect. 
+            #logger.info(f"text_padding_mask device: {text_padding_mask.device}")
+            #logger.info(f"feature_text device: {feature_text.device}")
+            feature_text_mask, text_mask_indices = self.apply_feature_text_mask(feature_text, text_padding_mask)
+            #logger.info(f"feature_text_mask device: {feature_text_mask.device}")
+            #logger.info(f"text_padding_mask device: {text_padding_mask.device}")
+            text_x, _ = self.encoder(feature_text_mask , padding_mask=text_padding_mask, layer=None)#(B,S,F)
+            proj_x = self.final_text_proj(text_x) #(B,S,F_)
+            text_proj_x_list = [proj_x for _ in self.text_num_classes]#[[B,S,F_]]
+            text_label_embs_list = self.text_label_embs.split(self.text_num_classes, 0)# [B,V,F_] ## (todo check)
+            #logger.info(f"text_label_embs_list,its frist element shape: {text_label_embs_list[0].shape}")#(V,F_)
+            text_logit_list = [self.compute_logits(proj, emb).view(-1, num_class) for proj, emb, num_class in zip(
+                    text_proj_x_list, text_label_embs_list, self.text_num_classes
+                )]
+            text_mask = torch.logical_and(text_mask_indices, ~text_padding_mask).view(-1)  # [B*S]
+
+            logit_m_list += [logit[text_mask] for logit in text_logit_list]
+            target_m_list += [src_text.view(-1)[text_mask].long()]
         result = {
             "logit_m_list": logit_m_list,
             "logit_u_list": logit_u_list,
@@ -380,8 +544,10 @@ class Voicelm2Model(BaseFairseqModel):
             "padding_mask": padding_mask,
             "features_pen": features_pen,
         }
-
         return result
+
+
+
     def extract_features( ## it is only used to get specify layer represent for clustering  for next iter  pretrain
         self,
         source: torch.Tensor,
@@ -446,9 +612,15 @@ class Voicelm2Model(BaseFairseqModel):
             with torch.backends.cuda.sdp_kernel(
                 enable_math=False
             ):  ## it default is enable_flash=True,
-                features = F.scaled_dot_product_attention(
+                B, T, F = feature_audio.shape
+                S = feature_text.size(1)
+                feature_audio = feature_audio.view(B,self.fuse_attention_heads, T, -1)
+                feature_text = feature_text.view(B,self.fuse_attention_heads, S, -1)
+                features = F.scaled_dot_product_attention( # ## its inputs require: q,k,v : (B, heads,seq,head_dim)
                     query=feature_audio, key=feature_text, value=feature_text
-                )
+                ) # (B, heads, T, F//heads)
+                feature_audio = feature_audio.reshape(B,T,-1)
+                features = features.reshape(B,T,-1)
         features = feature_audio + features  ## residual add
 
         # logger.info(f"last  features shape: {features.shape}") # [B,T,F]
@@ -478,6 +650,27 @@ class Voicelm2Model(BaseFairseqModel):
         )
         return x, padding_mask
 
+
+    def apply_feature_text_mask(self,x,padding_mask):
+        B, T, C = x.shape
+        if self.mask_prob > 0:
+            mask_indices = compute_mask_indices(
+                (B, T),
+                padding_mask,
+                self.mask_prob,
+                self.mask_length,
+                self.mask_selection,
+                self.mask_other,
+                min_masks=2,
+                no_overlap=self.no_mask_overlap,
+                min_space=self.mask_min_space,
+            )
+            mask_indices = torch.from_numpy(mask_indices).to(x.device)
+            x = x.clone()
+            x[mask_indices] = self.mask_emb
+        else:
+            mask_indices = None
+        return x, mask_indices
 
     def apply_feature_mask(self, x, padding_mask):
         B, T, C = x.shape
@@ -615,3 +808,4 @@ class Voicelm2Model(BaseFairseqModel):
     def remove_pretraining_modules(self):
         self.target_glu = None
         self.final_proj = None
+        self.label_embs_concat = None

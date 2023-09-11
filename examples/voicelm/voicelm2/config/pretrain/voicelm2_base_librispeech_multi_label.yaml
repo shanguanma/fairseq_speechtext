@@ -74,7 +74,7 @@ lr_scheduler:
   warmup_updates: 32000
 
 model:
-  _name: voicelm2plus
+  _name: voicelm2
   label_rate: 50
   skip_masked: false
   skip_nomask: false

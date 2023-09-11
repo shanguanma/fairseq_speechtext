@@ -74,7 +74,7 @@ lr_scheduler:
   warmup_updates: 32000
 
 model:
-  _name: voicelm2plus
+  _name: voicelm2
   label_rate: 50
   skip_masked: false
   skip_nomask: false
@@ -106,7 +106,7 @@ model:
   predict_layers: "[7,12]"
   separate_label_embeds: true
   phnkm7_km12: true
-
+  text_mlm_loss: false
 
 hydra:
   job:
