@@ -155,7 +155,7 @@ class Voicelm2Model(BaseFairseqModel):
         self.separate_layer_targets = cfg.separate_layer_targets
         self.phnkm7_km12 = cfg.phnkm7_km12
         self.text_mlm_loss = cfg.text_mlm_loss
-
+        self.fuse_attention_heads = cfg.fuse_attention_heads
         if cfg.audio_feature_type == "cnn":
             self.feature_extractor_audio = ConvFeatureExtractionModel(
                 conv_layers=feature_enc_layers,
@@ -173,12 +173,12 @@ class Voicelm2Model(BaseFairseqModel):
         )
 
         if self.modality_fuse == "attention":
-            self.feature_fuse = nn.MultiheadAttention(
+            self.feature_fuse = nn.MultiheadAttention( 
                 embed_dim=cfg.encoder_embed_dim,
                 num_heads=cfg.fuse_attention_heads,
                 batch_first=True,
             )
-        else:
+        elif self.modality_fuse == "flash_attention":
             pass
 
         feature_ds_rate = np.prod([s for _, _, s in feature_enc_layers])
@@ -380,9 +380,15 @@ class Voicelm2Model(BaseFairseqModel):
                 enable_math=False
             ):  ## it default is enable_flash=True,
                 ## enable_math=True, enable_mem_efficient=True
-                features = F.scaled_dot_product_attention(
+                B, T, F = feature_audio.shape
+                S = feature_text.size(1)
+                feature_audio = feature_audio.view(B,self.fuse_attention_heads, T, -1)
+                feature_text = feature_text.view(B,self.fuse_attention_heads, S, -1)
+                features = F.scaled_dot_product_attention( # ## its inputs require: q,k,v : (B, heads,seq,head_dim)
                     query=feature_audio, key=feature_text, value=feature_text
-                )
+                ) # (B, heads, T, F//heads)
+                feature_audio = feature_audio.reshape(B,T,-1)
+                features = features.reshape(B,T,-1)
         features = feature_audio + features  ## residual add
 
         # logger.info(f"last  features shape: {features.shape}") # [B,T,F]
@@ -676,9 +682,15 @@ class Voicelm2Model(BaseFairseqModel):
             with torch.backends.cuda.sdp_kernel(
                 enable_math=False
             ):  ## it default is enable_flash=True,
-                features = F.scaled_dot_product_attention(
+                B, T, F = feature_audio.shape
+                S = feature_text.size(1)
+                feature_audio = feature_audio.view(B,self.fuse_attention_heads, T, -1)
+                feature_text = feature_text.view(B,self.fuse_attention_heads, S, -1)
+                features = F.scaled_dot_product_attention( # ## its inputs require: q,k,v : (B, heads,seq,head_dim)
                     query=feature_audio, key=feature_text, value=feature_text
-                )
+                ) # (B, heads, T, F//heads)
+                feature_audio = feature_audio.reshape(B,T,-1)
+                features = features.reshape(B,T,-1)
         features = feature_audio + features  ## residual add
 
         # logger.info(f"last  features shape: {features.shape}") # [B,T,F]
