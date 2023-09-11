@@ -585,7 +585,7 @@ class Voicelm2Model(BaseFairseqModel):
             proj_x = self.final_text_proj(text_x) #(B,S,F_)
             text_proj_x_list = [proj_x for _ in self.text_num_classes]#[[B,S,F_]]
             text_label_embs_list = self.text_label_embs.split(self.text_num_classes, 0)# [B,V,F_] ## (todo check)
-            logger.info(f"text_label_embs_list,its frist element shape: {text_label_embs_list[0].shape}")#(V,F_)
+            #logger.info(f"text_label_embs_list,its frist element shape: {text_label_embs_list[0].shape}")#(V,F_)
             text_logit_list = [self.compute_logits(proj, emb).view(-1, num_class) for proj, emb, num_class in zip(
                     text_proj_x_list, text_label_embs_list, self.text_num_classes
                 )]
