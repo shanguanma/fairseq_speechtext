@@ -98,12 +98,6 @@ class Voicelm2Config1(HubertConfig2):
                     and Memory-Efficient multi head attention, but require cuda>=11.4, pytorch>=1.12"""
         },
     )
-    #multi_label_target: bool = field(
-    #    default = False,
-    #    metadata = {"help": """if it is false, it will compute mlm loss on last layer represent and label.
-    #            if it is true,  it will  compute mlm loss on medium layer represent 
-    #            and  last layer  represent and  label"""},
-    #)
     text_mlm_loss: bool  = field(
             default=False,
             metadata = {"help": "if true, it will  comput  unpaired text branch  masked lm loss."},)
@@ -212,8 +206,6 @@ class Voicelm2Model(BaseFairseqModel):
         self.skip_masked = cfg.skip_masked
         self.skip_nomask = cfg.skip_nomask
 
-        ## text
-        # `self.text_mask_type = cfg.text_mask_type
 
         final_dim = cfg.final_dim if cfg.final_dim > 0 else cfg.encoder_embed_dim
 
@@ -411,61 +403,6 @@ class Voicelm2Model(BaseFairseqModel):
         # x: (B, T, F), float
         # padding_mask: (B, T), bool
         # mask_indices: (B, T), bool
-        """
-        x, _ = self.encoder(
-            x,  # (B,T,F)
-            padding_mask=padding_mask,
-            layer=None if output_layer is None else output_layer - 1,
-        )
-        # x:(B,T,F)
-        if features_only:
-            return {"x": x, "padding_mask": padding_mask, "features": features}
-
-        label_embs_list = self.label_embs_concat.split(self.num_classes, 0)
-        proj_x = self.final_proj(x)  # (B,T,F)
-        if self.untie_final_proj:
-            proj_x_list = proj_x.chunk(
-                len(self.num_classes), dim=-1
-            )  # len(proj_x_list) = len(self.num_classes)
-        else:
-            proj_x_list = [proj_x for _ in self.num_classes]
-        logit_list = [
-            self.compute_logits(proj, emb).view(-1, num_class)
-            for proj, emb, num_class in zip(
-                proj_x_list, label_embs_list, self.num_classes
-            )
-        ]  # [[B*T, V]]
-        if not self.skip_masked:
-            mask = torch.logical_and(mask_indices, ~padding_mask).view(-1)  # [B*T]
-            logit_m_list = [logit[mask] for logit in logit_list]
-            target_m_list = [target.view(-1)[mask].long() for target in target_list]
-        else:
-            logit_m_list = [None for _ in target_list]
-
-        if not self.skip_nomask:
-            unmask = torch.logical_and(~mask_indices, ~padding_mask).view(-1)  # [B*T]
-            logit_u_list = [logit[unmask] for logit in logit_list]
-            target_u_list = [target.view(-1)[unmask].long() for target in target_list]
-        else:
-            logit_u_list = [None for _ in target_list]
-        # logger.info(f"logit_m_list  len: {len(logit_m_list)}") # its length is same as len(self.num_classes),
-        # it should be is 1
-        # logger.info(f"logit_u_list  len: {len(logit_u_list)}") # its length is same as len(self.num_classes),
-        # it should be is 1
-        # logger.info(f"target_m_list  len: {len(target_m_list)}") # its length is same as len(self.num_classes),
-        # it should be is 1
-        # logger.info(f"target_u_list  len: {len(target_u_list)}") # its length is same as len(self.num_classes),
-        # it should be is 1
-        result = {
-            "logit_m_list": logit_m_list,
-            "logit_u_list": logit_u_list,
-            "target_m_list": target_m_list,
-            "target_u_list": target_u_list,
-            "padding_mask": padding_mask,
-            "features_pen": features_pen,
-        }
-
-        """
         x, layer_results = self.encoder(
             x, padding_mask=padding_mask, layer=self.predict_layers
         )
@@ -596,13 +533,6 @@ class Voicelm2Model(BaseFairseqModel):
                     text_proj_x_list, text_label_embs_list, self.text_num_classes
                 )]
             text_mask = torch.logical_and(text_mask_indices, ~text_padding_mask).view(-1)  # [B*S]
-            #logger.info(f"text_mask shape: {text_mask.shape}")
-            #text_logit_m_list = [logit[text_mask] for logit in text_logit_list]
-            #logger.info(f"text_logit_m_list : {text_logit_m_list}")
-            #text_target_m_list = [src_text.view(-1)[text_mask].long()] 
-            #logger.info(f"text_target_m_list: {text_target_m_list}")
-            #target_m_list.append(text_target_m_list)
-            #logit_m_list.append(text_logit_m_list)
 
             logit_m_list += [logit[text_mask] for logit in text_logit_list]
             target_m_list += [src_text.view(-1)[text_mask].long()]
