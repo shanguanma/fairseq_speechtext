@@ -538,14 +538,14 @@ fi
 if [ ${stage} -le 26 ] && [ ${stop_stage} -ge 26 ];then
    echo "iter: pretrain voicelm2 on librilm monophncode and librispeech monophncode from w2vu2-model "
    echo "training on 400k steps for train-960 of librispeech, with multi  layer  and multi target  and text mlm loss"
-   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
-   tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
-   dir=/mntnfs/lee_data1/maduo/exp
-   label_dir=$tsv_dir/librispeech_lm_monophncode_using_monophn_dict_librispeech_frame_monophncode_using_wav2vec-u2_model
-   #fairseq_dir=/workspace2/maduo/fairseq_speechtext
-   #tsv_dir=/workspace2/maduo/dataset/format/librispeech/
-   #dir=/workspace2/maduo/exp
+   #fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   #tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   #dir=/mntnfs/lee_data1/maduo/exp
    #label_dir=$tsv_dir/librispeech_lm_monophncode_using_monophn_dict_librispeech_frame_monophncode_using_wav2vec-u2_model
+   fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   tsv_dir=/workspace2/maduo/dataset/format/librispeech/
+   dir=/workspace2/maduo/exp
+   label_dir=$tsv_dir/librispeech_lm_monophncode_using_monophn_dict_librispeech_frame_monophncode_using_wav2vec-u2_model
    config_dir=$fairseq_dir/examples/voicelm/voicelm2
    #model_name=pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_multi_label
    #model_name=pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_multi_label_text_mlm

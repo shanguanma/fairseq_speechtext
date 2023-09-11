@@ -22,7 +22,7 @@ from omegaconf import MISSING
 logger = logging.getLogger(__name__)
 
 
-from fairseq.models.hubert.voicelm2_sequence_generator import SequenceGenerator, SequenceGeneratorWithAlignment
+#from fairseq.models.hubert.voicelm2_sequence_generator import SequenceGenerator, SequenceGeneratorWithAlignment
 from fairseq import metrics, search
 from omegaconf import II
 from argparse import Namespace
@@ -443,6 +443,7 @@ class Voicelm2PretrainingTask(FairseqTask):
     def filter_indices_by_size(self, indices: np.array, *args, **kwargs) -> np.array:
         return indices
 
+'''
     ## it is only used to seq2seq decoding.
     def build_generator(
         self,
@@ -568,3 +569,4 @@ class Voicelm2PretrainingTask(FairseqTask):
             search_strategy=search_strategy,
             **extra_gen_cls_kwargs,
         )
+'''
