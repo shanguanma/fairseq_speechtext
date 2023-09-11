@@ -38,16 +38,6 @@ from fairseq.models.wav2vec.wav2vec2 import (
 from fairseq.tasks import FairseqTask
 from omegaconf import II, MISSING
 
-#DBG = True if len(sys.argv) == 1 else False
-
-#if DBG:
-#    from hubert import AVHubertModel
-#    from decoder import TransformerDecoder
-#else:
-#    from .hubert import AVHubertModel
-#    from .decoder import TransformerDecoder
-
-#from .
 logger = logging.getLogger(__name__)
 
 

@@ -572,24 +572,34 @@ class Voicelm2Model(BaseFairseqModel):
             target_u_list_1.append(target_u_list[3])
             target_u_list = target_u_list_1
 
+        
         if self.text_mlm_loss:
             ##(TODO)maybe add espent style mask_uniform
-            text_padding_mask = torch.BoolTensor(collated_audios.shape).fill_(False) ## ignore padding effect. 
-            feature_text_mask, text_mask_indices = self.apply_feature_mask(feature_text_mask, text_padding_mask)
+            text_padding_mask = torch.BoolTensor(src_text.shape).fill_(False).to(src_text.device) ## ignore padding effect. 
+            #logger.info(f"text_padding_mask device: {text_padding_mask.device}")
+            #logger.info(f"feature_text device: {feature_text.device}")
+            feature_text_mask, text_mask_indices = self.apply_feature_text_mask(feature_text, text_padding_mask)
+            #logger.info(f"feature_text_mask device: {feature_text_mask.device}")
+            #logger.info(f"text_padding_mask device: {text_padding_mask.device}")
             text_x, _ = self.encoder(feature_text_mask , padding_mask=text_padding_mask, layer=None)#(B,S,F)
             proj_x = self.final_text_proj(text_x) #(B,S,F_)
             text_proj_x_list = [proj_x for _ in self.text_num_classes]#[[B,S,F_]]
             text_label_embs_list = self.text_label_embs.split(self.text_num_classes, 0)# [B,V,F_] ## (todo check)
-            logger.info(f"text_label_embs_list,its frist element shape: {text_label_embs_list[0].shape}")
+            logger.info(f"text_label_embs_list,its frist element shape: {text_label_embs_list[0].shape}")#(V,F_)
             text_logit_list = [self.compute_logits(proj, emb).view(-1, num_class) for proj, emb, num_class in zip(
                     text_proj_x_list, text_label_embs_list, self.text_num_classes
                 )]
             text_mask = torch.logical_and(text_mask_indices, ~text_padding_mask).view(-1)  # [B*S]
-            text_logit_m_list = [logit[mask] for logit in text_logit_list]
-            text_target_m_list = [src_text.view(-1)[mask].long()] 
-            target_m_list.append(text_target_m_list)
-            logit_m_list.append(text_logit_m_list)
+            #logger.info(f"text_mask shape: {text_mask.shape}")
+            #text_logit_m_list = [logit[text_mask] for logit in text_logit_list]
+            #logger.info(f"text_logit_m_list : {text_logit_m_list}")
+            #text_target_m_list = [src_text.view(-1)[text_mask].long()] 
+            #logger.info(f"text_target_m_list: {text_target_m_list}")
+            #target_m_list.append(text_target_m_list)
+            #logit_m_list.append(text_logit_m_list)
 
+            logit_m_list += [logit[text_mask] for logit in text_logit_list]
+            target_m_list += [src_text.view(-1)[text_mask].long()]
         result = {
             "logit_m_list": logit_m_list,
             "logit_u_list": logit_u_list,
@@ -698,6 +708,27 @@ class Voicelm2Model(BaseFairseqModel):
         )
         return x, padding_mask
 
+
+    def apply_feature_text_mask(self,x,padding_mask):
+        B, T, C = x.shape
+        if self.mask_prob > 0:
+            mask_indices = compute_mask_indices(
+                (B, T),
+                padding_mask,
+                self.mask_prob,
+                self.mask_length,
+                self.mask_selection,
+                self.mask_other,
+                min_masks=2,
+                no_overlap=self.no_mask_overlap,
+                min_space=self.mask_min_space,
+            )
+            mask_indices = torch.from_numpy(mask_indices).to(x.device)
+            x = x.clone()
+            x[mask_indices] = self.mask_emb
+        else:
+            mask_indices = None
+        return x, mask_indices
 
     def apply_feature_mask(self, x, padding_mask):
         B, T, C = x.shape
