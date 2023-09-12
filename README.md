@@ -36,9 +36,12 @@ pip install  timm  torchvision==0.15.1 -i https://pypi.tuna.tsinghua.edu.cn/simp
 
 for fixing ImportError: cannot import name 'get_ref_type' from 'omegaconf._utils'
 you  should pip install omegaconf==2.1.2 
-##for fairseq c++ part compile
-python setup.py build_ext --inplace
+
 ```
+
+> [!NOTE]
+> We strong recommend install fairseq c++ part compile follow the command: `python setup.py build_ext --inplace`
+
 
 
 
@@ -63,11 +66,8 @@ pip install  timm  torchvision==0.12.0 -i https://pypi.tuna.tsinghua.edu.cn/simp
 for fixing ImportError: cannot import name 'get_ref_type' from 'omegaconf._utils'
 you  should pip install omegaconf==2.1.2
 ```
-
-* For fairseq c++ part compile
-
-
-`python setup.py build_ext --inplace`
+> [!NOTE]
+> We strong recommend install fairseq c++ part compile follow the command: `python setup.py build_ext --inplace`
 
 
 * For ASR decoding, you need install the below library:
