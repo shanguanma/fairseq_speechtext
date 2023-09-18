@@ -128,7 +128,7 @@ class TextModel(nn.Module):
         return x
 
 
-@register_model("voicelm2", dataclass=Voicelm2Config1)
+@register_model("voicelm2", dataclass=Voicelm2Config)
 class Voicelm2Model(BaseFairseqModel):
     def __init__(
         self,
@@ -313,7 +313,7 @@ class Voicelm2Model(BaseFairseqModel):
         return state_dict
 
     @classmethod
-    def build_model(cls, cfg: Voicelm2Config1, task: Voicelm2PretrainingTask):
+    def build_model(cls, cfg: Voicelm2Config, task: Voicelm2PretrainingTask):
         """Build a new model instance."""
         logger.info(
             f"dictionary: {task.dictionaries[1].indices.items()}"
