@@ -128,7 +128,7 @@ class TextModel(nn.Module):
         return x
 
 
-@register_model("voicelm2", dataclass=Voicelm2Config1)
+@register_model("voicelm2", dataclass=Voicelm2Config)
 class Voicelm2Model(BaseFairseqModel):
     def __init__(
         self,
@@ -313,7 +313,7 @@ class Voicelm2Model(BaseFairseqModel):
         return state_dict
 
     @classmethod
-    def build_model(cls, cfg: Voicelm2Config1, task: Voicelm2PretrainingTask):
+    def build_model(cls, cfg: Voicelm2Config, task: Voicelm2PretrainingTask):
         """Build a new model instance."""
         logger.info(
             f"dictionary: {task.dictionaries[1].indices.items()}"
@@ -372,7 +372,7 @@ class Voicelm2Model(BaseFairseqModel):
                 enable_math=False
             ):  ## it default is enable_flash=True,
                 ## enable_math=True, enable_mem_efficient=True
-                B, T, F = feature_audio.shape
+                B, T, _ = feature_audio.shape
                 S = feature_text.size(1)
                 feature_audio = feature_audio.view(B,self.fuse_attention_heads, T, -1)
                 feature_text = feature_text.view(B,self.fuse_attention_heads, S, -1)
@@ -381,6 +381,7 @@ class Voicelm2Model(BaseFairseqModel):
                 ) # (B, heads, T, F//heads)
                 feature_audio = feature_audio.reshape(B,T,-1)
                 features = features.reshape(B,T,-1)
+                feature_text = feature_text.view(B,S,-1)
         features = feature_audio + features  ## residual add
 
         # logger.info(f"last  features shape: {features.shape}") # [B,T,F]
@@ -612,7 +613,7 @@ class Voicelm2Model(BaseFairseqModel):
             with torch.backends.cuda.sdp_kernel(
                 enable_math=False
             ):  ## it default is enable_flash=True,
-                B, T, F = feature_audio.shape
+                B, T, _ = feature_audio.shape
                 S = feature_text.size(1)
                 feature_audio = feature_audio.view(B,self.fuse_attention_heads, T, -1)
                 feature_text = feature_text.view(B,self.fuse_attention_heads, S, -1)
@@ -621,6 +622,7 @@ class Voicelm2Model(BaseFairseqModel):
                 ) # (B, heads, T, F//heads)
                 feature_audio = feature_audio.reshape(B,T,-1)
                 features = features.reshape(B,T,-1)
+                feature_text = feature_text.view(B,S,-1) 
         features = feature_audio + features  ## residual add
 
         # logger.info(f"last  features shape: {features.shape}") # [B,T,F]
