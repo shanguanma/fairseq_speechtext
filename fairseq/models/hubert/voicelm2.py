@@ -358,16 +358,15 @@ class Voicelm2Model(BaseFairseqModel):
             src_text, modality="text"
         )  # features: [B,S,F],S is text seq length.
 
-        ## feature fuse via cross attention qurey is from audio branch, key and value is from text branch
         # feature_audio = feature_audio.transpose(1, 2) ## [B,F,T]->[B,T,F]
         features = None
-        if self.modality_fuse == "attention":
+        if self.modality_fuse == "attention": ## query is from audio, key/value is from text
             # logger.info(f"feature_text shape: {feature_text.shape}") # [B,S,F]
             # logger.info(f"feature_audio shape: {feature_audio.shape}") # [B,T,F]
             features, _ = self.feature_fuse(
                 query=feature_audio, key=feature_text, value=feature_text
             )  # [B,T,F]
-        elif self.modality_fuse == "flash_attention":
+        elif self.modality_fuse == "flash_attention": # query is from audio, key/value is from text with flash_attention
             with torch.backends.cuda.sdp_kernel(
                 enable_math=False
             ):  ## it default is enable_flash=True,
@@ -382,8 +381,31 @@ class Voicelm2Model(BaseFairseqModel):
                 feature_audio = feature_audio.reshape(B,T,-1)
                 features = features.reshape(B,T,-1)
                 feature_text = feature_text.view(B,S,-1)
-        features = feature_audio + features  ## residual add
 
+        elif self.modality_fuse == "attention_v2": ## query is from text, key/value is from audio
+            # logger.info(f"feature_text shape: {feature_text.shape}") # [B,S,F]
+            # logger.info(f"feature_audio shape: {feature_audio.shape}") # [B,T,F]
+            features, _ = self.feature_fuse(
+                query=feature_text, key=feature_audio, value=feature_audio
+            )  # [B,T,F]
+
+        elif self.modality_fuse == "flash_attention_v2": # query is from text, key/value is from audio with flash_attention
+            with torch.backends.cuda.sdp_kernel(
+                enable_math=False
+            ):  ## it default is enable_flash=True,
+                ## enable_math=True, enable_mem_efficient=True
+                B, T, _ = feature_audio.shape
+                S = feature_text.size(1)
+                feature_audio = feature_audio.view(B,self.fuse_attention_heads, T, -1)
+                feature_text = feature_text.view(B,self.fuse_attention_heads, S, -1)
+                features = F.scaled_dot_product_attention( # ## its inputs require: q,k,v : (B, heads,seq,head_dim)
+                    query=feature_text, key=feature_audio, value=feature_audio
+                ) # (B, heads, T, F//heads)
+                feature_audio = feature_audio.reshape(B,T,-1)
+                features = features.reshape(B,T,-1)
+                feature_text = feature_text.view(B,S,-1)
+
+        features = feature_audio + features  ## residual add
         # logger.info(f"last  features shape: {features.shape}") # [B,T,F]
         features_pen = features.float().pow(2).mean()
         features = self.layer_norm(features)  #  [B,T,F]
@@ -600,19 +622,18 @@ class Voicelm2Model(BaseFairseqModel):
                 feature_audio.size(0), feature_audio.size(1), feature_audio.size(2)
             )
 
-        ## feature fuse via cross attention qurey is from audio branch, key and value is from text branch
-        # feature_audio = feature_audio.transpose(1, 2) ## [B,F,T]->[B,T,F]
-        features = None
-        if self.modality_fuse == "attention":
+
+        if self.modality_fuse == "attention": ## query is from audio, key/value is from text
             # logger.info(f"feature_text shape: {feature_text.shape}") # [B,S,F]
             # logger.info(f"feature_audio shape: {feature_audio.shape}") # [B,T,F]
             features, _ = self.feature_fuse(
                 query=feature_audio, key=feature_text, value=feature_text
             )  # [B,T,F]
-        elif self.modality_fuse == "flash_attention":
+        elif self.modality_fuse == "flash_attention": # query is from audio, key/value is from text with flash_attention
             with torch.backends.cuda.sdp_kernel(
                 enable_math=False
             ):  ## it default is enable_flash=True,
+                ## enable_math=True, enable_mem_efficient=True
                 B, T, _ = feature_audio.shape
                 S = feature_text.size(1)
                 feature_audio = feature_audio.view(B,self.fuse_attention_heads, T, -1)
@@ -622,7 +643,31 @@ class Voicelm2Model(BaseFairseqModel):
                 ) # (B, heads, T, F//heads)
                 feature_audio = feature_audio.reshape(B,T,-1)
                 features = features.reshape(B,T,-1)
-                feature_text = feature_text.view(B,S,-1) 
+                feature_text = feature_text.view(B,S,-1)
+
+        elif self.modality_fuse == "attention_v2": ## query is from text, key/value is from audio
+            # logger.info(f"feature_text shape: {feature_text.shape}") # [B,S,F]
+            # logger.info(f"feature_audio shape: {feature_audio.shape}") # [B,T,F]
+            features, _ = self.feature_fuse(
+                query=feature_text, key=feature_audio, value=feature_audio
+            )  # [B,T,F]
+
+        elif self.modality_fuse == "flash_attention_v2": # query is from text, key/value is from audio with flash_attention
+            with torch.backends.cuda.sdp_kernel(
+                enable_math=False
+            ):  ## it default is enable_flash=True,
+                ## enable_math=True, enable_mem_efficient=True
+                B, T, _ = feature_audio.shape
+                S = feature_text.size(1)
+                feature_audio = feature_audio.view(B,self.fuse_attention_heads, T, -1)
+                feature_text = feature_text.view(B,self.fuse_attention_heads, S, -1)
+                features = F.scaled_dot_product_attention( # ## its inputs require: q,k,v : (B, heads,seq,head_dim)
+                    query=feature_text, key=feature_audio, value=feature_audio
+                ) # (B, heads, T, F//heads)
+                feature_audio = feature_audio.reshape(B,T,-1)
+                features = features.reshape(B,T,-1)
+                feature_text = feature_text.view(B,S,-1)
+
         features = feature_audio + features  ## residual add
 
         # logger.info(f"last  features shape: {features.shape}") # [B,T,F]
