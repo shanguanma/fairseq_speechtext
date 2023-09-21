@@ -106,27 +106,27 @@ hydra:
   overrides:
     hydra:
     - hydra.run.dir=/workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2
-    - hydra.job.name=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_2gpu_16update_960h_400k_update_flash_attention_multi_label_text_mlm_debug/pretrain
+    - hydra.job.name=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_paired_data_verify_debug/pretrain
     task:
-    - task.data=/workspace2/maduo/dataset/format/librispeech/
-    - task.label_dir=/workspace2/maduo/dataset/format/librispeech//librispeech_lm_monophncode_using_monophn_dict_librispeech_frame_monophncode_using_wav2vec-u2_model
-    - task.labels=["speechphncode","km","textphncode"]
-    - model.label_rate=50
+    - task.data=/workspace2/maduo/dataset/format/librispeech//paired_speech_text_position_dependent_phncode/
+    - task.label_dir=/workspace2/maduo/dataset/format/librispeech//paired_speech_text_position_dependent_phncode/
+    - task.labels=["speechphncode","textphncode"]
+    - model.label_rate=100
     - common.user_dir=/workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2
-    - dataset.train_subset=train-960
-    - dataset.valid_subset='dev-other,dev-clean'
-    - distributed_training.distributed_world_size=2
+    - dataset.train_subset=dev_clean
+    - dataset.valid_subset=dev_clean
+    - distributed_training.distributed_world_size=4
     - distributed_training.distributed_port=-1
     - distributed_training.ddp_backend=legacy_ddp
-    - optimization.update_freq=[16]
-    - common.tensorboard_logdir=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_2gpu_16update_960h_400k_update_flash_attention_multi_label_text_mlm_debug
-    - checkpoint.save_dir=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_2gpu_16update_960h_400k_update_flash_attention_multi_label_text_mlm_debug
+    - optimization.update_freq=[8]
+    - common.tensorboard_logdir=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_paired_data_verify_debug
+    - checkpoint.save_dir=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_paired_data_verify_debug
   job:
-    name: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_2gpu_16update_960h_400k_update_flash_attention_multi_label_text_mlm_debug/pretrain
-    override_dirname: checkpoint.save_dir-/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_2gpu_16update_960h_400k_update_flash_attention_multi_label_text_mlm_debug__common.tensorboard_logdir-/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_2gpu_16update_960h_400k_update_flash_attention_multi_label_text_mlm_debug__common.user_dir-/workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2__dataset.train_subset-train-960__dataset.valid_subset-'dev-other,dev-clean'__distributed_training.ddp_backend-legacy_ddp__distributed_training.distributed_port--1__distributed_training.distributed_world_size-2__model.label_rate-50__optimization.update_freq-[16]__task.labels-["speechphncode","km","textphncode"]
+    name: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_paired_data_verify_debug/pretrain
+    override_dirname: checkpoint.save_dir-/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_paired_data_verify_debug__common.tensorboard_logdir-/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_paired_data_verify_debug__common.user_dir-/workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2__dataset.train_subset-dev_clean__dataset.valid_subset-dev_clean__distributed_training.ddp_backend-legacy_ddp__distributed_training.distributed_port--1__distributed_training.distributed_world_size-4__model.label_rate-100__optimization.update_freq-[8]__task.labels-["speechphncode","textphncode"]
     id: ???
     num: ???
-    config_name: voicelm2_base_librispeech_flash_attention_multi_label_text_mlm
+    config_name: voicelm2_base_librispeech_newer
     env_set: {}
     env_copy: []
     config:

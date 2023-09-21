@@ -534,7 +534,7 @@ if [ ${stage} -le 25 ] && [ ${stop_stage} -ge 25 ];then
 ### 4A100: training about  day
 ###           200steps: about  minites
 fi
-
+## this experiment is running at sribd cluster
 if [ ${stage} -le 26 ] && [ ${stop_stage} -ge 26 ];then
    echo "iter: pretrain voicelm2 on librilm monophncode and librispeech monophncode from w2vu2-model "
    echo "training on 400k steps for train-960 of librispeech, with multi  layer  and multi target  and text mlm loss"
@@ -576,5 +576,51 @@ if [ ${stage} -le 26 ] && [ ${stop_stage} -ge 26 ];then
             hydra.run.dir=$fairseq_dir/examples/voicelm/voicelm2\
             hydra.job.name=$exp_dir/pretrain
 ### 4V100: training about  day
+###           200steps: about  minites
+fi
+
+
+## this script is running local server for verify method without flash_attention
+if [ ${stage} -le 30 ] && [ ${stop_stage} -ge 30 ];then
+   echo "iter: pretrain voicelm2 on librilm monophncode and librispeech monophncode from w2vu2-model "
+   echo "training on 400k steps for train-960 of librispeech"
+   #fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   #tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   #dir=/mntnfs/lee_data1/maduo/exp
+   #label_dir=$tsv_dir/librispeech_lm_monophncode_using_monophn_dict_librispeech_frame_monophncode_using_wav2vec-u2_model
+   fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   tsv_dir=/workspace2/maduo/dataset/format/librispeech/
+   dir=/workspace2/maduo/exp
+   label_dir=$tsv_dir/paired_speech_text_position_dependent_phncode/
+   config_dir=$fairseq_dir/examples/voicelm/voicelm2
+   #model_name=pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_multi_label
+   model_name=pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_paired_data_verify_debug
+   #model_name=pretrain_on_base_voicelm2_2gpu_16update_960h_400k_update_flash_attention_debug
+   exp_dir=$dir/pretrain/${model_name}
+   mkdir -p $exp_dir
+   world_size=4
+   update_freq=8
+   #world_size=2
+   #update_freq=16
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   CUDA_VISIBLE_DEVICES=4,5,6,7 python $fairseq_dir/fairseq_cli/hydra_train.py \
+            --config-dir $config_dir/config/pretrain \
+            --config-name voicelm2_base_librispeech_newer \
+            task.data=$label_dir\
+            task.label_dir=$label_dir\
+            task.labels='["speechphncode","textphncode"]' \
+            model.label_rate=100\
+            common.user_dir=$fairseq_dir/examples/voicelm/voicelm2\
+            dataset.train_subset=dev_clean\
+            dataset.valid_subset=dev_clean\
+            distributed_training.distributed_world_size=${world_size}\
+            distributed_training.distributed_port=-1\
+            distributed_training.ddp_backend=legacy_ddp\
+            optimization.update_freq=[${update_freq}]\
+            common.tensorboard_logdir=$exp_dir\
+            checkpoint.save_dir=$exp_dir\
+            hydra.run.dir=$fairseq_dir/examples/voicelm/voicelm2\
+            hydra.job.name=$exp_dir/pretrain
+### 2RTX3090: training about  day
 ###           200steps: about  minites
 fi

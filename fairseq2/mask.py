@@ -15,7 +15,6 @@ from torch import Tensor
 
 from fairseq.typing import DataType, Device
 
-
 def to_padding_mask(seqs: Tensor, seq_lens: Optional[Tensor]) -> Optional[Tensor]:
     """Convert a sequence length array to a float padding mask.
 
@@ -32,6 +31,28 @@ def to_padding_mask(seqs: Tensor, seq_lens: Optional[Tensor]) -> Optional[Tensor
         The float padding mask. *Shape:* :math:`(N,S)`, where :math:`N` is the
         batch size and :math:`S` is the sequence length.
     """
+    bool_mask = to_bool_padding_mask(seqs, seq_lens)
+    if bool_mask is None:
+        return None
+
+    return to_float_mask(bool_mask, seqs.dtype if seqs.is_floating_point() else None)
+
+def to_bool_padding_mask(seqs: Tensor, seq_lens: Optional[Tensor]) -> Optional[Tensor]:
+    """Convert a sequence length array to a boolean padding mask.
+
+    :param seqs:
+        The sequences to mask. *Shape:* :math:`(N,S,*)`, where :math:`N` is the
+        batch size, :math:`S` is the sequence length, and :math:`*` is any
+        number of sequence-specific dimensions including none.
+    :param seq_lens:
+        An array where each element represents the length of the sequence at the
+        same index in ``seqs``. *Shape:* :math:`(N)`, where :math:`N` is the
+        batch size.
+
+    :returns:
+        The boolean padding mask. *Shape:* :math:`(N,S)`, where :math:`N` is the
+        batch size and :math:`S` is the sequence length.
+    """
     if seq_lens is None:
         return None
 
@@ -43,16 +64,10 @@ def to_padding_mask(seqs: Tensor, seq_lens: Optional[Tensor]) -> Optional[Tensor
 
     indices = torch.arange(mask_seq_len, device=seq_lens.device).expand(batch_size, -1)
 
-    bool_mask = indices >= seq_lens.unsqueeze(1).expand(-1, mask_seq_len)
-
-    mask = seqs.new_zeros((batch_size, mask_seq_len))
-
-    mask.masked_fill_(bool_mask, -torch.inf)
-
-    return mask
+    return indices >= seq_lens.unsqueeze(1).expand(-1, mask_seq_len)
 
 
-def to_float_mask(mask: Tensor, dtype: DataType = torch.float32) -> Tensor:
+def to_float_mask(mask: Tensor, dtype: Optional[DataType] = None) -> Tensor:
     """Convert a boolean mask to a float mask.
 
     :param mask:
@@ -60,7 +75,11 @@ def to_float_mask(mask: Tensor, dtype: DataType = torch.float32) -> Tensor:
     :param dtype:
         The floating-point type of the converted mask.
     """
+    if dtype is None:
+        dtype = torch.get_default_dtype()
+
     return torch.zeros_like(mask, dtype=dtype).masked_fill_(mask, -torch.inf)
+
 
 
 def apply_padding_mask(seqs: Tensor, padding_mask: Optional[Tensor]) -> Tensor:
@@ -87,6 +106,10 @@ def apply_padding_mask(seqs: Tensor, padding_mask: Optional[Tensor]) -> Tensor:
     seq_batch_size, mask_batch_size = seqs.size(0), padding_mask.size(0)
 
     if seq_batch_size != mask_batch_size:
+        if seq_batch_size % mask_batch_size != 0:
+            raise ValueError(
+                f"`seqs.size(0)` must be a multiple of `padding_mask.size(0)` ({mask_batch_size}), but is {seq_batch_size} instead."
+            )
         bool_mask = bool_mask.repeat(seq_batch_size // mask_batch_size, 1)
 
     return seqs.masked_fill(bool_mask.unsqueeze(2), 0.0)
