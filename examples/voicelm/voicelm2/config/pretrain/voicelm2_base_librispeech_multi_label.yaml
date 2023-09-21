@@ -7,6 +7,8 @@ common:
   log_interval: 200
   seed: 1337
   tensorboard_logdir: tblog
+  #aim_repo: None
+  #aim_run_hash: None
 
 checkpoint:
   save_interval_updates: 5000

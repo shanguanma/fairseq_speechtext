@@ -508,6 +508,7 @@ if [ ${stage} -le 25 ] && [ ${stop_stage} -ge 25 ];then
    #model_name=pretrain_on_base_voicelm2_2gpu_16update_960h_400k_update_flash_attention_debug
    exp_dir=$dir/pretrain/${model_name}
    mkdir -p $exp_dir
+   #mkdir -p $exp_dir/aim # so slower, give up it
    world_size=4
    update_freq=8
    #world_size=2
@@ -552,6 +553,7 @@ if [ ${stage} -le 26 ] && [ ${stop_stage} -ge 26 ];then
    model_name=pretrain_on_base_voicelm2_2gpu_16update_960h_400k_update_flash_attention_multi_label_text_mlm_debug
    exp_dir=$dir/pretrain/${model_name}
    mkdir -p $exp_dir
+   mkdir -p $exp_dir/aim
    #world_size=4
    #update_freq=8
    world_size=2
@@ -572,6 +574,7 @@ if [ ${stage} -le 26 ] && [ ${stop_stage} -ge 26 ];then
             distributed_training.ddp_backend=legacy_ddp\
             optimization.update_freq=[${update_freq}]\
             common.tensorboard_logdir=$exp_dir\
+            common.aim_repo=$exp_dir/aim\
             checkpoint.save_dir=$exp_dir\
             hydra.run.dir=$fairseq_dir/examples/voicelm/voicelm2\
             hydra.job.name=$exp_dir/pretrain
