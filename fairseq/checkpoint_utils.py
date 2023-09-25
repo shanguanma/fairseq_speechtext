@@ -370,6 +370,9 @@ def load_model_ensemble(
     assert not (
         strict and num_shards > 1
     ), "Cannot load state dict with strict=True and checkpoint shards > 1"
+
+
+    logger.info(f"filenames: {filenames} ")
     ensemble, args, _task = load_model_ensemble_and_task(
         filenames,
         arg_overrides,
@@ -379,6 +382,7 @@ def load_model_ensemble(
         num_shards,
         state,
     )
+    #logger.info(f"filenames: {filenames} ")
     return ensemble, args
 
 

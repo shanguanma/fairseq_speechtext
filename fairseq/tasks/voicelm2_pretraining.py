@@ -183,6 +183,7 @@ class Voicelm2PretrainingConfig(FairseqDataclass):
                                                     if it is false, speech and paired code label and unpair text code are used to pretrain model."""
         },
     )
+    pair_data: bool = field(default = False, metadata={"help": "if false, it means speech and text is unpaired , otherwise it is paired"})
     inference_mode: bool = field(default=False, metadata={"help": "it is diffence from finetune mode, because here the finetune model can accept two style label. inference_model=true, it will only accept one style label"})
 
 
@@ -435,6 +436,7 @@ class Voicelm2PretrainingTask(FairseqTask):
                 single_target=self.cfg.single_target,
                 is_s2s=False,
                 text_drop=False,
+                pair_data=self.cfg.pair_data,
             )
 
     def max_positions(self) -> Tuple[int, int]:

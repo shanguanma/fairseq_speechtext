@@ -187,6 +187,8 @@ class Voicelm2Dataset(FairseqDataset):
         ## otherwise, target text is origanized for ctc loss fintune.
         text_drop: bool = False,  # if it is true, speech and paired text are used to finetune model, unpair text is missing.
         # if it is false, speech and paired code label and unpair text code are used to pretrain model.
+
+        pair_data: bool = False, # if false, it means speech and text is unpaired , otherwise it is paired
     ):
         self.audio_root, self.audio_names, inds, tot, self.sizes = load_audio(
             manifest_path, max_keep_sample_size, min_keep_sample_size
@@ -214,6 +216,12 @@ class Voicelm2Dataset(FairseqDataset):
         self.single_target = single_target
         self.is_s2s = is_s2s
         self.text_drop = text_drop
+        self.pair_data = pair_data 
+
+
+
+
+
         self.label_rates = (
             [label_rates for _ in range(len(label_paths))]
             if isinstance(label_rates, float)
@@ -261,7 +269,7 @@ class Voicelm2Dataset(FairseqDataset):
         return wav
 
     def get_text(self, index):
-        # print(f"in the get_text func: index: {index}")
+        #print(f"in the get_text func: index: {index}")
         utt = self.text_contents[index]  ## str
 
         label = self.get_label(index, 0)  ## label is a utt speech label, it is a tensor
@@ -314,13 +322,17 @@ class Voicelm2Dataset(FairseqDataset):
 
     def __getitem__(self, index):
         wav = self.get_audio(index)
-        if self.text_uttids is not None:
+        if self.text_uttids is not None and not self.pair_data:
             # choose text
             list_id = np.arange(len(self.text_uttids))
             idx = np.random.choice(list_id)
             while idx == index and len(list_id) > 1:
-                idx = np.random.choice(list_id)
+                idx = np.random.choice(list_id) 
             text = self.get_text(idx)
+            labels = self.get_labels(index)
+            return {"id": index, "source": wav, "text": text, "label_list": labels}
+        elif self.text_uttids is not None and self.pair_data:
+            text = self.get_text(index)
             labels = self.get_labels(index)
             return {"id": index, "source": wav, "text": text, "label_list": labels}
         else:

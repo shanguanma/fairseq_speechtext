@@ -174,7 +174,16 @@ class Voicelm2Model(BaseFairseqModel):
             )
         elif self.modality_fuse == "flash_attention":
             pass
-
+        elif self.modality_fuse == "attention_query_text":
+            self.feature_fuse = nn.MultiheadAttention(
+                embed_dim=cfg.encoder_embed_dim,
+                num_heads=cfg.fuse_attention_heads,
+                batch_first=True,
+            )
+        elif self.modality_fuse == "flash_attention_query_text":
+            pass 
+        
+        
         feature_ds_rate = np.prod([s for _, _, s in feature_enc_layers])
         self.feat2tar_ratio = cfg.label_rate * feature_ds_rate / task_cfg.sample_rate
 
@@ -382,14 +391,16 @@ class Voicelm2Model(BaseFairseqModel):
                 features = features.reshape(B,T,-1)
                 feature_text = feature_text.view(B,S,-1)
 
-        elif self.modality_fuse == "attention_v2": ## query is from text, key/value is from audio
+        elif self.modality_fuse == "attention_query_text": ## query is from text, key/value is from audio
             # logger.info(f"feature_text shape: {feature_text.shape}") # [B,S,F]
             # logger.info(f"feature_audio shape: {feature_audio.shape}") # [B,T,F]
             features, _ = self.feature_fuse(
                 query=feature_text, key=feature_audio, value=feature_audio
-            )  # [B,T,F]
+            )  # [B,S,F]
+            #B, T, D = feature_audio.shape
+            #features = features.
 
-        elif self.modality_fuse == "flash_attention_v2": # query is from text, key/value is from audio with flash_attention
+        elif self.modality_fuse == "flash_attention_query_text": # query is from text, key/value is from audio with flash_attention
             with torch.backends.cuda.sdp_kernel(
                 enable_math=False
             ):  ## it default is enable_flash=True,
@@ -645,14 +656,14 @@ class Voicelm2Model(BaseFairseqModel):
                 features = features.reshape(B,T,-1)
                 feature_text = feature_text.view(B,S,-1)
 
-        elif self.modality_fuse == "attention_v2": ## query is from text, key/value is from audio
+        elif self.modality_fuse == "attention_query_text": ## query is from text, key/value is from audio
             # logger.info(f"feature_text shape: {feature_text.shape}") # [B,S,F]
             # logger.info(f"feature_audio shape: {feature_audio.shape}") # [B,T,F]
             features, _ = self.feature_fuse(
                 query=feature_text, key=feature_audio, value=feature_audio
             )  # [B,T,F]
 
-        elif self.modality_fuse == "flash_attention_v2": # query is from text, key/value is from audio with flash_attention
+        elif self.modality_fuse == "flash_attention_query_text": # query is from text, key/value is from audio with flash_attention
             with torch.backends.cuda.sdp_kernel(
                 enable_math=False
             ):  ## it default is enable_flash=True,

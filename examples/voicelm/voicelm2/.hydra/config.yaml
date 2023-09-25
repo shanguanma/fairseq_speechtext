@@ -7,7 +7,7 @@ common:
   log_file: null
   aim_repo: null
   aim_run_hash: null
-  tensorboard_logdir: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_paired_data_verify_debug
+  tensorboard_logdir: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_query_text_lower_lr
   wandb_project: null
   azureml_logging: false
   seed: 1337
@@ -96,8 +96,8 @@ dataset:
   required_seq_len_multiple: 1
   dataset_impl: null
   data_buffer_size: 10
-  train_subset: dev_clean
-  valid_subset: dev_clean
+  train_subset: train-960
+  valid_subset: dev-other,dev-clean
   combine_valid_subsets: null
   ignore_unused_valid_subsets: false
   validate_interval: 5
@@ -125,14 +125,14 @@ optimization:
   update_freq:
   - 8
   lr:
-  - 0.0005
+  - 5.0e-05
   stop_min_lr: -1.0
   use_bmuf: false
   skip_remainder_batch: false
   debug_param_names: false
 checkpoint:
   _name: null
-  save_dir: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_paired_data_verify_debug
+  save_dir: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_query_text_lower_lr
   restore_file: checkpoint_last.pt
   continue_once: null
   finetune_from_model: null
@@ -225,7 +225,7 @@ interactive:
   input: '-'
 model:
   _name: voicelm2
-  label_rate: 100
+  label_rate: 50
   skip_masked: false
   skip_nomask: false
   mask_prob: 0.8
@@ -245,10 +245,10 @@ model:
   num_buckets: 320
   max_distance: 800
   audio_feature_type: cnn
-  modality_fuse: attention
+  modality_fuse: attention_query_text
   fuse_attention_heads: 12
   sim_type: cosine
-  attention_type: rel_attention
+  attention_type: flash_attention
   untie_final_proj: false
   predict_layers: '[12]'
   separate_label_embeds: true
@@ -256,8 +256,8 @@ model:
   text_mlm_loss: false
 task:
   _name: voicelm2_pretraining
-  data: /workspace2/maduo/dataset/format/librispeech//paired_speech_text_position_dependent_phncode/
-  label_dir: /workspace2/maduo/dataset/format/librispeech//paired_speech_text_position_dependent_phncode/
+  data: /workspace2/maduo/dataset/format/librispeech/
+  label_dir: /workspace2/maduo/dataset/format/librispeech//librispeech_lm_monophncode_using_monophn_dict_librispeech_frame_monophncode_using_wav2vec-u2_model
   labels:
   - speechphncode
   - textphncode
@@ -265,11 +265,12 @@ task:
   sample_rate: 16000
   max_sample_size: 250000
   min_sample_size: 32000
-  max_phone_size: 200
+  max_phone_size: 260
   min_phone_size: 50
   pad_audio: false
   random_crop: true
   normalize: false
+  pair_data: false
 criterion:
   _name: voicelm2_criterion
   pred_masked_weight: 1.0

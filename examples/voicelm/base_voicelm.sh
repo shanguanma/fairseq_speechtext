@@ -384,6 +384,7 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ];then
    path_to_lexicon=/mntcephfs/lab_data/maduo/datasets/librispeech/kenlm_files/librispeech_lexicon.lst #word2letter
    path_to_lm=/mntcephfs/lab_data/maduo/datasets/librispeech/kenlm_files/4-gram.arpa  ## word lm
    testsets="dev-clean dev-other test-clean test-other"
+   #testsets="dev-clean"
    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
 
    for name in $testsets;do
@@ -547,7 +548,7 @@ if [ ${stage} -le 22 ] && [ ${stop_stage} -ge 22 ];then
    dir=/workspace2/maduo/exp
    model_name=pretrain_on_base_sthubert_4gpu_8update_400k_w2vu2_librispeech_monophncode
    exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
-   mkdir -p $exp_finetune_dir/decode_on_100h
+   mkdir -p $exp_finetune_dir/decode_on_100h_test
    testsets="dev-clean dev-other test-clean test-other"
    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
    #cd $fairseq_dir
@@ -571,5 +572,43 @@ if [ ${stage} -le 22 ] && [ ${stop_stage} -ge 22 ];then
    # with 4-gram lm
 
 
+
+fi
+
+
+
+## for demo page
+if [ ${stage} -le 33 ] && [ ${stop_stage} -ge 33 ];then
+   echo "inference voicelm  model on test-clean of librispeech"
+   fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   tsv_dir=/workspace2/maduo/dataset/format/librispeech
+   exp_finetune_dir=/workspace2/maduo/exp/finetune/pretrain_on_base_imls-ssl_4gpu_8update_960h_400k_update_100h_asr_finetune
+   results_path=$exp_finetune_dir/decode_on_100h_normalize_false
+   path_to_lexicon=/workspace2/maduo/dataset/librispeech/kenlm_files/librispeech_lexicon.lst #word2letter
+   path_to_lm=/workspace2/maduo/dataset/librispeech/kenlm_files/4-gram.arpa  ## word lm
+   mkdir -p $results_path
+   testsets="test-clean"
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   for name in $testsets;do
+       python $fairseq_dir/examples/speech_recognition/new/infer.py \
+                --config-dir $fairseq_dir/examples/speech_recognition/new/conf\
+                --config-name infer_viterbi_librispeech\
+                task.data=$tsv_dir\
+                task.label_dir=$tsv_dir\
+                task.normalize=false\
+                common_eval.results_path=$results_path\
+                common_eval.path=$exp_finetune_dir/checkpoint_best.pt\
+                dataset.gen_subset=$name\
+                decoding.type=kenlm\
+                decoding.lexicon=$path_to_lexicon\
+                decoding.lmpath=$path_to_lm\
+                decoding.nbest=1\
+                decoding.beam=1500 \
+                decoding.lmweight=2 \
+                decoding.wordscore=-1 \
+                decoding.beamthreshold=100\
+                common_eval.quiet=false
+
+   done
 
 fi

@@ -29,10 +29,11 @@ conda create -n fairseq_speechtext python=3.9 -y
  conda activate fairseq_speechtext
 cd /workspace2/maduo/fairseq_speechtext
 pip install --editable ./   -i https://pypi.tuna.tsinghua.edu.cn/simple
-pip uninstall pytorch
-conda install pytorch  torchaudio pytorch-cuda=11.7  -c pytorch -c nvidia -y -c https://mirrors.bfsu.edu.cn/anaconda/cloud/pytorch/linux-64/
-pip install soundfile editdistance  tensorboardX   -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install soundfile editdistance  tensorboardX  -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install librosa h5py einops -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install  timm  torchvision==0.15.1 -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install ninja 
+pip install flash-attn --no-build-isolation
 
 for fixing ImportError: cannot import name 'get_ref_type' from 'omegaconf._utils'
 you  should pip install omegaconf==2.1.2 

@@ -10,6 +10,7 @@ import logging
 import os
 import shutil
 import sys
+import re
 from dataclasses import dataclass, field, is_dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -39,8 +40,6 @@ from omegaconf import OmegaConf
 
 import hydra
 from hydra.core.config_store import ConfigStore
-
-import re
 
 logging.root.setLevel(logging.INFO)
 logging.basicConfig(level=logging.INFO)
@@ -101,15 +100,15 @@ class InferenceProcessor:
     def __init__(self, cfg: InferConfig) -> None:
         self.cfg = cfg
         self.task = tasks.setup_task(cfg.task)
-
+      
         models, saved_cfg = self.load_model_ensemble()
-        
-        ### LOAD ADAPTER for examples/mms ####
+
+        ### LOAD ADAPTER ####
         ckpt_obj = checkpoint_utils.load_checkpoint_to_cpu(self.cfg.common_eval.path)
         if "adapter" in ckpt_obj:
             target_lang = self.cfg.dataset.gen_subset.split(":")[0]
             assert target_lang in ckpt_obj["adapter"]
-
+            
             logger.info(f">>> LOADING ADAPTER: {target_lang}")
             ft_obj = ckpt_obj["adapter"][target_lang]
             ft_model = ft_obj["model"]
@@ -126,7 +125,6 @@ class InferenceProcessor:
             self.task.load_state_dict(ft_obj["task_state"])
             # overwrite gen_subset with master config
             self.cfg.dataset.gen_subset = re.sub('^[\w-]+:', saved_cfg['task']['multi_corpus_keys']+":", self.cfg.dataset.gen_subset)
-
         self.models = models
         self.saved_cfg = saved_cfg
         self.tgt_dict = self.task.target_dictionary
@@ -228,8 +226,6 @@ class InferenceProcessor:
 
     def load_model_ensemble(self) -> Tuple[List[FairseqModel], FairseqDataclass]:
         arg_overrides = ast.literal_eval(self.cfg.common_eval.model_overrides)
-        logger.info(f"mdddddd: self.cfg.common_eval.path: {self.cfg.common_eval.path}")
-        """
         models, saved_cfg = checkpoint_utils.load_model_ensemble(
             utils.split_paths(self.cfg.common_eval.path, separator="\\"),
             arg_overrides=arg_overrides,
@@ -238,24 +234,6 @@ class InferenceProcessor:
             strict=(self.cfg.checkpoint.checkpoint_shard_count == 1),
             num_shards=self.cfg.checkpoint.checkpoint_shard_count,
         )
-        """
-        path_eval = utils.split_paths(self.cfg.common_eval.path, separator="\\")
-        #logger.info(f"path::::::::::{path_eval}")
-        #logger.info(f"arg_overrides: {arg_overrides}")
-        logger.info(f"task: {self.task}")
-        models, saved_cfg = checkpoint_utils.load_model_ensemble(
-            path_eval,
-            arg_overrides=arg_overrides,
-            task=self.task,
-            suffix=self.cfg.checkpoint.checkpoint_suffix,
-            strict=(self.cfg.checkpoint.checkpoint_shard_count == 1),
-            num_shards=self.cfg.checkpoint.checkpoint_shard_count,
-        )
-
-        logger.info(f"saved_cfg!!!!!!!!!!!!!!!!!!: {saved_cfg}") 
-
-
-
         for model in models:
             self.optimize_model(model)
         return models, saved_cfg
@@ -322,7 +300,7 @@ class InferenceProcessor:
         # Processes hypothesis.
         hyp_pieces = self.tgt_dict.string(hypo["tokens"].int().cpu())
         if "words" in hypo:
-            hyp_words = " ".join(hypo["words"]).upper()
+            hyp_words = " ".join(hypo["words"])
         else:
             hyp_words = post_process(hyp_pieces, self.cfg.common_eval.post_process)
 
@@ -428,7 +406,6 @@ def main(cfg: InferConfig) -> float:
 
     with InferenceProcessor(cfg) as processor:
         for sample in processor:
-            #logger.info(f"sample: {sample}")
             processor.process_sample(sample)
 
         processor.log_generation_time()

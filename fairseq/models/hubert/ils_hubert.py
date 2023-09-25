@@ -45,7 +45,9 @@ class ILSHubertConfig(HubertConfig2):
             "help": "the maximum distance for computing relative bias, beyond which will assign the same embedding"
         },
     )
-
+    attention_type: str = field(
+        default="rel_attention", metadata={"help": "choice from 'rel_attention','flash_attention'"},
+    )
     # ILS-SSL params
     weighted_sum: bool = field(default=False)
     predict_layers: str = field(default="[7,12]")

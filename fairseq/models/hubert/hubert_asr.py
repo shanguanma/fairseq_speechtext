@@ -70,7 +70,7 @@ class HubertAsrConfig(FairseqDataclass):
 
     # masking
     apply_mask: bool = field(
-        default=True, metadata={"help": "apply masking during fine-tuning"}
+        default=False, metadata={"help": "apply masking during fine-tuning"}
     )
     mask_length: int = field(
         default=10, metadata={"help": "repeat the mask indices multiple times"}
@@ -164,6 +164,7 @@ class HubertCtc(BaseFairseqModel):
     @classmethod
     def build_model(cls, cfg: HubertCtcConfig, task: FairseqTask):
         """Build a new model instance."""
+        logger.info(f"cfg: {cfg}, task: {task}")
         w2v_encoder = HubertEncoder(cfg, task)
         return cls(cfg, w2v_encoder)
 
@@ -343,6 +344,8 @@ class HubertEncoder(FairseqEncoder):
         }
 
         if cfg.w2v_args is None:
+            logger.info(f"mdddd:::{cfg.w2v_path}")
+            #cfg.w2v_path="/workspace2/maduo/exp/finetune/pretrain_on_base_imls-ssl_4gpu_8update_960h_400k_update_100h_asr_finetune/checkpoint_best.pt"             
             state = checkpoint_utils.load_checkpoint_to_cpu(cfg.w2v_path, arg_overrides)
             w2v_args = state.get("cfg", None)
             if w2v_args is None:
