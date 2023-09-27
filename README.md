@@ -34,6 +34,7 @@ pip install librosa h5py einops -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install  timm  torchvision==0.15.1 -i https://pypi.tuna.tsinghua.edu.cn/simple
 pip install ninja 
 pip install flash-attn --no-build-isolation
+pip install tensorboard six -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 for fixing ImportError: cannot import name 'get_ref_type' from 'omegaconf._utils'
 you  should pip install omegaconf==2.1.2 
