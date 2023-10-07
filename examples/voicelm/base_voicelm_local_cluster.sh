@@ -311,6 +311,11 @@ if [ ${stage} -le 34 ] && [ ${stop_stage} -ge 34 ];then
                 dataset.gen_subset=$name
 
    done
+   #grep -rn "Word error rate" logs/base_voicelm_local_cluster_ft_new_config2_on_100h.log
+   # 12151:[2023-09-28 14:27:55,099][__main__][INFO] - Word error rate: 4.6487
+   # 20770:[2023-09-28 14:29:03,640][__main__][INFO] - Word error rate: 10.4723
+   # 28654:[2023-09-28 14:30:14,578][__main__][INFO] - Word error rate: 4.6759
+   # 37507:[2023-09-28 14:31:24,727][__main__][INFO] - Word error rate: 10.2289   
 fi
 if [ ${stage} -le 35 ] && [ ${stop_stage} -ge 35 ];then
    echo "inference imls-ssl  model on dev-other, dev-clean, test-other, test-clean of librispeech with kenlm"
@@ -351,3 +356,6 @@ if [ ${stage} -le 35 ] && [ ${stop_stage} -ge 35 ];then
                 decoding.wordscore=-1 \
                 decoding.beamthreshold=100\
                 common_eval.quiet=false
+   done
+
+fi
