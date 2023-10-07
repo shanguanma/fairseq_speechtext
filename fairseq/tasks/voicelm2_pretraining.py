@@ -355,8 +355,9 @@ class Voicelm2PretrainingTask(FairseqTask):
             text_procs = None
             paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
             path_text=None
-            path_label=paths[0]         
-  
+            path_label=paths         
+            logger.info(f"paths: {paths}")
+            logger.info(f"path_label: {path_label}")
 
         # hubert v1: pad_audio=True, random_crop=False;
         if self.cfg.fine_tuning:
@@ -388,6 +389,7 @@ class Voicelm2PretrainingTask(FairseqTask):
                     text_drop=self.cfg.text_drop,  ## whether unpaired text is used to finetune
                 )
             else:  ## fintune case (in finetune case, i also use unpaired text code.)
+                logger.info(f"path_text:{path_text}, path_label: {path_label}")
                 self.datasets[split] = Voicelm2Dataset(
                     manifest,
                     manifest_text_path=path_text,

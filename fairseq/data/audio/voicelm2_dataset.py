@@ -101,6 +101,7 @@ def load_label(label_path, inds, tot):
 
 
 def load_label_offset(label_path, inds, tot):
+    logger.info(f"label_path:{label_path}")
     with open(label_path) as f:
         code_lengths = [len(line.encode("utf-8")) for line in f]
         assert (
@@ -232,6 +233,7 @@ class Voicelm2Dataset(FairseqDataset):
             self.label_list = [load_label(p, inds, tot) for p in label_paths]
         else:
             self.label_paths = label_paths
+            #logger.info(f"label_paths: {label_paths} in __init__")
             self.label_offsets_list = [
                 load_label_offset(p, inds, tot) for p in label_paths
             ]
