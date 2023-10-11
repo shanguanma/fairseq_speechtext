@@ -52,24 +52,27 @@ fi
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
     echo "inference voicelm(only phn) model on dev-other, dev-clean, test-other, test-clean of librispeech"
    fairseq_dir=/workspace2/maduo/fairseq_speechtext
-   tsv_dir=/workspace2/maduo/dataset/format/librispeech
+   #sv_dir=/workspace2/maduo/dataset/format/librispeech
+   tsv_dir=/workspace2/maduo/tests
    #config_dir=/workspace2/maduo/source_md/wav2vec-u2
    config_dir=$fairseq_dir/examples/voicelm/
    dir=/workspace2/maduo/exp
    model_name=pretrain_on_base_imls-ssl_4gpu_8update_960h_400k_update
    exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
-   results_path=$exp_finetune_dir/decode_on_100h_debug_for_demo
-   mkdir -p $exp_finetune_dir/decode_on_100h_debug
-   testsets="test-clean"
+   results_path=$exp_finetune_dir/decode_on_100h_debug_for_demo_test
+   mkdir -p $results_path
+   testsets="test-clean10"
+   #testsets="dev-clean10"
    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
    #cd $fairseq_dir
    for name in $testsets;do
-   CUDA_VISIBLE_DEVICES=7       python $fairseq_dir/examples/speech_recognition/new/infer.py \
+   CUDA_VISIBLE_DEVICES=4       python $fairseq_dir/examples/speech_recognition/new/infer_md.py \
                 --config-dir $config_dir/config/decode\
-                --config-name infer_viterbi_librispeech\
+                --config-name infer_viterbi_librispeech_10utt\
                 task.data=$tsv_dir\
                 task.label_dir=$tsv_dir\
                 task.normalize=true\
+                common_eval.quiet=false\
                 common_eval.results_path=$results_path\
                 common_eval.path=$exp_finetune_dir/checkpoint_best_new.pt\
                 dataset.gen_subset=$name
@@ -77,8 +80,38 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
    done
 fi
 
+## without lm to decode
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
+    echo "inference voicelm(only phn) model on dev-other, dev-clean, test-other, test-clean of librispeech"
+   fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   #sv_dir=/workspace2/maduo/dataset/format/librispeech
+   tsv_dir=/workspace2/maduo/tests
+   #config_dir=/workspace2/maduo/source_md/wav2vec-u2
+   config_dir=$fairseq_dir/examples/voicelm/
+   dir=/workspace2/maduo/exp
+   model_name=pretrain_on_base_imls-ssl_4gpu_8update_960h_400k_update
+   exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
+   results_path=$exp_finetune_dir/decode_on_100h_debug_for_demo_test
+   dict_path=/workspace2/maduo/dataset/format/librispeech/dict.ltr.txt
+   mkdir -p $results_path
+   testsets="test-clean10"
+   #testsets="dev-clean10"
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   #cd $fairseq_dir
+   for name in $testsets;do
+    CUDA_VISIBLE_DEVICES=4     python $fairseq_dir/examples/speech_recognition/new/infer_simple.py\
+          $tsv_dir --task audio_pretraining\
+          --nbest 1 --path $exp_finetune_dir/checkpoint_best_new.pt\
+          --gen-subset ${name}\
+          --results-path ${results_path} \
+          --w2l-decoder viterbi \
+          --word-score -1 --sil-weight 0 \
+          --criterion ctc --max-tokens 1100000\
+          --lexicon $dict_path \
+          --post-process letter 
+   done
 
-
+fi
 ## for baseline system(i.e: hubert)
 ## it doesn't finetune 100h model, so I finetune offical hubert base model.
 

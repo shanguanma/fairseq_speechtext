@@ -4,7 +4,8 @@ stage=0
 
 stop_stage=1000
 .  utils/parse_options.sh
-. path_for_fairseq_speechtext.sh ## pytorch 2.0 fairseq flashnight-text flashnight sequence
+#. path_for_fairseq_speechtext.sh ## pytorch 2.0 fairseq flashnight-text flashnight sequence
+. path_for_fsq_speechtext.sh
 #pip install -U flash-attn==2.0.8
 
 #pip install flash-attn --no-build-isolation
@@ -35,7 +36,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
    #update_freq=16
 
     export PYTHONPATH=$fairseq_dir:$PYTHONPATH
-   python $fairseq_dir/fairseq_cli/hydra_train.py \
+   CUDA_VISIBLE_DEVICES=4,5,6,7   python $fairseq_dir/fairseq_cli/hydra_train.py \
             --config-dir $config_dir/config/pretrain \
             --config-name voicelm2_base_librispeech_flash_attention_lr4_5e_4_big_bs \
             task.data=$tsv_dir\

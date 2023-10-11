@@ -228,7 +228,7 @@ class InferenceProcessor:
 
     def load_model_ensemble(self) -> Tuple[List[FairseqModel], FairseqDataclass]:
         arg_overrides = ast.literal_eval(self.cfg.common_eval.model_overrides)
-        logger.info(f"mdddddd: self.cfg.common_eval.path: {self.cfg.common_eval.path}")
+        #logger.info(f"mdddddd: self.cfg.common_eval.path: {self.cfg.common_eval.path}")
         """
         models, saved_cfg = checkpoint_utils.load_model_ensemble(
             utils.split_paths(self.cfg.common_eval.path, separator="\\"),
@@ -242,7 +242,7 @@ class InferenceProcessor:
         path_eval = utils.split_paths(self.cfg.common_eval.path, separator="\\")
         #logger.info(f"path::::::::::{path_eval}")
         #logger.info(f"arg_overrides: {arg_overrides}")
-        logger.info(f"task: {self.task}")
+        #logger.info(f"task: {self.task}")
         models, saved_cfg = checkpoint_utils.load_model_ensemble(
             path_eval,
             arg_overrides=arg_overrides,
@@ -428,7 +428,7 @@ def main(cfg: InferConfig) -> float:
 
     with InferenceProcessor(cfg) as processor:
         for sample in processor:
-            #logger.info(f"sample: {sample}")
+            logger.info(f"sample: {sample}")
             processor.process_sample(sample)
 
         processor.log_generation_time()

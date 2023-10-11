@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
+import numpy as np
 import os
 import warnings
 from argparse import Namespace
@@ -283,7 +284,7 @@ class FairseqTask(object):
         # initialize the dataset with the correct starting epoch
         dataset.set_epoch(epoch)
 
-        # print(f"dataset len: {len(dataset)}")
+        print(f"dataset len: {len(dataset)}")
         def make_batches(dataset, epoch):
             logger.info(f"creating new batches for epoch {epoch}")
 
@@ -296,7 +297,7 @@ class FairseqTask(object):
                 indices = self.filter_indices_by_size(
                     indices, dataset, max_positions, ignore_invalid_inputs
                 )
-            # print(f"in the make_batches func,max_positions: {max_positions}, dataset len : {len(dataset)}, ignore_invalid_inputs : {ignore_invalid_inputs}, indices: {len(indices)}")
+            print(f"in the make_batches func,max_positions: {max_positions}, dataset len : {len(dataset)}, ignore_invalid_inputs : {ignore_invalid_inputs}, indices: {len(indices)}")
             # create mini-batches with given size constraints
             # print(f"dataset.batch_by_size name {dataset.__name__}")
             batches = dataset.batch_by_size(
@@ -305,7 +306,7 @@ class FairseqTask(object):
                 max_sentences=max_sentences,
                 required_batch_size_multiple=required_batch_size_multiple,
             )
-            # print(f"in the make_batches func, {len(batches)}, max_tokens: {max_tokens}, max_sentences: {max_sentences}")
+            print(f"in the make_batches func, {len(batches)}, max_tokens: {max_tokens}, max_sentences: {max_sentences}")
             return batches
 
         reuse_dataloader = getattr(self.cfg, "reuse_dataloader", True)
@@ -319,7 +320,7 @@ class FairseqTask(object):
             batch_sampler = make_batches
         else:
             batch_sampler = make_batches(dataset, epoch)
-        # print(f"batch_sampler: {len(batch_sampler)}")
+        print(f"batch_sampler: {len(batch_sampler)}")
         # return a reusable, sharded iterator
         epoch_iter = iterators.EpochBatchIterator(
             dataset=dataset,
@@ -336,7 +337,102 @@ class FairseqTask(object):
             reuse_dataloader=reuse_dataloader,
             persistent_workers=persistent_workers,
         )
-        # print(f"epoch_iter len: {len(epoch_iter)}")
+        print(f"epoch_iter len: {len(epoch_iter)}")
+        if can_reuse_epoch_itr:
+            self.dataset_to_epoch_iter[dataset] = epoch_iter
+
+        return epoch_iter
+    def get_batch_iterator_for_eval(
+        self,
+        dataset,
+        max_tokens=None,
+        max_sentences=1,
+        max_positions=None,
+        ignore_invalid_inputs=False,
+        required_batch_size_multiple=1,
+        seed=1,
+        num_shards=1,
+        shard_id=0,
+        num_workers=0,
+        epoch=1,
+        data_buffer_size=0,
+        disable_iterator_cache=False,
+    ):
+        """
+        Get an iterator that yields batches of data from the given dataset.
+
+        Args:
+            dataset (~fairseq.data.FairseqDataset): dataset to batch
+            max_tokens (int, optional): max number of tokens in each batch
+                (default: None).
+            max_sentences (int, optional): max number of sentences in each
+                batch (default: 1).
+            max_positions (optional): max sentence length supported by the
+                model (default: None).
+            ignore_invalid_inputs (bool, optional): don't raise Exception for
+                sentences that are too long (default: False).
+            required_batch_size_multiple (int, optional): require batch size to
+                be a multiple of N (default: 1).
+            seed (int, optional): seed for random number generator for
+                reproducibility (default: 1).
+            num_shards (int, optional): shard the data iterator into N
+                shards (default: 1).
+            shard_id (int, optional): which shard of the data iterator to
+                return (default: 0).
+            num_workers (int, optional): how many subprocesses to use for data
+                loading. 0 means the data will be loaded in the main process
+                (default: 0).
+            epoch (int, optional): the epoch to start the iterator from
+                (default: 1).
+            data_buffer_size (int, optional): number of batches to
+                preload (default: 0).
+            disable_iterator_cache (bool, optional): don't cache the
+                EpochBatchIterator (ignores `FairseqTask::can_reuse_epoch_itr`)
+                (default: False).
+        Returns:
+            ~fairseq.iterators.EpochBatchIterator: a batched iterator over the
+                given dataset split
+        """
+        can_reuse_epoch_itr = not disable_iterator_cache and self.can_reuse_epoch_itr(
+            dataset
+        )
+        if can_reuse_epoch_itr and dataset in self.dataset_to_epoch_iter:
+            logger.debug("reusing EpochBatchIterator for epoch {}".format(epoch))
+            return self.dataset_to_epoch_iter[dataset]
+
+        assert isinstance(dataset, FairseqDataset)
+
+        # initialize the dataset with the correct starting epoch
+        dataset.set_epoch(epoch)
+
+        # get indices ordered by example size
+        #with data_utils.numpy_seed(seed):
+        indices = dataset.ordered_indices() ## its order by example size
+        logger.info(f"indices: {indices}, its type: {type(indices)}")
+        indices = np.sort(indices) ## its order by index value,
+
+        logger.info(f"expected indices: {indices}, its type: {type(indices)}")
+        # create mini-batches with given size constraints
+        batch_sampler = dataset.batch_by_size(
+            indices,
+            max_tokens=max_tokens,
+            max_sentences=max_sentences,
+            required_batch_size_multiple=required_batch_size_multiple,
+        )
+        logger.info(f"batch_sampler len: {len(batch_sampler)}, batch_sampler: {batch_sampler}")
+        # return a reusable, sharded iterator
+        epoch_iter = iterators.EpochBatchIterator(
+            dataset=dataset,
+            collate_fn=dataset.collater,
+            batch_sampler=batch_sampler,
+            seed=seed,
+            num_shards=num_shards,
+            shard_id=shard_id,
+            num_workers=num_workers,
+            epoch=epoch,
+            buffer_size=data_buffer_size,
+        )
+        logger.info(f"epoch_iter: {len(epoch_iter)}")
         if can_reuse_epoch_itr:
             self.dataset_to_epoch_iter[dataset] = epoch_iter
 

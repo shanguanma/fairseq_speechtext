@@ -317,6 +317,8 @@ if [ ${stage} -le 34 ] && [ ${stop_stage} -ge 34 ];then
    # 28654:[2023-09-28 14:30:14,578][__main__][INFO] - Word error rate: 4.6759
    # 37507:[2023-09-28 14:31:24,727][__main__][INFO] - Word error rate: 10.2289   
 fi
+
+##(todo running)
 if [ ${stage} -le 35 ] && [ ${stop_stage} -ge 35 ];then
    echo "inference imls-ssl  model on dev-other, dev-clean, test-other, test-clean of librispeech with kenlm"
    #fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext

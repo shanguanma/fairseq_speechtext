@@ -15,6 +15,7 @@ if [ ${stage} -le 21 ]&& [ ${stop_stage} -ge 21 ];then
    echo "decode dev-clean dev-other train-960 using wav2vec-u2.0 model to get frame level phonemem id sequence "
    fairseq_dir=/workspace2/maduo/fairseq_speechtext
    tsv_dir=/workspace2/maduo/dataset/format/librispeech
+   #tsv_dir=/workspace2/maduo/tests   
    feat_dir=$tsv_dir/wav2vec_large_feat_dir
    ## dict.phn.txt contain two columns ,first column is monophone(total is 41 mono phones, last monophone is <SIL>), second column is index(0-base),
    cp -r $tsv_dir/librispeech_lm_norm_phn_seq/phoness/dict.phn.txt $feat_dir
@@ -23,8 +24,8 @@ if [ ${stage} -le 21 ]&& [ ${stop_stage} -ge 21 ];then
    wav2vec_u2_dir=/workspace2/maduo/model_hub/librispeech/wav2vec-u2.0-trained_model_using_librispeech_libirspeech_lm_text
    dest_dir=$dir/wav2vec-u2/frame_phonecode_hyps_newer_final
    mkdir -p $dest_dir
-   testsets="dev-clean dev-other train-960"
-   #testsets="dev-clean"
+   #testsets="dev-clean dev-other train-960"
+   testsets="dev-clean"
    #testsets="test-other"
    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
    for name in $testsets;do
