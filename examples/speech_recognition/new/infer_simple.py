@@ -349,9 +349,6 @@ def main(args, task=None, model_state=None):
             from examples.speech_recognition.w2l_decoder import W2lViterbiDecoder
 
             return W2lViterbiDecoder(args, task.target_dictionary)
-        elif w2l_decoder == "transducer":
-            from examples.speech_recognition.w2l_decoder import TransducerDecoder
-            return TransducerDecoder(args, task.target_dictionary)
         elif w2l_decoder == "kenlm":
             from examples.speech_recognition.w2l_decoder import W2lKenLMDecoder
 
