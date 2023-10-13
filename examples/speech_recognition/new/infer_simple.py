@@ -45,6 +45,7 @@ def read_tsv(tsv_file: str):
     return uttids
 
 def add_asr_eval_argument(parser):
+    parser.add_argument("--label_dir",default=None, help='letter transcript directory of audio')
     parser.add_argument("--kspmodel", default=None, help="sentence piece model")
     parser.add_argument(
         "--wfstlm", default=None, help="wfstlm on dictonary output units"
@@ -150,7 +151,9 @@ def process_predictions(
                 "{} ({}-{})".format(hyp_words, speaker, id),
                 file=res_files["hypo.words"],
             )
-
+            print(f"HYPO: {id} {hyp_words}",file=res_files["align.words"])
+            #print(f"REF: {id} {hyp_words}",file=res_files["align.words"])
+            print(f"HYPO: {id} {hyp_pieces}",file=res_files["align.units"])
         tgt_pieces = tgt_dict.string(target_tokens)
         tgt_words = post_process(tgt_pieces, args.post_process)
 
@@ -162,7 +165,9 @@ def process_predictions(
             print(
                 "{} ({}-{})".format(tgt_words, speaker, id), file=res_files["ref.words"]
             )
-
+            print(f"REF: {id} {tgt_words}",file=res_files["align.words"])            
+            print(f"REF: {id} {tgt_pieces}",file=res_files["align.units"])
+              
         if not args.quiet:
             logger.info("HYPO:" + hyp_words)
             logger.info("REF:" + tgt_words)
@@ -193,6 +198,8 @@ def prepare_result_files(args):
         "hypo.units": get_res_file("hypo.units"),
         "ref.words": get_res_file("ref.word"),
         "ref.units": get_res_file("ref.units"),
+        "align.words": get_res_file("align.word"),
+        "align.units": get_res_file("align.units"),
     }
 
 
@@ -298,6 +305,7 @@ def main(args, task=None, model_state=None):
         model_overrides = ast.literal_eval(args.model_overrides)
         model_overrides["wer_args"] = None
         model_overrides["data"] = args.data
+        model_overrides["label_dir"] = args.label_dir
         models, saved_cfg, task = checkpoint_utils.load_model_ensemble_and_task(
             utils.split_paths(args.path, separator="\\"),
             arg_overrides=model_overrides,
@@ -433,7 +441,8 @@ def main(args, task=None, model_state=None):
                 logging.info(f"sample_id: {sample_id+1}, audio uttid: {audio_uttids[sample_id]}")
                 speaker = None
                 # id = task.dataset(args.gen_subset).ids[int(sample_id)]
-                id = sample_id
+                #id = sample_id
+                id = audio_uttids[sample_id]
                 toks = (
                     sample["target"][i, :]
                     if "target_label" not in sample
@@ -477,7 +486,10 @@ def main(args, task=None, model_state=None):
         if lengths_t > 0:
             wer = errs_t * 100.0 / lengths_t
             logging.info(f"WER: {wer}")
-
+            path = os.path.join(args.results_path,"{}-wer.txt".format( args.gen_subset))
+            with open(path, "w") as f:
+                f.write(f"WER: {wer}\nerrs / lengths_t = {errs_t} / {lengths_t}\n")
+            print(f"WER: {wer}\nerrs / lengths_t = {errs_t} / {lengths_t}\n",file=res_files["align.words"])            
         logging.info(
             "| Processed {} sentences ({} tokens) in {:.1f}s ({:.2f}"
             "sentences/s, {:.2f} tokens/s)".format(

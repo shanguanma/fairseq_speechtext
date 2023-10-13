@@ -59,7 +59,7 @@ criterion:
 
 optimization:
   max_update: 400000
-  lr: [0.00045] 
+  lr: [0.000045] # at step=180400 loss is probably exploding.so i reduce lr from 4.5e-4 to 4.5e-5
   clip_norm: 10.0
   update_freq: ???
 

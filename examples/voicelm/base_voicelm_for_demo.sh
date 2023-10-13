@@ -86,6 +86,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
    fairseq_dir=/workspace2/maduo/fairseq_speechtext
    #sv_dir=/workspace2/maduo/dataset/format/librispeech
    tsv_dir=/workspace2/maduo/tests
+   #tsv_dir=/workspace2/maduo/tests/tests
    #config_dir=/workspace2/maduo/source_md/wav2vec-u2
    config_dir=$fairseq_dir/examples/voicelm/
    dir=/workspace2/maduo/exp
@@ -95,6 +96,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
    dict_path=/workspace2/maduo/dataset/format/librispeech/dict.ltr.txt
    mkdir -p $results_path
    testsets="test-clean10"
+   #testsets="test-clean1"
    #testsets="dev-clean10"
    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
    #cd $fairseq_dir
@@ -108,6 +110,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
           --word-score -1 --sil-weight 0 \
           --criterion ctc --max-tokens 1100000\
           --lexicon $dict_path \
+          --label_dir $tsv_dir\
           --post-process letter 
    done
 
@@ -150,7 +153,42 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ];then
             hydra.job.name=$exp_finetune_dir/finetune
 fi
 
+## without lm to decode
 if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ];then
+    echo "inference offical hubert base  model for test-clean10 of librispeech"
+   fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   #sv_dir=/workspace2/maduo/dataset/format/librispeech
+   tsv_dir=/workspace2/maduo/tests
+   config_dir=$fairseq_dir/examples/hubert
+
+   dir=/workspace2/maduo/exp
+   model_name=hubert_base_librispeech_offical_no_finetune
+   exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
+   results_path=$exp_finetune_dir/decode_on_100h_debug_for_demo_test
+   dict_path=/workspace2/maduo/dataset/format/librispeech/dict.ltr.txt
+
+   mkdir -p $results_path
+   testsets="test-clean10"
+   #testsets="test-clean1"
+   #testsets="dev-clean10"
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   #cd $fairseq_dir
+   for name in $testsets;do
+    CUDA_VISIBLE_DEVICES=4     python $fairseq_dir/examples/speech_recognition/new/infer_simple.py\
+          $tsv_dir --task audio_pretraining\
+          --nbest 1 --path $exp_finetune_dir/checkpoint_best.pt\
+          --gen-subset ${name}\
+          --results-path ${results_path} \
+          --w2l-decoder viterbi \
+          --word-score -1 --sil-weight 0 \
+          --criterion ctc --max-tokens 1100000\
+          --lexicon $dict_path \
+          --label_dir $tsv_dir\
+          --post-process letter
+   done
+fi
+
+if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ];then
    echo "inference offical hubert base  model on test-clean of librispeech"
    fairseq_dir=/workspace2/maduo/fairseq_speechtext
    tsv_dir=/workspace2/maduo/dataset/format/librispeech
