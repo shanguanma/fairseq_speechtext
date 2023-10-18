@@ -54,6 +54,53 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
             checkpoint.save_dir=$exp_dir\
             hydra.run.dir=$fairseq_dir/examples/voicelm/voicelm2\
             hydra.job.name=$exp_dir/pretrain
-### 4A100: training about  day
-###           200steps: about 3 minites
+### 4RTX3090: training about  day
+###           200steps: about 6.5 minites
+fi
+
+### using best_checkpoint to finetune model.
+if [ ${stage} -le 37 ] && [ ${stop_stage} -ge 37 ];then
+   echo "iter1: finetune voicelm2 on train-clean-100 on 80k steps in letter ctc loss mode"
+   echo "with freeze feature_fuse layer and text_drop false in finetune mode"
+   #fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   #tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   #dir=/mntnfs/lee_data1/maduo/exp
+   #label_dir=$tsv_dir/librispeech_lm_monophncode_using_monophn_dict_librispeech_frame_monophncode_using_wav2vec-u2_model
+   fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   tsv_dir=/workspace2/maduo/dataset/format/librispeech/
+   dir=/workspace2/maduo/exp
+   label_dir=$tsv_dir/librispeech_lm_monophncode_using_monophn_dict_librispeech_frame_monophncode_using_wav2vec-u2_model
+   config_dir=$fairseq_dir/examples/voicelm/voicelm2
+
+   model_name=pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4_5e_4_big_bs
+   exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune_use_best_checkpoint_text_drop_true_feature_fuse_wo_freeze
+   #exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
+   exp_dir=$dir/pretrain/${model_name}
+   mkdir -p $exp_finetune_dir
+   #world_size=4
+   #update_freq=2
+   #debug
+   world_size=2
+   update_freq=4
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   python $fairseq_dir/fairseq_cli/hydra_train.py \
+            --config-dir $config_dir/config/finetune \
+            --config-name voicelm2_base_100h_ctc_ltr \
+            task.data=$tsv_dir\
+            task.label_dir=$label_dir\
+            task.labels='["ltr","textphncode"]' \
+            task.text_drop=true\
+            model.w2v_path=$exp_dir/checkpoint_best.pt\
+            model.feature_fuse_freeze=false\
+            common.user_dir=$fairseq_dir/examples/voicelm/voicelm2\
+            dataset.train_subset=train-clean-100\
+            dataset.valid_subset=\'dev-other\'\
+            distributed_training.distributed_world_size=${world_size}\
+            distributed_training.distributed_port=-1\
+            distributed_training.ddp_backend=legacy_ddp\
+            optimization.update_freq=[${update_freq}]\
+            common.tensorboard_logdir=$exp_finetune_dir\
+            checkpoint.save_dir=$exp_finetune_dir\
+            hydra.run.dir=$fairseq_dir/examples/voicelm/voicelm2\
+            hydra.job.name=$exp_finetune_dir/finetune
 fi

@@ -1,0 +1,214 @@
+# @:package _group_
+
+
+common:
+  fp16: false
+  fp16_no_flatten_grads: true
+  log_format: json
+  log_interval: 100
+  tensorboard_logdir: tb
+  reset_logging: false
+  suppress_crashes: false
+  seed: 0 # it is from https://github.com/espnet/espnet/blob/master/egs2/timit/uasr1/conf/train_uasr.yaml#L76
+
+distributed_training:
+  distributed_world_size: 1
+
+task:
+  _name: unpaired_audio_text
+  data: ???
+  text_data: ???
+  labels: phn
+  sort_by_length: false
+  unfiltered: false
+  max_length: null
+  append_eos: false
+  kenlm_path: ???
+  aux_target_postfix: km
+  ctc_eval: true # default is false
+  word_kenlm_path:  /workspace2/maduo/dataset/format/librispeech/librispeech_lm_norm_phn_seq/kenlm.wrd.o40003.bin
+  word_decoder_config:
+    hlg_graph_path: /workspace2/maduo/dataset/format/librispeech/librispeech_lm_norm_phn_seq/fst/phn_to_words_sil/HLG.phn.kenlm.wrd.o40003.fst
+    #output_dict: /workspace2/maduo/dataset/format/librispeech/librispeech_lm_norm_phn_seq/lexicon_filtered.lst ## word2phoneseq
+    #output_dict:  /workspace2/maduo/dataset/format/librispeech/librispeech_lm_norm_phn_seq/fst/phn_to_words_sil/kaldi_dict.h_out.phn.txt ## phone2id
+    output_dict:  /workspace2/maduo/dataset/format/librispeech/librispeech_lm_norm_phn_seq/fst/phn_to_words_sil/kaldi_dict.kenlm.wrd.o40003.txt  ## word2id dictionary
+    #kaldi_initializer_config:
+    #  data_dir: /workspace2/maduo/dataset/format/librispeech/librispeech_lm_norm_phn_seq/phonesss
+    #  fst_dir: /workspace2/maduo/dataset/format/librispeech/librispeech_lm_norm_phn_seq/fst/phn_to_words_sil
+    #  in_labels: phn
+    #  wav2letter_lexicon: /workspace2/maduo/dataset/format/librispeech/librispeech_lm_norm_phn_seq/lexicon_filtered.lst
+    #  lm_arpa: /workspace2/maduo/dataset/format/librispeech/librispeech_lm_norm_phn_seq/kenlm.wrd.o40003.arpa
+    #  kaldi_root: /workspace2/maduo/pykaldi/tools/kaldi
+    #  blank_symbol: "<SIL>"
+
+    acoustic_scale: 0.5
+    max_active: 10000
+    beam_delta: 0.5
+    hash_ratio: 2.0
+
+    is_lattice: True
+    lattice_beam: 10.0
+    prune_interval: 25
+    determinize_lattice: True
+    prune_scale: 0.1
+
+dataset:
+  num_workers: 6
+  batch_size: 160
+  skip_invalid_size_inputs_valid_test: true
+  valid_subset: valid
+  validate_interval: 100
+  validate_interval_updates: 1000
+
+criterion:
+  _name: model
+  log_keys:
+    - accuracy_dense
+    - accuracy_token
+    - temp
+    - code_ppl
+    - mmi_acc
+
+optimization:
+  max_update: 150000
+  clip_norm: 5.0
+  lr: [0]
+  stop_min_lr: -1.0
+  update_freq: [1]
+  
+optimizer:
+  _name: composite
+  groups:
+    generator:
+      lr: [0.00005]
+      lr_float: null
+      optimizer:
+        _name: adam
+        adam_betas: [0.5,0.98]
+        adam_eps: 1e-06
+        weight_decay: 0
+        amsgrad: false
+      lr_scheduler:
+        _name: fixed
+        warmup_updates: 0
+    discriminator:
+      lr: [ 0.0003 ]
+      lr_float: null
+      optimizer:
+        _name: adam
+        adam_betas: [0.5,0.98]
+        adam_eps: 1e-06
+        weight_decay: 0.0001
+        #amsgrad: false
+      lr_scheduler:
+        _name: fixed
+        warmup_updates: 0
+
+lr_scheduler: pass_through
+
+model:
+  _name: wav2vec_u
+
+  discriminator_dim: 384
+  discriminator_dilation: 1
+  discriminator_depth: 2
+  discriminator_kernel: 8
+  discriminator_linear_emb: false
+  discriminator_causal: true
+  discriminator_max_pool: false
+  discriminator_act_after_linear: false
+  discriminator_dropout: 0.0
+  discriminator_weight_norm: false
+
+  generator_stride: 3
+  generator_kernel: 9
+  generator_dilation: 1
+  generator_pad: -1
+  generator_bias: false
+  generator_dropout: 0.1
+  generator_batch_norm: 30
+  generator_residual: true
+  
+  blank_weight: 0.0
+  blank_mode: add
+  #blank_sil: false
+  no_softmax: false
+  
+  smoothness_weight: 1.5
+  smoothing: 0.0
+  smoothing_one_sided: false
+  gumbel: false
+  hard_gumbel: false
+  gradient_penalty: 1.5
+  probabilistic_grad_penalty_slicing: false
+
+  target_downsample_rate: 2
+  code_penalty: 0.0
+  temp: [ 2.0,0.1,0.99995 ]
+  input_dim: 1024
+  mmi_weight: 0.5
+  target_dim: 64
+
+  segmentation:
+    type: JOIN
+    mean_pool_join: false
+    remove_zeros: false
+    subsample_rate: 0.25
+    mean_pool: true
+    #mean_pool_join: false
+    #remove_zeros: false
+
+
+
+hydra:
+  job:
+    config:
+      override_dirname:
+        kv_sep: ':'
+        item_sep: '__'
+        exclude_keys:
+          - run_config
+          - distributed_training.distributed_port
+          - common.user_dir
+          - task.data
+          - task.kenlm_path
+          - task.text_data
+          - model.generator_layers
+          - task.labels
+          - task.force_model_seed
+          - dataset.train_subset
+          - dataset.valid_subset
+          - dataset.batch_size
+          - dataset.num_workers
+          - distributed_training.distributed_world_size
+          - distributed_training.ddp_backend
+          - optimization.update_freq
+          - common.tensorboard_logdir
+          - hydra.run.dir
+  sweep:
+    dir: ${common.tensorboard_logdir}
+    subdir: ${hydra.job.num}    
+
+checkpoint:
+  save_interval: 1000 ## offical default  setting is  1000
+  save_interval_updates: 1000
+  #keep_interval_updates: 1 # keep one interval_updates , one checkpoint_best.pt one checkpoint_last.pt
+  no_epoch_checkpoints: true
+  best_checkpoint_metric: weighted_lm_ppl
+  #save_dir: .   ## this config don't set it manually in multirun mode, the setting is very important,
+  #              ## the folder is setting at ${common.tensorboard_logdir}/${hydra.job.num}/checkpoints/
+  keep_interval_updates: -1
+  keep_interval_updates_pattern: -1
+  keep_last_epochs: -1
+  keep_best_checkpoints: -1
+  maximize_best_checkpoint_metric: false
+  patience: -1
+  checkpoint_suffix: ''
+  checkpoint_shard_count: 1 
+  load_checkpoint_on_all_dp_ranks: false
+  write_checkpoints_asynchronously: false
+  model_parallel_size: 1  
+
+
+
+
