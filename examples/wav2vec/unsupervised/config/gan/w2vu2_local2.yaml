@@ -128,7 +128,7 @@ model:
     remove_zeros: false
     subsample_rate: 0.25
     mean_pool: true
-    remove_zeros: false
+    
 
 
 
