@@ -305,15 +305,21 @@ class Voicelm2Dataset(FairseqDataset):
 #        if self.text_processors is not None:
 #            utt = self.text_processors[0](new_utt)
 #        return utt
-
+    def chunks(self,lst, n):
+        """Yield successive n-sized chunks from lst."""
+        for i in range(0, len(lst), n):
+            yield lst[i:i + n]
     def get_text(self, index):
         #print(f"in the get_text func: index: {index}")
         ## random select text utterance, and it doesn't require the audio equivalent of the labe;
         utt=""
         if self.text_uttids is not None and not self.pair_data:
-           list_id = np.arange(len(self.text_uttids))
-           idx = np.random.choice(list_id)
-           utt = self.text_contents[idx]  ## str
+           #list_id = np.arange(len(self.text_uttids))
+           #idx = np.random.choice(list_id)
+           #utt = self.text_contents[idx]  ## str
+           #text_contents_list = list(self.chunks(self.text_contents, 1000))
+           utt = np.random.choice(self.text_contents) 
+           logger.info(f"in the get_text:unpaired text utt: {utt}, index: {index}")           
         elif self.text_uttids is not None and self.pair_data:
             utt = self.text_contents[index]  ## str     
    
