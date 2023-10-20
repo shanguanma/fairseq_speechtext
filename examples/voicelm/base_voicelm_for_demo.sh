@@ -10,44 +10,44 @@ export HYDRA_FULL_ERROR=1
 export CUDA_LAUNCH_BLOCKING=1
 
 
-## for demo page, with lm model to decoding
-if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
-   echo "inference voicelm  model on test-clean of librispeech"
-   fairseq_dir=/workspace2/maduo/fairseq_speechtext
-   tsv_dir=/workspace2/maduo/dataset/format/librispeech
-   config_dir=$fairseq_dir/examples/voicelm/
-   model_name=pretrain_on_base_imls-ssl_4gpu_8update_960h_400k_update
-   exp_finetune_dir=/workspace2/maduo/exp/finetune/${model_name}_100h_asr_finetune
-
-   results_path=$exp_finetune_dir/decode_on_100h_normalize_false_for_demo
-   path_to_lexicon=/workspace2/maduo/dataset/librispeech/kenlm_files/librispeech_lexicon.lst #word2letter
-   path_to_lm=/workspace2/maduo/dataset/librispeech/kenlm_files/4-gram.arpa  ## word lm
-   mkdir -p $results_path
-   testsets="test-clean"
-   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
-   for name in $testsets;do
-        CUDA_VISIBLE_DEVICES=7 python $fairseq_dir/examples/speech_recognition/new/infer.py \
-                --config-dir $config_dir/config/decode\
-                --config-name infer_kenlm_lirispeech\
-                task.data=$tsv_dir\
-                task.label_dir=$tsv_dir\
-                task.normalize=false\
-                common_eval.results_path=$results_path\
-                common_eval.path=$exp_finetune_dir/checkpoint_best_new.pt\
-                dataset.gen_subset=$name\
-                decoding.type=kenlm\
-                decoding.lexicon=$path_to_lexicon\
-                decoding.lmpath=$path_to_lm\
-                decoding.nbest=1\
-                decoding.beam=1500 \
-                decoding.lmweight=2 \
-                decoding.wordscore=-1 \
-                decoding.beamthreshold=100\
-                common_eval.quiet=false
-
-   done
-
-fi
+### for demo page, with lm model to decoding
+#if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
+#   echo "inference voicelm  model on test-clean of librispeech"
+#   fairseq_dir=/workspace2/maduo/fairseq_speechtext
+#   tsv_dir=/workspace2/maduo/dataset/format/librispeech
+#   config_dir=$fairseq_dir/examples/voicelm/
+#   model_name=pretrain_on_base_imls-ssl_4gpu_8update_960h_400k_update
+#   exp_finetune_dir=/workspace2/maduo/exp/finetune/${model_name}_100h_asr_finetune
+#
+#   results_path=$exp_finetune_dir/decode_on_100h_normalize_false_for_demo
+#   path_to_lexicon=/workspace2/maduo/dataset/librispeech/kenlm_files/librispeech_lexicon.lst #word2letter
+#   path_to_lm=/workspace2/maduo/dataset/librispeech/kenlm_files/4-gram.arpa  ## word lm
+#   mkdir -p $results_path
+#   testsets="test-clean"
+#   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+#   for name in $testsets;do
+#        CUDA_VISIBLE_DEVICES=7 python $fairseq_dir/examples/speech_recognition/new/infer.py \
+#                --config-dir $config_dir/config/decode\
+#                --config-name infer_kenlm_lirispeech\
+#                task.data=$tsv_dir\
+#                task.label_dir=$tsv_dir\
+#                task.normalize=false\
+#                common_eval.results_path=$results_path\
+#                common_eval.path=$exp_finetune_dir/checkpoint_best_new.pt\
+#                dataset.gen_subset=$name\
+#                decoding.type=kenlm\
+#                decoding.lexicon=$path_to_lexicon\
+#                decoding.lmpath=$path_to_lm\
+#                decoding.nbest=1\
+#                decoding.beam=1500 \
+#                decoding.lmweight=2 \
+#                decoding.wordscore=-1 \
+#                decoding.beamthreshold=100\
+#                common_eval.quiet=false
+#
+#   done
+#
+#fi
 ## without lm to decode
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
     echo "inference voicelm(only phn) model on dev-other, dev-clean, test-other, test-clean of librispeech"
@@ -188,40 +188,40 @@ if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ];then
    done
 fi
 
-if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ];then
-   echo "inference offical hubert base  model on test-clean of librispeech"
-   fairseq_dir=/workspace2/maduo/fairseq_speechtext
-   tsv_dir=/workspace2/maduo/dataset/format/librispeech
-   config_dir=$fairseq_dir/examples/voicelm   
-
-   model_name=hubert_base_librispeech_offical_no_finetune
-   exp_finetune_dir=/workspace2/maduo/exp/finetune/${model_name}_100h_asr_finetune
-
-   results_path=$exp_finetune_dir/decode_on_100h_normalize_false_for_demo
-   path_to_lexicon=/workspace2/maduo/dataset/librispeech/kenlm_files/librispeech_lexicon.lst #word2letter
-   path_to_lm=/workspace2/maduo/dataset/librispeech/kenlm_files/4-gram.arpa  ## word lm
-   mkdir -p $results_path
-   testsets="test-clean"
-   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
-   for name in $testsets;do
-        CUDA_VISIBLE_DEVICES=7 python $fairseq_dir/examples/speech_recognition/new/infer.py \
-                --config-dir $config_dir/config/decode\
-                --config-name infer_kenlm_lirispeech\
-                task.data=$tsv_dir\
-                task.label_dir=$tsv_dir\
-                task.normalize=false\
-                common_eval.results_path=$results_path\
-                common_eval.path=$exp_finetune_dir/checkpoint_best_new.pt\
-                dataset.gen_subset=$name\
-                decoding.type=kenlm\
-                decoding.lexicon=$path_to_lexicon\
-                decoding.lmpath=$path_to_lm\
-                decoding.nbest=1\
-                decoding.beam=1500 \
-                decoding.lmweight=2 \
-                decoding.wordscore=-1 \
-                decoding.beamthreshold=100\
-                common_eval.quiet=false
-
-   done
-fi
+#if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ];then
+#   echo "inference offical hubert base  model on test-clean of librispeech"
+#   fairseq_dir=/workspace2/maduo/fairseq_speechtext
+#   tsv_dir=/workspace2/maduo/dataset/format/librispeech
+#   config_dir=$fairseq_dir/examples/voicelm   
+#
+#   model_name=hubert_base_librispeech_offical_no_finetune
+#   exp_finetune_dir=/workspace2/maduo/exp/finetune/${model_name}_100h_asr_finetune
+#
+#   results_path=$exp_finetune_dir/decode_on_100h_normalize_false_for_demo
+#   path_to_lexicon=/workspace2/maduo/dataset/librispeech/kenlm_files/librispeech_lexicon.lst #word2letter
+#   path_to_lm=/workspace2/maduo/dataset/librispeech/kenlm_files/4-gram.arpa  ## word lm
+#   mkdir -p $results_path
+#   testsets="test-clean"
+#   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+#   for name in $testsets;do
+#        CUDA_VISIBLE_DEVICES=7 python $fairseq_dir/examples/speech_recognition/new/infer.py \
+#                --config-dir $config_dir/config/decode\
+#                --config-name infer_kenlm_lirispeech\
+#                task.data=$tsv_dir\
+#                task.label_dir=$tsv_dir\
+#                task.normalize=false\
+#                common_eval.results_path=$results_path\
+#                common_eval.path=$exp_finetune_dir/checkpoint_best_new.pt\
+#                dataset.gen_subset=$name\
+#                decoding.type=kenlm\
+#                decoding.lexicon=$path_to_lexicon\
+#                decoding.lmpath=$path_to_lm\
+#                decoding.nbest=1\
+#                decoding.beam=1500 \
+#                decoding.lmweight=2 \
+#                decoding.wordscore=-1 \
+#                decoding.beamthreshold=100\
+#                common_eval.quiet=false
+#
+#   done
+#fi
