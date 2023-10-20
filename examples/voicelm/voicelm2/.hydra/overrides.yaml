@@ -9,5 +9,5 @@
 - distributed_training.distributed_port=-1
 - distributed_training.ddp_backend=legacy_ddp
 - optimization.update_freq=[16]
-- common.tensorboard_logdir=/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_debug
-- checkpoint.save_dir=/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_debug
+- common.tensorboard_logdir=/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40
+- checkpoint.save_dir=/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40

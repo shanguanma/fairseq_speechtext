@@ -13,3 +13,12 @@ def tokenize_line(line):
     line = SPACE_NORMALIZER.sub(" ", line)
     line = line.strip()
     return line.split()
+
+
+if __name__ == "__main__":
+    line = "3 4 4 5"
+
+    a = tokenize_line(line)
+    print(a)
+    b = line.strip().split()
+    print(b)

@@ -15,6 +15,7 @@ from typing import Any, List, Optional, Union
 import numpy as np
 
 import torch
+from torch import Tensor
 import torch.nn.functional as F
 from fairseq.data import data_utils
 from fairseq.data.fairseq_dataset import FairseqDataset
@@ -24,12 +25,6 @@ from fairseq.data.audio.audio_utils import (
 )
 import io
 from skimage.util.shape import view_as_windows # for cut big list into small list
-
-# import torch.nn as nn
-# from fairseq import search, utils
-# from fairseq.models import FairseqIncrementalDecoder
-# from torch import Tensor
-# from fairseq.ngram_repeat_block import NGramRepeatBlock
 
 
 logger = logging.getLogger(__name__)
@@ -114,6 +109,99 @@ def load_label_offset(label_path, inds, tot):
     return offsets
 
 
+def get_pre_labels(label_path, inds, tot, sizes) -> List[Tensor]:
+    """get labels befor label_processing"""
+    label_offsets_list = load_label_offset(label_path, inds, tot)
+    indexs = np.arange(len(sizes))
+    labels=[]
+
+    with open(label_path) as f:
+        for ind in indexs:
+            offset_s, offset_e = label_offsets_list[ind]
+            f.seek(offset_s)
+            label = f.read(offset_e - offset_s) ## str
+            #logger.info(f"type(label): {type(label)}, label: {label}")
+            #assert label is str, f"label: {label}"
+            ## strs -> tensor
+            label = label.strip().split()
+            label_tensor = torch.IntTensor(len(label)) ## random elements tensor
+            for i, element in enumerate(label):
+                label_tensor[i] = int(element)
+
+            labels.append(label_tensor)
+    return labels
+
+
+
+def prepare_multi_modal_text_utt(label: Tensor, text_utt: str) -> str:
+    """prepare one multi modal text utterance base on one audio label"""
+    
+    label_unique, count = torch.unique_consecutive(label, return_counts=True)
+    label2counts = dict()
+
+    for ele, c in zip(label_unique.tolist(), count.tolist()):
+        ele = str(ele)  ## int to str
+        c = str(c)
+        if ele not in label2counts.keys():
+            label2counts[ele] = [c]
+        else:
+            label2counts[ele] += [c]  ### list splicing
+
+    unqiue_labels = len(label2counts)
+    k = unqiue_labels // 2
+    labels_keys_list = random.choices(list(label2counts), k=k)
+    new_l = []
+    for s in text_utt.split():
+        if s in labels_keys_list:
+            frames_count_list = label2counts[s]
+            n = secrets.choice(
+                frames_count_list
+            )  ## Choose a random item from the list securely
+            new_l.extend([s] * int(n))
+        else:
+            new_l.extend([s])
+    new_utt = " ".join(new_l)  ## str, it is multi modal text seq utterance
+    return new_utt
+
+
+## step: load big text -> random cut into small text, on small text, we construt multi modal text utterance
+def get_small_list_from_big_list(text_contents: List[str], audio_names: List[str]) -> List[str]:
+    
+    assert len(text_contents) >= len(audio_names), f"len(text_contents): {len(text_contents)}, len(audio_names): {len(audio_names)}"
+    logger.info(f"at len(text_contents) > len(audio_names) !!!")
+    steps=len(audio_names)
+    #sublist = [text_contents[i:i+steps] for i in range(0,len(text_uttids),steps)] #
+    windows_shape=(steps,)
+    sublists_contents = view_as_windows(np.array(text_contents),windows_shape,step=steps) # 2-dim list, the time it consumes is almost a constant.
+                                                                                      # it is very important for cut big list into small list.
+     
+    idx = np.random.choice(np.arange(len(sublists_contents)))  ## np.arange(nums), is nums is very big, so np.arange(nums) will consum big time.
+    text_contents = sublists_contents[idx] # List[str] its length is normal number, not very big number.
+    
+    return text_contents 
+
+
+def load_post_text(text_contents: List[str], label_path: str, inds: List[int], tot: int, sizes: List[int]):
+    labels = get_pre_labels(label_path, inds, tot, sizes)
+    new_utts = []
+    uttids=[]
+    list_id = np.arange(len(text_contents))
+    for i, label in enumerate(labels):
+        ## random select one utterance text
+        idx = np.random.choice(list_id)
+        utt = text_contents[idx] 
+        new_utt = prepare_multi_modal_text_utt(label,utt)
+        new_utts.append(new_utt)
+        uttids.append(i)
+
+    return uttids, new_utts
+
+
+
+
+
+
+
 def verify_label_lengths(
     audio_sizes,
     audio_rate,
@@ -158,10 +246,11 @@ def verify_label_lengths(
 ## 2. different from av-hubert, our fusion style is either residual cross attention or add.
 
 
-### The version of this dataset requires number of text utternce same as  number of speech utterance.
+### The version of this dataset done't requires number of text utternce same as  number of speech utterance in input, 
+### however at input of model, number of text utterance is same as to number of speech utterance.
 ### however,it is random text utterances of in per batch.
 ### and add text ntokens into batch, this parameter is only used by computing ctc loss for text part
-class Voicelm2Dataset(FairseqDataset):
+class Voicelm2Dataset1(FairseqDataset):
     def __init__(
         self,
         manifest_path: str,
@@ -182,7 +271,7 @@ class Voicelm2Dataset(FairseqDataset):
         shuffle: bool = True,
         pad_audio: bool = False,
         normalize: bool = False,
-        store_labels: bool = True,
+        store_labels: bool = False,
         random_crop: bool = False,
         single_target: bool = False,
         is_s2s: bool = False,  ## it is used to determine ctc finetune or cross entropy loss finetune.
@@ -196,11 +285,16 @@ class Voicelm2Dataset(FairseqDataset):
         self.audio_root, self.audio_names, inds, tot, self.sizes = load_audio(
             manifest_path, max_keep_sample_size, min_keep_sample_size
         )
-        
+         
         if not text_drop and manifest_text_path is not None:
             text_uttids, text_contents = load_text(
                 manifest_text_path, max_keep_phone_size, min_keep_phone_size
             )
+            if len(text_contents) > len(self.audio_names):
+                text_contents = get_small_list_from_big_list(text_contents, self.audio_names) 
+                text_uttids, text_contents =  load_post_text(text_contents,label_paths[0], inds, tot, self.sizes)
+            else:
+                text_uttids, text_contents =  load_post_text(text_contents,label_paths[0], inds, tot, self.sizes)
         else:
             text_uttids=None
             text_contents=None
@@ -272,67 +366,12 @@ class Voicelm2Dataset(FairseqDataset):
         wav = self.postprocess(wav, cur_sample_rate)
         return wav
 
-    def get_random_text_utt(self,index):
-        utt=""
-        if self.text_uttids is not None and not self.pair_data:
-            if len(self.text_uttids) >= len(self.audio_names):
-                logger.info(f"at len(self.text_uttids) > len(self.audio_names) !!!")
-                steps=len(self.audio_names)
-                #sublist = [self.text_contents[i:i+steps] for i in range(0,len(self.text_uttids),steps)] # 
-                windows_shape=(steps,)
-                sublists = view_as_windows(np.array(self.text_contents),windows_shape,step=steps) # 2-dim list, the time it consumes is almost a constant. 
-                                                                                                  # it is very important for cut big list into small list.
-                idx = np.random.choice(np.arange(len(sublists)))  ## np.arange(nums), is nums is very big, so np.arange(nums) will consum big time.
-                utt = sublists[idx][index]
-            elif len(self.text_uttids) < len(self.audio_names):
-                logger.info(f"at len(self.text_uttids) < len(self.audio_names) !!!")
-                list_id = np.arange(len(self.text_uttids))
-                idx = np.random.choice(list_id)
-                while idx == index and len(list_id) > 1: ## it requires that the audio and text have an equal number of sentences/
-                    idx = np.random.choice(list_id)
-                utt = self.text_contents[idx]
 
-        elif self.text_uttids is not None and not self.pair_data:
-             utt = self.text_contents[index]  ## str
-        return utt
-
-    #def prepared_multi_modal_utt():
-    #    utt = self.text_contents:
     def get_text(self, index):
-        #print(f"in the get_text func: index: {index}")
-        #utt = self.text_contents[index]  ## str
-        utt = self.get_random_text_utt(index) ## str
-
-        label = self.get_label(index, 0)  ## label is a utt speech label, it is a tensor
-        label_unique, count = torch.unique_consecutive(label, return_counts=True)
-        label2counts = dict()
-
-        for ele, c in zip(label_unique.tolist(), count.tolist()):
-            ele = str(ele)  ## int to str
-            c = str(c)
-            if ele not in label2counts.keys():
-                label2counts[ele] = [c]
-            else:
-                label2counts[ele] += [c]  ### list splicing
-
-        unqiue_labels = len(label2counts)
-        k = unqiue_labels // 2
-        labels_keys_list = random.choices(list(label2counts), k=k)
-        new_l = []
-        for s in utt.split():
-            if s in labels_keys_list:
-                frames_count_list = label2counts[s]
-                n = secrets.choice(
-                    frames_count_list
-                )  ## Choose a random item from the list securely
-                new_l.extend([s] * int(n))
-            else:
-                new_l.extend([s])
-        new_utt = " ".join(new_l)  ## str, it is multi modal text seq utterance
-
+        utt = self.text_contents[index]
         ## encode every  text utterances into tensor
         if self.text_processors is not None:
-            utt = self.text_processors[0](new_utt)
+            utt = self.text_processors[0](utt)
         return utt
 
 

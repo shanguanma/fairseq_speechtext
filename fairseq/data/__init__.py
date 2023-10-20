@@ -20,6 +20,7 @@ from .audio.sthubert_dataset3 import StHubertDataset3  ## md add
 from .audio.utterance_mixing_dataset import UtteranceMixingDataset  ## md add
 from .multi_corpus_dataset2 import MultiCorpusDataset2  ## md add
 from .audio.voicelm2_dataset import Voicelm2Dataset  ## md add
+from .audio.voicelm2_dataset1 import Voicelm2Dataset1  ## md add
 
 from .backtranslation_dataset import BacktranslationDataset
 from .bucket_pad_length_dataset import BucketPadLengthDataset

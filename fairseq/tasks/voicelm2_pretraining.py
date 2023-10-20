@@ -13,7 +13,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from dataclasses import dataclass, field
-from fairseq.data import Dictionary, Voicelm2Dataset, HubertDataset, encoders
+from fairseq.data import Dictionary, Voicelm2Dataset, Voicelm2Dataset1, HubertDataset, encoders
 from fairseq.dataclass.configs import FairseqDataclass
 from fairseq.tasks import register_task
 from fairseq.tasks.fairseq_task import FairseqTask
@@ -264,46 +264,6 @@ class Voicelm2PretrainingTask(FairseqTask):
         return self.cfg.label_dir
 
     def load_dataset(self, split: str, **kwargs) -> None:
-        """
-        manifest = f"{self.cfg.data}/{split}.tsv"
-        if self.cfg.fine_tuning:
-            dicts = [
-                Dictionary.load(f"{self.cfg.label_dir}/dict.{label}.txt")
-                for label in self.cfg.labels
-            ]
-        else:
-            dicts=self.dictionaries
-        #dicts = [self.target_dictionary] if self.cfg.fine_tuning else self.dictionaries
-
-    
-        logger.info(f"dicts: {dicts}")
-        if len(dicts)==2: ##  finetune mode
-            dicts_speech_label = [dicts[0]]  # remove text phn dictionary
-            dicts_text = [dicts[1]]  
-        else:
-            dicts_speech_label = [dicts[0]]
-            dicts_text = dicts_speech_label # unparied text drop
-        #dicts_text = dicts_speech_label 
-        pad_list = [dict.pad() for dict in dicts_speech_label]
-        eos_list = [dict.eos() for dict in dicts_speech_label]
-        # procs = [LabelEncoder(dict) for dict in dicts]
-        if not self.cfg.is_s2s:
-            procs = [LabelEncoder(dict) for dict in dicts_speech_label]
-        else:
-            logger.info(f"Using tokenizer")
-            bpe_tokenizer = self.s2s_tokenizer
-            procs = [
-                LabelEncoderS2SToken(dict, bpe_tokenizer) for dict in dicts_speech_label
-            ]
-
-        text_procs = [TextEncoder(dict) for dict in dicts_text]
-        paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
-        if len(paths)==2:
-            path_text=paths[1]
-            path_label=paths[0]
-        elif 
-        logger.info(f"paths: {paths}")
-        """
         ### prepared pretrain mode and finetune mode and inference mode
         ## I hope both pretrain and finetuen mode  can accept two or more two style label, and inference mode cant accept one style label
         manifest = f"{self.cfg.data}/{split}.tsv"
@@ -415,7 +375,7 @@ class Voicelm2PretrainingTask(FairseqTask):
                     text_drop=self.cfg.text_drop,  ## whether unpaired text is used to finetune
                 )
         else:  ## pretrain case
-            self.datasets[split] = Voicelm2Dataset(
+            self.datasets[split] = Voicelm2Dataset1(
                 manifest,
                 manifest_text_path=path_text,
                 sample_rate=self.cfg.sample_rate,
