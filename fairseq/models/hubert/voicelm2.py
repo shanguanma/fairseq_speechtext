@@ -578,6 +578,7 @@ class Voicelm2Model(BaseFairseqModel):
             "padding_mask": padding_mask,
             "features_pen": features_pen,
         }
+        #logger.info(f"in the forward of model: ouput result: {result}")
         return result
 
 

@@ -7,7 +7,7 @@ common:
   log_file: null
   aim_repo: null
   aim_run_hash: null
-  tensorboard_logdir: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_debug
+  tensorboard_logdir: /mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_debug
   wandb_project: null
   azureml_logging: false
   seed: 1337
@@ -28,7 +28,7 @@ common:
   amp_batch_retries: 2
   amp_init_scale: 128
   amp_scale_window: null
-  user_dir: /workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2
+  user_dir: /mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/voicelm/voicelm2
   empty_cache_freq: 0
   all_gather_list_size: 16384
   model_parallel_size: 1
@@ -132,7 +132,7 @@ optimization:
   debug_param_names: false
 checkpoint:
   _name: null
-  save_dir: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_debug
+  save_dir: /mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_debug
   restore_file: checkpoint_last.pt
   continue_once: null
   finetune_from_model: null
@@ -251,8 +251,8 @@ model:
   attention_type: flash_attention
 task:
   _name: voicelm2_pretraining
-  data: /workspace2/maduo/dataset/format/librispeech/
-  label_dir: /workspace2/maduo/dataset/format/librispeech//40M_librispeech_lm_monophncode_librispeech_frame_monophncode_using_wav2vec-u2_model
+  data: /mntcephfs/lab_data/maduo/datasets/format/librispeech/
+  label_dir: /mntcephfs/lab_data/maduo/datasets/format/librispeech//40M_librispeech_lm_monophncode_librispeech_frame_monophncode_using_wav2vec-u2_model
   labels:
   - speechphncode
   - textphncode

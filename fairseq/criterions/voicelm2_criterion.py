@@ -130,8 +130,8 @@ class Voicelm2Criterion(FairseqCriterion):
                 if logp_m.numel() == 0:
                     corr_m, count_m = 0, 0
                 else:
-                    # logger.info(f"targ_m_list: {targ_m_list},its len: {len(targ_m_list)}")
-                    # logger.info(f"logp_m_list: {logp_m_list},its len: {len(logp_m_list)}")
+                    #logger.info(f"targ_m_list: {targ_m_list},its len: {len(targ_m_list)}")
+                    #logger.info(f"logp_m_list: {logp_m_list},its len: {len(logp_m_list)}")
                     corr_m, count_m = (
                         logp_m.argmax(dim=-1) == targ_m_list[i]
                     ).sum().item(), len(targ_m_list[i])
