@@ -270,7 +270,6 @@ class Voicelm2Dataset(FairseqDataset):
         wav = self.postprocess(wav, cur_sample_rate)
         return wav
 
-<<<<<<< HEAD
     def get_random_text_utt(self,index):
         utt=""
         if self.text_uttids is not None and not self.pair_data:
@@ -290,6 +289,7 @@ class Voicelm2Dataset(FairseqDataset):
                 while idx == index and len(list_id) > 1: ## it requires that the audio and text have an equal number of sentences/
                     idx = np.random.choice(list_id)
                 utt = self.text_contents[idx]
+
         elif self.text_uttids is not None and not self.pair_data:
              utt = self.text_contents[index]  ## str
         return utt
@@ -300,61 +300,6 @@ class Voicelm2Dataset(FairseqDataset):
         #utt = self.text_contents[index]  ## str
         utt = self.get_random_text_utt(index) ## str
 
-=======
-#    def get_text(self, index):
-#        #print(f"in the get_text func: index: {index}")
-#        utt = self.text_contents[index]  ## str
-#
-#        label = self.get_label(index, 0)  ## label is a utt speech label, it is a tensor
-#        label_unique, count = torch.unique_consecutive(label, return_counts=True)
-#        label2counts = dict()
-#
-#        for ele, c in zip(label_unique.tolist(), count.tolist()):
-#            ele = str(ele)  ## int to str
-#            c = str(c)
-#            if ele not in label2counts.keys():
-#                label2counts[ele] = [c]
-#            else:
-#                label2counts[ele] += [c]  ### list splicing
-#
-#        unqiue_labels = len(label2counts)
-#        k = unqiue_labels // 2
-#        labels_keys_list = random.choices(list(label2counts), k=k)
-#        new_l = []
-#        for s in utt.split():
-#            if s in labels_keys_list:
-#                frames_count_list = label2counts[s]
-#                n = secrets.choice(
-#                    frames_count_list
-#                )  ## Choose a random item from the list securely
-#                new_l.extend([s] * int(n))
-#            else:
-#                new_l.extend([s])
-#        new_utt = " ".join(new_l)  ## str, it is multi modal text seq utterance
-#
-#        ## encode every  text utterances into tensor
-#        if self.text_processors is not None:
-#            utt = self.text_processors[0](new_utt)
-#        return utt
-    def chunks(self,lst, n):
-        """Yield successive n-sized chunks from lst."""
-        for i in range(0, len(lst), n):
-            yield lst[i:i + n]
-    def get_text(self, index):
-        #print(f"in the get_text func: index: {index}")
-        ## random select text utterance, and it doesn't require the audio equivalent of the labe;
-        utt=""
-        if self.text_uttids is not None and not self.pair_data:
-           #list_id = np.arange(len(self.text_uttids))
-           #idx = np.random.choice(list_id)
-           #utt = self.text_contents[idx]  ## str
-           #text_contents_list = list(self.chunks(self.text_contents, 1000))
-           utt = np.random.choice(self.text_contents) 
-           logger.info(f"in the get_text:unpaired text utt: {utt}, index: {index}")           
-        elif self.text_uttids is not None and self.pair_data:
-            utt = self.text_contents[index]  ## str     
-   
->>>>>>> 4b4eb0c12c5f87f3c562929d8bc16724c76005c5
         label = self.get_label(index, 0)  ## label is a utt speech label, it is a tensor
         label_unique, count = torch.unique_consecutive(label, return_counts=True)
         label2counts = dict()
@@ -387,50 +332,6 @@ class Voicelm2Dataset(FairseqDataset):
             utt = self.text_processors[0](new_utt)
         return utt
 
-#    def get_text(self, index):
-#        #print(f"in the get_text func: index: {index}")
-#        ## random select text utterance, and it doesn't require the audio equivalent of the labe;
-#        utt=""
-#        if self.text_uttids is not None and not self.pair_data:
-#           #list_id = np.arange(len(self.text_uttids))
-#           #idx = np.random.choice(list_id)
-#           #utt = self.text_contents[idx]  ## str
-#           utt = np.random.choice(self.text_contents)
-#           logger.info(f"in the get_text(): utt: {utt}, index: {index} ")
-#        elif self.text_uttids is not None and self.pair_data:
-#            utt = self.text_contents[index]  ## str     
-#   
-#        label = self.get_label(index, 0)  ## label is a utt speech label, it is a tensor
-#        label_unique, count = torch.unique_consecutive(label, return_counts=True)
-#        label2counts = dict()
-#
-#        for ele, c in zip(label_unique.tolist(), count.tolist()):
-#            ele = str(ele)  ## int to str
-#            c = str(c)
-#            if ele not in label2counts.keys():
-#                label2counts[ele] = [c]
-#            else:
-#                label2counts[ele] += [c]  ### list splicing
-#
-#        unqiue_labels = len(label2counts)
-#        k = unqiue_labels // 2
-#        labels_keys_list = random.choices(list(label2counts), k=k)
-#        new_l = []
-#        for s in utt.split():
-#            if s in labels_keys_list:
-#                frames_count_list = label2counts[s]
-#                n = secrets.choice(
-#                    frames_count_list
-#                )  ## Choose a random item from the list securely
-#                new_l.extend([s] * int(n))
-#            else:
-#                new_l.extend([s])
-#        new_utt = " ".join(new_l)  ## str, it is multi modal text seq utterance
-#：
-#        ## encode every  text utterances into tensor
-#        if self.text_processors is not None:
-#            utt = self.text_processors[0](new_utt)
-#        return utt
 
     def get_label(self, index, label_idx):
         if self.store_labels:
@@ -449,25 +350,6 @@ class Voicelm2Dataset(FairseqDataset):
         return [self.get_label(index, i) for i in range(self.num_labels)]
 
          
-#    def __getitem__(self, index):
-#        wav = self.get_audio(index)
-#        if self.text_uttids is not None and not self.pair_data:
-#            # choose text
-#            list_id = np.arange(len(self.text_uttids))
-#            idx = np.random.choice(list_id)
-#            while idx == index and len(list_id) > 1: ## it requires that the audio and text have an equal number of sentences/
-#                idx = np.random.choice(list_id) 
-#            text = self.get_text(idx)
-#            labels = self.get_labels(index)
-#            return {"id": index, "source": wav, "text": text, "label_list": labels}
-#        elif self.text_uttids is not None and self.pair_data:
-#            text = self.get_text(index)
-#            labels = self.get_labels(index)
-#            return {"id": index, "source": wav, "text": text, "label_list": labels}
-#        else:
-#            labels = self.get_labels(index)
-#            return {"id": index, "source": wav, "label_list": labels}
-#
 
     def __getitem__(self, index):
         wav = self.get_audio(index)
