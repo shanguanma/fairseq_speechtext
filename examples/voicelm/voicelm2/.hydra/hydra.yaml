@@ -115,15 +115,15 @@ hydra:
     - common.user_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/voicelm/voicelm2
     - dataset.train_subset=train-960
     - dataset.valid_subset='dev-other,dev-clean'
-    - distributed_training.distributed_world_size=2
+    - distributed_training.distributed_world_size=4
     - distributed_training.distributed_port=-1
     - distributed_training.ddp_backend=legacy_ddp
-    - optimization.update_freq=[16]
+    - optimization.update_freq=[8]
     - common.tensorboard_logdir=/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40
     - checkpoint.save_dir=/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40
   job:
     name: /mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40/pretrain
-    override_dirname: checkpoint.save_dir-/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40__common.tensorboard_logdir-/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40__common.user_dir-/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/voicelm/voicelm2__dataset.train_subset-train-960__dataset.valid_subset-'dev-other,dev-clean'__distributed_training.ddp_backend-legacy_ddp__distributed_training.distributed_port--1__distributed_training.distributed_world_size-2__model.label_rate-50__optimization.update_freq-[16]__task.labels-["speechphncode","textphncode"]
+    override_dirname: checkpoint.save_dir-/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40__common.tensorboard_logdir-/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40__common.user_dir-/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/voicelm/voicelm2__dataset.train_subset-train-960__dataset.valid_subset-'dev-other,dev-clean'__distributed_training.ddp_backend-legacy_ddp__distributed_training.distributed_port--1__distributed_training.distributed_world_size-4__model.label_rate-50__optimization.update_freq-[8]__task.labels-["speechphncode","textphncode"]
     id: ???
     num: ???
     config_name: voicelm2_base_librispeech_flash_attention_lr4e_4_1:40

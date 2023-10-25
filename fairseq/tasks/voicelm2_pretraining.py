@@ -13,7 +13,9 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 
 from dataclasses import dataclass, field
-from fairseq.data import Dictionary, Voicelm2Dataset, Voicelm2Dataset1, HubertDataset, encoders
+from fairseq.data import Dictionary, Voicelm2Dataset, HubertDataset, encoders
+from fairseq.data import Voicelm2Dataset1, Voicelm2DatasetBigtext
+
 from fairseq.dataclass.configs import FairseqDataclass
 from fairseq.tasks import register_task
 from fairseq.tasks.fairseq_task import FairseqTask
@@ -22,10 +24,11 @@ from omegaconf import MISSING
 logger = logging.getLogger(__name__)
 
 
-#from fairseq.models.hubert.voicelm2_sequence_generator import SequenceGenerator, SequenceGeneratorWithAlignment
+# from fairseq.models.hubert.voicelm2_sequence_generator import SequenceGenerator, SequenceGeneratorWithAlignment
 from fairseq import metrics, search
 from omegaconf import II
 from argparse import Namespace
+
 
 ## it will use letter unit to finetune via ctc loss
 ## or it will use code unit to pretrain via mlm loss.
@@ -168,7 +171,7 @@ class Voicelm2PretrainingConfig(FairseqDataclass):
 
     is_s2s: bool = field(
         default=False,
-        metadata={"help": "if true, seq2seq fine-tuning only, else ctc finetune only"},
+        metadata={"help": "if true, seq2seq fine-tuning only ,currently it is not support, else ctc finetune only"},
     )
     tokenizer_bpe_name: Optional[str] = field(
         default=None, metadata={"help": "tokenizer model name"}
@@ -183,8 +186,24 @@ class Voicelm2PretrainingConfig(FairseqDataclass):
                                                     if it is false, speech and paired code label and unpair text code are used to pretrain model."""
         },
     )
-    pair_data: bool = field(default = False, metadata={"help": "if false, it means speech and text is unpaired , otherwise it is paired"})
-    inference_mode: bool = field(default=False, metadata={"help": "it is diffence from finetune mode, because here the finetune model can accept two style label. inference_model=true, it will only accept one style label"})
+    text_ratio: int = field(
+        default=1,
+        metadata={
+            "help": """more than 1, it means repeat audio utterances to  get the number of text utterances., it means that will big text to train model"""
+        },
+    )
+    pair_data: bool = field(
+        default=False,
+        metadata={
+            "help": "if false, it means speech and text is unpaired , otherwise it is paired"
+        },
+    )
+    inference_mode: bool = field(
+        default=False,
+        metadata={
+            "help": "it is diffence from finetune mode, because here the finetune model can accept two style label. inference_model=true, it will only accept one style label"
+        },
+    )
 
 
 @register_task("voicelm2_pretraining", dataclass=Voicelm2PretrainingConfig)
@@ -219,14 +238,16 @@ class Voicelm2PretrainingTask(FairseqTask):
         return None
 
     @property
-    def target_dictionary(self) -> Optional[Dictionary]: ## it is used at fairseq_criterion.py 
+    def target_dictionary(
+        self,
+    ) -> Optional[Dictionary]:  ## it is used at fairseq_criterion.py
         return self.state.target_dictionary
 
     @property
     def dictionaries(self) -> List[Dictionary]:
         # dict_list=[self.state.dictionaries,self.state.text_dictionary]
         # return dict_list
-        #return self.state.dictionaries[0] if self.cfg.fine_tuning else self.state.dictionaries 
+        # return self.state.dictionaries[0] if self.cfg.fine_tuning else self.state.dictionaries
         return self.state.dictionaries
 
     def load_dictionaries(self):
@@ -236,7 +257,7 @@ class Voicelm2PretrainingTask(FairseqTask):
             for label in self.cfg.labels
         ]
         return dictionaries[0] if self.cfg.fine_tuning else dictionaries
-        #return dictionaries
+        # return dictionaries
 
     def load_tokenizer(self):
         bpe_args = Namespace(
@@ -267,8 +288,8 @@ class Voicelm2PretrainingTask(FairseqTask):
         ### prepared pretrain mode and finetune mode and inference mode
         ## I hope both pretrain and finetuen mode  can accept two or more two style label, and inference mode cant accept one style label
         manifest = f"{self.cfg.data}/{split}.tsv"
-        speech_procs=None
-        if not self.cfg.inference_mode: ## finetune mode and pretrain mode
+        speech_procs = None
+        if not self.cfg.inference_mode:  ## finetune mode and pretrain mode
             ## dict
             ## data path
             ## data proccess
@@ -276,7 +297,9 @@ class Voicelm2PretrainingTask(FairseqTask):
                 Dictionary.load(f"{self.cfg.label_dir}/dict.{label}.txt")
                 for label in self.cfg.labels
             ]
-            dicts_speech_label = [dicts[0]] if len(dicts)==2 else  dicts[:-1]  # remove text phn dictionary
+            dicts_speech_label = (
+                [dicts[0]] if len(dicts) == 2 else dicts[:-1]
+            )  # remove text phn dictionary
             dicts_text = [dicts[-1]]
             pad_list = [dict.pad() for dict in dicts_speech_label]
             eos_list = [dict.eos() for dict in dicts_speech_label]
@@ -286,13 +309,14 @@ class Voicelm2PretrainingTask(FairseqTask):
                 logger.info(f"Using tokenizer")
                 bpe_tokenizer = self.s2s_tokenizer
                 speech_procs = [
-                    LabelEncoderS2SToken(dict, bpe_tokenizer) for dict in dicts_speech_label
+                    LabelEncoderS2SToken(dict, bpe_tokenizer)
+                    for dict in dicts_speech_label
                 ]
             text_procs = [TextEncoder(dict) for dict in dicts_text]
             paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
-            path_text=paths[-1]
-            path_label=paths[:-1]
-        else: ## inference mode
+            path_text = paths[-1]
+            path_label = paths[:-1]
+        else:  ## inference mode
             ## dict
             ## data path
             ## data proccess
@@ -310,12 +334,13 @@ class Voicelm2PretrainingTask(FairseqTask):
                 logger.info(f"Using tokenizer")
                 bpe_tokenizer = self.s2s_tokenizer
                 speech_procs = [
-                    LabelEncoderS2SToken(dict, bpe_tokenizer) for dict in dicts_speech_label
+                    LabelEncoderS2SToken(dict, bpe_tokenizer)
+                    for dict in dicts_speech_label
                 ]
             text_procs = None
             paths = [f"{self.get_label_dir()}/{split}.{l}" for l in self.cfg.labels]
-            path_text=None
-            path_label=paths         
+            path_text = None
+            path_label = paths
             logger.info(f"paths: {paths}")
             logger.info(f"path_label: {path_label}")
 
@@ -400,12 +425,41 @@ class Voicelm2PretrainingTask(FairseqTask):
                 text_drop=False,
                 pair_data=self.cfg.pair_data,
             )
+            ## newest dataset, contain before all case, finally will rename Voicelm2Dataset,
+            ## next will finish design text part loss,and second iter.
+
+    #             self.datasets[split] = Voicelm2DatasetBigtext(
+    #                manifest,
+    #                manifest_text_path=path_text,
+    #                sample_rate=self.cfg.sample_rate,
+    #                label_paths=path_label,
+    #                label_rates=self.cfg.label_rate,
+    #                pad_list=pad_list,
+    #                eos_list=eos_list,
+    #                text_seq=self.cfg.text_seq,
+    #                label_processors=speech_procs,
+    #                text_processors=text_procs,
+    #                max_keep_sample_size=self.cfg.max_sample_size,
+    #                min_keep_sample_size=self.cfg.min_sample_size,
+    #                max_sample_size=self.cfg.max_sample_size,
+    #                max_keep_phone_size=self.cfg.max_phone_size,
+    #                min_keep_phone_size=self.cfg.min_phone_size,
+    #                pad_audio=self.cfg.pad_audio,
+    #                normalize=self.cfg.normalize,
+    #                random_crop=self.cfg.random_crop,
+    #                single_target=self.cfg.single_target,
+    #                is_s2s=False,
+    #                text_drop=False,
+    #                text_ratio=self.cfg.text_ratio,
+    #                pair_data=self.cfg.pair_data,
+    #            )
 
     def max_positions(self) -> Tuple[int, int]:
         return (sys.maxsize, sys.maxsize)
 
     def filter_indices_by_size(self, indices: np.array, *args, **kwargs) -> np.array:
         return indices
+
 
 '''
     ## it is only used to seq2seq decoding.

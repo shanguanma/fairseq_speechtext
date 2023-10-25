@@ -4,6 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import itertools
+from itertools import chain
 import logging
 import os
 import sys
@@ -24,7 +25,7 @@ from fairseq.data.audio.audio_utils import (
     read_from_stored_zip,
 )
 import io
-from skimage.util.shape import view_as_windows # for cut big list into small list
+from skimage.util.shape import view_as_windows  # for cut big list into small list
 
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,9 @@ def load_audio(manifest_path, max_keep, min_keep):
                 n_long += 1
             else:
                 names.append(items[0])
-                inds.append(ind) ## inds is very import , it is used to index audio label.
+                inds.append(
+                    ind
+                )  ## inds is very import , it is used to index audio label.
                 sizes.append(sz)
     tot = ind + 1
     logger.info(
@@ -56,6 +59,44 @@ def load_audio(manifest_path, max_keep, min_keep):
         )
     )
     return root, names, inds, tot, sizes
+
+
+def repeat_audio(
+    audio_names: List[str],
+    audio_inds: List[int],
+    audio_sizes: List[int],
+    tot: int,
+    text_ratio: int,
+) -> Tuple[List[str], List[int], List[int], int]:
+    audio_namess = []
+    audio_indss = []
+    audio_sizess = []
+    tots = []
+    for i in range(text_ratio):
+        audio_namess.append(audio_names)
+        audio_indss.append(audio_inds)
+        audio_sizess.append(audio_sizes)
+        tots.append(tot)
+    audio_namess = list(
+        chain.from_iterable(audio_namess)
+    )  ## 2-dim list -> flatten 1-dim list
+    audio_indss = list(
+        chain.from_iterable(audio_indss)
+    )  ## 2-dim list -> flatten 1-dim list
+    audio_sizess = list(
+        chain.from_iterable(audio_sizess)
+    )  ## 2-dim list -> flatten 1-dim list
+    tots = sum(tots)  # int
+    return audio_namess, audio_indss, audio_sizess, tots  ##
+    # return audio_namess
+
+
+def repeat_label(labels: List[Tensor], text_ratio: int) -> List[Tensor]:
+    labelss = []
+    for i in range(text_ratio):
+        labelss.append(labels)
+    labelss = list(chain.from_iterable(labelss))  ## 2-dim list -> flatten 1-dim list
+    return labelss
 
 
 def load_text(manifest_text_path, max_keep, min_keep):
@@ -83,8 +124,6 @@ def load_text(manifest_text_path, max_keep, min_keep):
         f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}"
     )
     return text_uttids, text_contents
-
-
 
 
 def load_label(label_path, inds, tot):
@@ -124,33 +163,33 @@ def load_label_offset(label_path, inds, tot):
     return offsets
 
 
-def get_pre_labels(label_path, inds, tot, sizes) -> List[Tensor]:
+def get_pre_labels(label_path, inds, tot, sizes) -> List[str]:
     """get labels befor label_processing"""
     label_offsets_list = load_label_offset(label_path, inds, tot)
     indexs = np.arange(len(sizes))
-    labels=[]
+    labels = []
 
     with open(label_path) as f:
         for ind in indexs:
             offset_s, offset_e = label_offsets_list[ind]
             f.seek(offset_s)
-            label = f.read(offset_e - offset_s) ## str
-            #logger.info(f"type(label): {type(label)}, label: {label}")
-            #assert label is str, f"label: {label}"
-            ## strs -> tensor
-            label = label.strip().split()
-            label_tensor = torch.IntTensor(len(label)) ## random elements tensor
-            for i, element in enumerate(label):
-                label_tensor[i] = int(element)
-
-            labels.append(label_tensor)
+            label = f.read(offset_e - offset_s)  ## str
+            # logger.info(f"type(label): {type(label)}, label: {label}")
+            # assert label is str, f"label: {label}"
+            labels.append(label)  # List[str]
     return labels
-
 
 
 def prepare_multi_modal_text_utt(label: Tensor, text_utt: str) -> str:
     """prepare one multi modal text utterance base on one audio label"""
-    
+
+    ### ## strs -> tensor
+    label = label.strip().split()
+    label_tensor = torch.IntTensor(len(label))  ## random elements tensor
+    for i, element in enumerate(label):
+        label_tensor[i] = int(element)
+    label = label_tensor
+
     label_unique, count = torch.unique_consecutive(label, return_counts=True)
     label2counts = dict()
 
@@ -180,49 +219,117 @@ def prepare_multi_modal_text_utt(label: Tensor, text_utt: str) -> str:
 
 
 ## step: load big text -> random cut into small text, on small text, we construt multi modal text utterance
-def get_small_list_from_big_list(text_contents: List[str], audio_names: List[str]) -> List[str]:
-    
-    assert len(text_contents) >= len(audio_names), f"len(text_contents): {len(text_contents)}, len(audio_names): {len(audio_names)}"
+def get_small_list_from_big_list(
+    text_contents: List[str], audio_names: List[str]
+) -> List[str]:
+    assert len(text_contents) >= len(
+        audio_names
+    ), f"len(text_contents): {len(text_contents)}, len(audio_names): {len(audio_names)}"
     logger.info(f"at len(text_contents) > len(audio_names) !!!")
-    steps=len(audio_names)
-    #sublist = [text_contents[i:i+steps] for i in range(0,len(text_uttids),steps)] #
-    windows_shape=(steps,)
-    sublists_contents = view_as_windows(np.array(text_contents),windows_shape,step=steps) # 2-dim list, the time it consumes is almost a constant.
-                                                                                      # it is very important for cut big list into small list.
-                                                                                      # length of last elements  may be  less than `steps`
-    logger.info(f"audio utts nums: text utts nums: 1: {len(sublists_contents)} raw data ratio! ") 
-    idx = np.random.choice(np.arange(len(sublists_contents)))  ## np.arange(nums), is nums is very big, so np.arange(nums) will consum big time.
-    text_contents = sublists_contents[idx] # List[str] its length is normal number, not very big number.
-    
-    return text_contents 
+    steps = len(audio_names)
+    # sublist = [text_contents[i:i+steps] for i in range(0,len(text_uttids),steps)] #
+    windows_shape = (steps,)
+    sublists_contents = view_as_windows(
+        np.array(text_contents), windows_shape, step=steps
+    )  # 2-dim list, the time it consumes is almost a constant.
+    # it is very important for cut big list into small list.
+    # length of last elements  may be  less than `steps`
+    logger.info(
+            f"model actual using text utterance nums: {steps}, it accounts for a {len(sublists_contents)} of the total text ! "
+    )
+    idx = np.random.choice(
+        np.arange(len(sublists_contents))
+    )  ## np.arange(nums), is nums is very big, so np.arange(nums) will consum big time.
+    logger.info(f"after cut text, choice index: {idx}!!! ")
+    text_contents = sublists_contents[
+        idx
+    ]  # List[str] its length is normal number, not very big number.
+
+    return text_contents
 
 
-def load_post_text(text_contents: List[str], label_path: str, inds: List[int], tot: int, sizes: List[int])-> Tuple[List[int],List[str]]:
-    labels = get_pre_labels(label_path, inds, tot, sizes)
+def load_post_text(
+    text_contents: List[str], labels: List[str]
+) -> Tuple[List[int], List[str]]:
+    # labels = get_pre_labels(label_path, inds, tot, sizes)
     new_utts = []
-    uttids=[]
+    uttids = []
     list_id = np.arange(len(text_contents))
     for i, label in enumerate(labels):
         ## random select one utterance text
         idx = np.random.choice(list_id)
-        utt = text_contents[idx] 
-        new_utt = prepare_multi_modal_text_utt(label,utt)
+        utt = text_contents[idx]
+        new_utt = prepare_multi_modal_text_utt(label, utt)
         new_utts.append(new_utt)
         uttids.append(i)
-    
+
     logger.info(f"model input data utt nums: {len(uttids)}!")
     return uttids, new_utts
 
 
+def post_final_audio_text(
+    label_path,
+    manifest_path,
+    max_keep_sample_size,
+    min_keep_sample_size,
+    manifest_text_path,
+    max_keep_phone_size,
+    min_keep_phone_size,
+    text_ratio,
+):
+    ## step1: load text
+    ## step0: load audio
+    audio_root, audio_names, inds, tot, sizes = load_audio(
+        manifest_path, max_keep_sample_size, min_keep_sample_size
+    )
+    text_uttids, text_contents = load_text(
+        manifest_text_path, max_keep_phone_size, min_keep_phone_size
+    )
 
+    if len(text_contents) > len(audio_names) and text_ratio > 1:
+        ## repeat audio
+        audio_namess, audio_indss, audio_sizess, tots = repeat_audio(
+            audio_names, audio_inds, audio_sizes, tot, text_ratio
+        )
+        ## repeat label
+        labels = get_pre_labels(label_path[0], inds, tot, sizes)
+        labels = repeat_label(labels, text_ratio)
+        ## prepare text
+        text_contents = get_small_list_from_big_list(text_contents, audio_namess)
+        text_uttids, text_contents = load_post_text(text_contents, labels)
+    # elif len(text_contents) > len(self.audio_names) and text_ratio==1:
+    elif len(text_contents) > len(audio_names) and text_ratio == 1:
+        audio_namess = audio_names
+        audio_indss = inds
+        audio_sizess = sizes
+        tots = tot
+        text_contents = get_small_list_from_big_list(text_contents, audio_namess)
+        labels = get_pre_labels(label_path[0], inds, tot, sizes)
+        text_uttids, text_contents = load_post_text(text_contents, labels)
 
+    else:
+        audio_namess = audio_names
+        audio_indss = inds
+        audio_sizess = sizes
+        tots = tot
+        labels = get_pre_labels(label_path[0], inds, tot, sizes)
+        text_uttids, text_contents = load_post_text(text_contents, labels)
 
+    return (
+        audio_root,
+        audio_namess,
+        audio_indss,
+        audio_sizess,
+        tots,
+        labels,
+        text_contents,
+    )
 
 
 def verify_label_lengths(
     audio_sizes,
     audio_rate,
-    label_path,
+    labels,
     label_rate,
     inds,
     tot,
@@ -232,10 +339,8 @@ def verify_label_lengths(
         logger.info(f"{label_path} is sequence label. skipped")
         return
 
-    with open(label_path) as f:
-        lengths = [len(line.rstrip().split()) for line in f] ## it is the total lines of audio label.
-        assert len(lengths) == tot
-        lengths = [lengths[i] for i in inds]  ## it remove unuseful audio lable base audio uttid index.
+    lengths = [len(line.rstrip().split()) for line in labels]
+    assert len(lengths) == tot
     num_invalid = 0
     for i, ind in enumerate(inds):
         dur_from_audio = audio_sizes[i] / audio_rate
@@ -263,10 +368,11 @@ def verify_label_lengths(
 ## 2. different from av-hubert, our fusion style is either residual cross attention or add.
 
 ## Voicelm2
-## The core of it is to determine the number of unpaired text sentences based on the number of unpaired audio label sentences.
-# This version of the dataset is as follows: 
-# 1. In data preparation, there is no requirement that the number of unpaired text and unpaired audio sentences be equal, or not equal. 
-# 2. At model input, the number of unpaired text sentences is equal to the number of unpaired audio sentences. 
+## The core of it is to determine the number of unpaired audio label sentences based on the number of unpaired text  sentences.
+## This allows training with several times more text than audio.
+# This version of the dataset is as follows:
+# 1. In data preparation, there is no requirement that the number of unpaired text and unpaired audio sentences be equal, or not equal.
+# 2. At model input, the number of unpaired text sentences is equal to the number of unpaired audio sentences.
 #    The number of sentences must be equal to the number of unpaired audio sentences.
 
 ## detail steps:
@@ -276,9 +382,9 @@ def verify_label_lengths(
 ## step4: get_pre_labels(), filter unuse label based on audio utt index, get labels list ,evey element is tensor type utt label.
 ## step5: get_small_list_from_big_list(), cut text_contents list into small list(equal to audio utterances)
 ## step6: load_post_text(), We construct multimodal utterance in raw text phone code based on audio pesudo label.
+## step7: post_final_audio_text(), get more audio, andio label, multi-modal text sequences than raw audio utterances or equal to raw audio utterances.
 
-
-class Voicelm2Dataset1(FairseqDataset):
+class Voicelm2DatasetBigtext(FairseqDataset):
     def __init__(
         self,
         manifest_path: str,
@@ -299,7 +405,7 @@ class Voicelm2Dataset1(FairseqDataset):
         shuffle: bool = True,
         pad_audio: bool = False,
         normalize: bool = False,
-        store_labels: bool = False,
+        #store_labels: bool = False,
         random_crop: bool = False,
         single_target: bool = False,
         is_s2s: bool = False,  ## it is used to determine ctc finetune or cross entropy loss finetune.
@@ -307,27 +413,33 @@ class Voicelm2Dataset1(FairseqDataset):
         ## otherwise, target text is origanized for ctc loss fintune.
         text_drop: bool = False,  # if it is true, speech and paired text are used to finetune model, unpair text is missing.
         # if it is false, speech and paired code label and unpair text code are used to pretrain model.
-
-        pair_data: bool = False, # if false, it means speech and text is unpaired , otherwise it is paired
+        text_ratio: int = 1,  # more than 1, it means repeat audio utterances to  get the number of text utterances.
+        pair_data: bool = False,  # if false, it means speech and text is unpaired , otherwise it is paired
     ):
-        self.audio_root, self.audio_names, inds, tot, self.sizes = load_audio(
-            manifest_path, max_keep_sample_size, min_keep_sample_size
-        )
-         
-        if not text_drop and manifest_text_path is not None:
-            text_uttids, text_contents = load_text(
-                manifest_text_path, max_keep_phone_size, min_keep_phone_size
+        if not self.text_drop:
+            (
+                self.audio_root,
+                self.audio_names,
+                self.labels,
+                self.text_contents,
+                self.audio_indss,
+                self.audio_sizess,
+                self.tots,
+            ) = post_final_audio_text(
+                label_path,
+                manifest_path,
+                max_keep_sample_size,
+                min_keep_sample_size,
+                manifest_text_path,
+                max_keep_phone_size,
+                min_keep_phone_size,
+                text_ratio,
             )
-            if len(text_contents) > len(self.audio_names):
-                text_contents = get_small_list_from_big_list(text_contents, self.audio_names) 
-                text_uttids, text_contents =  load_post_text(text_contents,label_paths[0], inds, tot, self.sizes)
-            else:
-                text_uttids, text_contents =  load_post_text(text_contents,label_paths[0], inds, tot, self.sizes)
         else:
-            text_uttids=None
-            text_contents=None
+            self.text_contents=None
+
         self.manifest_text_path = manifest_text_path
-        self.text_uttids = text_uttids
+        #self.text_uttids = text_uttids
         self.text_contents = text_contents
         self.sample_rate = sample_rate
         self.shuffle = shuffle
@@ -341,30 +453,17 @@ class Voicelm2Dataset1(FairseqDataset):
         self.single_target = single_target
         self.is_s2s = is_s2s
         self.text_drop = text_drop
-        self.pair_data = pair_data 
-
-
-
-
+        self.pair_data = pair_data
 
         self.label_rates = (
             [label_rates for _ in range(len(label_paths))]
             if isinstance(label_rates, float)
             else label_rates
         )
-        self.store_labels = store_labels
-        if store_labels:
-            self.label_list = [load_label(p, inds, tot) for p in label_paths]
-        else:
-            self.label_paths = label_paths
-            #logger.info(f"label_paths: {label_paths} in __init__")
-            self.label_offsets_list = [
-                load_label_offset(p, inds, tot) for p in label_paths
-            ]
         assert label_processors is None or len(label_processors) == self.num_labels
         for label_path, label_rate in zip(label_paths, self.label_rates):
             verify_label_lengths(
-                self.sizes, sample_rate, label_path, label_rate, inds, tot
+                self.sizess, sample_rate, self.labels, label_rate, self.indss, self.tots
             )
 
         self.max_sample_size = (
@@ -375,8 +474,7 @@ class Voicelm2Dataset1(FairseqDataset):
         logger.info(
             f"pad_audio={pad_audio}, random_crop={random_crop}, "
             f"normalize={normalize}, max_sample_size={self.max_sample_size},"
-            f"label_rates={self.label_rates[0]}, is_s2s={self.is_s2s}"
-            f"seqs2seq data={self.label_rates[0]<0}."
+            f"seqs2seq data={self.is_s2s}."
         )
 
     def get_audio(self, index):
@@ -395,7 +493,6 @@ class Voicelm2Dataset1(FairseqDataset):
         wav = self.postprocess(wav, cur_sample_rate)
         return wav
 
-
     def get_text(self, index):
         utt = self.text_contents[index]
         ## encode every  text utterances into tensor
@@ -403,16 +500,8 @@ class Voicelm2Dataset1(FairseqDataset):
             utt = self.text_processors[0](utt)
         return utt
 
-
     def get_label(self, index, label_idx):
-        if self.store_labels:
-            label = self.label_list[label_idx][index]
-        else:
-            with open(self.label_paths[label_idx]) as f:
-                offset_s, offset_e = self.label_offsets_list[label_idx][index]
-                f.seek(offset_s)
-                label = f.read(offset_e - offset_s)
-
+        label = self.labels[index]
         if self.label_processors is not None:
             label = self.label_processors[label_idx](label)
         return label
@@ -420,22 +509,19 @@ class Voicelm2Dataset1(FairseqDataset):
     def get_labels(self, index):
         return [self.get_label(index, i) for i in range(self.num_labels)]
 
-         
-
     def __getitem__(self, index):
         wav = self.get_audio(index)
-        if self.text_uttids is not None:
+        if self.text_contents is not None:
             text = self.get_text(index)
-            #logger.info(f"__getitem__:text: {text}, index: {index}")
+            # logger.info(f"__getitem__:text: {text}, index: {index}")
             labels = self.get_labels(index)
             return {"id": index, "source": wav, "text": text, "label_list": labels}
         else:
             labels = self.get_labels(index)
             return {"id": index, "source": wav, "label_list": labels}
 
-
     def __len__(self):
-        return len(self.sizes)
+        return len(self.sizess)
 
     def crop_to_max_size(self, wav, target_size):
         size = len(wav)
@@ -465,10 +551,12 @@ class Voicelm2Dataset1(FairseqDataset):
         collated_audios, padding_mask, audio_starts = self.collater_audio(
             audios, audio_size
         )
-        #texts = [[s["text"] for s in samples]]
+        # texts = [[s["text"] for s in samples]]
         # logger.info(f"in collater, texts lengths : {len(texts)}, texts : {texts}") # texts lengths=1,
-        if not self.text_drop and self.manifest_text_path is not None:  ## pretrain mode or finetune mode with unpaired text code
-            #logger.info(f"self.text_drop: {self.text_drop}, manifest_text_path: {self.manifest_text_path}")
+        if (
+            not self.text_drop and self.manifest_text_path is not None
+        ):  ## pretrain mode or finetune mode with unpaired text code
+            # logger.info(f"self.text_drop: {self.text_drop}, manifest_text_path: {self.manifest_text_path}")
             texts = [[s["text"] for s in samples]]
             collated_texts, text_lengths_list, text_ntokens_list = self.collater_text(
                 texts, audio_size, audio_starts
@@ -649,8 +737,8 @@ class Voicelm2Dataset1(FairseqDataset):
 
     def size(self, index):
         if self.pad_audio:
-            return self.sizes[index]
-        return min(self.sizes[index], self.max_sample_size)
+            return self.sizess[index]
+        return min(self.sizess[index], self.max_sample_size)
 
     def ordered_indices(self):
         if self.shuffle:
@@ -658,7 +746,7 @@ class Voicelm2Dataset1(FairseqDataset):
         else:
             order = [np.arange(len(self))]
 
-        order.append(self.sizes)
+        order.append(self.sizess)
         return np.lexsort(order)[::-1]
 
     def postprocess(self, wav, cur_sample_rate):
@@ -673,5 +761,3 @@ class Voicelm2Dataset1(FairseqDataset):
             with torch.no_grad():
                 wav = F.layer_norm(wav, wav.shape)
         return wav
-
-
