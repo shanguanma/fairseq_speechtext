@@ -106,27 +106,29 @@ hydra:
   overrides:
     hydra:
     - hydra.run.dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/voicelm/voicelm2
-    - hydra.job.name=/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40/pretrain
+    - hydra.job.name=/mntnfs/lee_data1/maduo/exp/finetune/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40_100h_asr_finetune_use_best_checkpoint_text_drop_true_feature_fuse_wo_freeze/finetune
     task:
     - task.data=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
     - task.label_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech//40M_librispeech_lm_monophncode_librispeech_frame_monophncode_using_wav2vec-u2_model
-    - task.labels=["speechphncode","textphncode"]
-    - model.label_rate=50
+    - task.labels=["ltr","textphncode"]
+    - task.text_drop=true
+    - model.w2v_path=/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40/checkpoint_best.pt
+    - model.feature_fuse_freeze=false
     - common.user_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/voicelm/voicelm2
-    - dataset.train_subset=train-960
-    - dataset.valid_subset='dev-other,dev-clean'
-    - distributed_training.distributed_world_size=4
+    - dataset.train_subset=train-clean-100
+    - dataset.valid_subset='dev-other'
+    - distributed_training.distributed_world_size=2
     - distributed_training.distributed_port=-1
     - distributed_training.ddp_backend=legacy_ddp
-    - optimization.update_freq=[8]
-    - common.tensorboard_logdir=/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40
-    - checkpoint.save_dir=/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40
+    - optimization.update_freq=[4]
+    - common.tensorboard_logdir=/mntnfs/lee_data1/maduo/exp/finetune/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40_100h_asr_finetune_use_best_checkpoint_text_drop_true_feature_fuse_wo_freeze
+    - checkpoint.save_dir=/mntnfs/lee_data1/maduo/exp/finetune/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40_100h_asr_finetune_use_best_checkpoint_text_drop_true_feature_fuse_wo_freeze
   job:
-    name: /mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40/pretrain
-    override_dirname: checkpoint.save_dir-/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40__common.tensorboard_logdir-/mntnfs/lee_data1/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40__common.user_dir-/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/voicelm/voicelm2__dataset.train_subset-train-960__dataset.valid_subset-'dev-other,dev-clean'__distributed_training.ddp_backend-legacy_ddp__distributed_training.distributed_port--1__distributed_training.distributed_world_size-4__model.label_rate-50__optimization.update_freq-[8]__task.labels-["speechphncode","textphncode"]
+    name: /mntnfs/lee_data1/maduo/exp/finetune/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40_100h_asr_finetune_use_best_checkpoint_text_drop_true_feature_fuse_wo_freeze/finetune
+    override_dirname: checkpoint.save_dir-/mntnfs/lee_data1/maduo/exp/finetune/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40_100h_asr_finetune_use_best_checkpoint_text_drop_true_feature_fuse_wo_freeze__common.tensorboard_logdir-/mntnfs/lee_data1/maduo/exp/finetune/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40_100h_asr_finetune_use_best_checkpoint_text_drop_true_feature_fuse_wo_freeze__common.user_dir-/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/voicelm/voicelm2__distributed_training.ddp_backend-legacy_ddp__distributed_training.distributed_port--1__distributed_training.distributed_world_size-2__model.feature_fuse_freeze-false__optimization.update_freq-[4]__task.labels-["ltr","textphncode"]__task.text_drop-true
     id: ???
     num: ???
-    config_name: voicelm2_base_librispeech_flash_attention_lr4e_4_1:40
+    config_name: voicelm2_base_100h_ctc_ltr
     env_set: {}
     env_copy: []
     config:
@@ -137,6 +139,11 @@ hydra:
         - run
         - task.data
         - task.label_dir
+        - model.w2v_path
+        - dataset.train_subset
+        - dataset.valid_subset
+        - criterion.wer_kenlm_model
+        - criterion.wer_lexicon
   runtime:
     version: 1.0.7
     cwd: /mntnfs/lee_data1/maduo

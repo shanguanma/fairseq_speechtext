@@ -171,7 +171,9 @@ class Voicelm2PretrainingConfig(FairseqDataclass):
 
     is_s2s: bool = field(
         default=False,
-        metadata={"help": "if true, seq2seq fine-tuning only ,currently it is not support, else ctc finetune only"},
+        metadata={
+            "help": "if true, seq2seq fine-tuning only ,currently it is not support, else ctc finetune only"
+        },
     )
     tokenizer_bpe_name: Optional[str] = field(
         default=None, metadata={"help": "tokenizer model name"}
@@ -400,7 +402,34 @@ class Voicelm2PretrainingTask(FairseqTask):
                     text_drop=self.cfg.text_drop,  ## whether unpaired text is used to finetune
                 )
         else:  ## pretrain case
-            self.datasets[split] = Voicelm2Dataset1(
+            #            self.datasets[split] = Voicelm2Dataset1(
+            #                manifest,
+            #                manifest_text_path=path_text,
+            #                sample_rate=self.cfg.sample_rate,
+            #                label_paths=path_label,
+            #                label_rates=self.cfg.label_rate,
+            #                pad_list=pad_list,
+            #                eos_list=eos_list,
+            #                text_seq=self.cfg.text_seq,
+            #                label_processors=speech_procs,
+            #                text_processors=text_procs,
+            #                max_keep_sample_size=self.cfg.max_sample_size,
+            #                min_keep_sample_size=self.cfg.min_sample_size,
+            #                max_sample_size=self.cfg.max_sample_size,
+            #                max_keep_phone_size=self.cfg.max_phone_size,
+            #                min_keep_phone_size=self.cfg.min_phone_size,
+            #                pad_audio=self.cfg.pad_audio,
+            #                normalize=self.cfg.normalize,
+            #                store_labels=False,
+            #                random_crop=self.cfg.random_crop,
+            #                single_target=self.cfg.single_target,
+            #                is_s2s=False,
+            #                text_drop=False,
+            #                pair_data=self.cfg.pair_data,
+            #            )
+            ## newest dataset, contain before all case, finally will rename Voicelm2Dataset,
+            ## next will finish design text part loss,and second iter.
+            self.datasets[split] = Voicelm2DatasetBigtext(
                 manifest,
                 manifest_text_path=path_text,
                 sample_rate=self.cfg.sample_rate,
@@ -418,41 +447,13 @@ class Voicelm2PretrainingTask(FairseqTask):
                 min_keep_phone_size=self.cfg.min_phone_size,
                 pad_audio=self.cfg.pad_audio,
                 normalize=self.cfg.normalize,
-                store_labels=False,
                 random_crop=self.cfg.random_crop,
                 single_target=self.cfg.single_target,
                 is_s2s=False,
                 text_drop=False,
+                text_ratio=self.cfg.text_ratio,
                 pair_data=self.cfg.pair_data,
             )
-            ## newest dataset, contain before all case, finally will rename Voicelm2Dataset,
-            ## next will finish design text part loss,and second iter.
-
-    #             self.datasets[split] = Voicelm2DatasetBigtext(
-    #                manifest,
-    #                manifest_text_path=path_text,
-    #                sample_rate=self.cfg.sample_rate,
-    #                label_paths=path_label,
-    #                label_rates=self.cfg.label_rate,
-    #                pad_list=pad_list,
-    #                eos_list=eos_list,
-    #                text_seq=self.cfg.text_seq,
-    #                label_processors=speech_procs,
-    #                text_processors=text_procs,
-    #                max_keep_sample_size=self.cfg.max_sample_size,
-    #                min_keep_sample_size=self.cfg.min_sample_size,
-    #                max_sample_size=self.cfg.max_sample_size,
-    #                max_keep_phone_size=self.cfg.max_phone_size,
-    #                min_keep_phone_size=self.cfg.min_phone_size,
-    #                pad_audio=self.cfg.pad_audio,
-    #                normalize=self.cfg.normalize,
-    #                random_crop=self.cfg.random_crop,
-    #                single_target=self.cfg.single_target,
-    #                is_s2s=False,
-    #                text_drop=False,
-    #                text_ratio=self.cfg.text_ratio,
-    #                pair_data=self.cfg.pair_data,
-    #            )
 
     def max_positions(self) -> Tuple[int, int]:
         return (sys.maxsize, sys.maxsize)
