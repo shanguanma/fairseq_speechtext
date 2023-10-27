@@ -140,7 +140,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
    #  4.7039   11.8356     5.0612     11.5794
 fi
 
-## using complete 40M librispeech_lm corpus to train voicelm2
+## for debug
 if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ];then
    echo "iter: pretrain voicelm2 on librilm monophncode and librispeech monophncode from w2vu2-model "
    echo "training on 400k steps for train-960 of librispeech"
@@ -182,5 +182,56 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ];then
             hydra.run.dir=$fairseq_dir/examples/voicelm/voicelm2\
             hydra.job.name=$exp_dir/pretrain
 ### 4RTX3090: training about  day
+###           200steps: about  minites
+fi
+
+## for debug
+## 2023-10-26 From the ultra-large-scale unpaired text, we obtain the number of text sentences has  more than several time  the number of raw audio sentences
+## and The number of text and audio sentences is equal in the model input, which means that the original audio sentence will be repeated many times.
+##
+if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ];then
+   echo "iter: pretrain voicelm2 on librilm monophncode and librispeech monophncode from w2vu2-model "
+   echo "training on 400k steps for train-960 of librispeech"
+   #fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   #tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   #dir=/mntnfs/lee_data1/maduo/exp
+   #label_dir=$tsv_dir/40M_librispeech_lm_monophncode_librispeech_frame_monophncode_using_wav2vec-u2_model
+   
+   fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   tsv_dir=/workspace2/maduo/dataset/format/librispeech/
+   dir=/workspace2/maduo/exp
+   label_dir=$tsv_dir/40M_librispeech_lm_monophncode_librispeech_frame_monophncode_using_wav2vec-u2_model
+
+   config_dir=$fairseq_dir/examples/voicelm/voicelm2
+   model_name=pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_debug
+   #model_name=pretrain_on_base_voicelm2_2gpu_16update_960h_400k_update_flash_attention_debug
+   exp_dir=$dir/pretrain/${model_name}
+   mkdir -p $exp_dir
+   #world_size=4
+   #update_freq=8
+   world_size=2
+   update_freq=16
+
+    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   CUDA_VISIBLE_DEVICES=5,6  python $fairseq_dir/fairseq_cli/hydra_train.py \
+            --config-dir $config_dir/config/pretrain \
+            --config-name voicelm2_base_librispeech_flash_attention_lr4e_4_text_ratio \
+            task.data=$label_dir\
+            task.label_dir=$label_dir\
+            task.labels='["speechphncode","textphncode"]' \
+            task.text_ratio=5\
+            model.label_rate=50\
+            common.user_dir=$fairseq_dir/examples/voicelm/voicelm2\
+            dataset.train_subset=train-960\
+            dataset.valid_subset=\'dev-other_2864,dev-clean\'\
+            distributed_training.distributed_world_size=${world_size}\
+            distributed_training.distributed_port=-1\
+            distributed_training.ddp_backend=legacy_ddp\
+            optimization.update_freq=[${update_freq}]\
+            common.tensorboard_logdir=$exp_dir\
+            checkpoint.save_dir=$exp_dir\
+            hydra.run.dir=$fairseq_dir/examples/voicelm/voicelm2\
+            hydra.job.name=$exp_dir/pretrain
+### 4A100: training about  day
 ###           200steps: about  minites
 fi

@@ -46,19 +46,61 @@ def load_audio(manifest_path, max_keep, min_keep):
                 n_long += 1
             else:
                 names.append(items[0])
-                inds.append(
-                    ind
-                )  ## inds is very import , it is used to index audio label.
+                inds.append(ind)   ## inds is very import , it is used to index audio label.
                 sizes.append(sz)
     tot = ind + 1
     logger.info(
-        (
+        (   f"load audio data from: {manifest_path}, "
             f"max_keep={max_keep}, min_keep={min_keep}, "
-            f"loaded {len(names)}, skipped {n_short} short and {n_long} long, "
-            f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}"
+            f"tot: {tot}, loaded {len(names)}, skipped {n_short} short and {n_long} long, "
+            f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)} "
+            f"audio_contents len: {len(names)}, "
+            #f"in load_audio() inds: {inds}"
+            #f"actual use {len(names)} tot: {tot} "
         )
     )
     return root, names, inds, tot, sizes
+#def load_audio(manifest_path, max_keep, min_keep):
+#    #logger.info(f"manifest_text_path: {manifest_text_path}")
+#    audio_contents = []
+#    audio_uttids = []
+#    sizes = []
+#    n_long = 0
+#    n_short = 0
+#    with open(manifest_path, "r") as f:#, open("/workspace2/maduo/file_raw1.txt",'w')as f1:
+#        #root = f.readline().strip()
+#        for i, line in enumerate(f):
+#            if i == 0:
+#                root = line.strip()
+#            else:
+#                items = line.strip().split()
+#                assert len(items)==2, f"items: {items}"
+#                #sz = len(items.split())
+#                sz = int(items[1])
+#                audio_content=items[0]
+#                if min_keep is not None and sz < min_keep:
+#                    n_short += 1
+#                elif max_keep is not None and sz > max_keep:
+#                    n_long += 1
+#                else:
+#                    #f1.write(f"{audio_content}\n")
+#                    audio_uttids.append(i-1)
+#                    audio_contents.append(audio_content)
+#                    sizes.append(sz)
+#    tot = i 
+#    logger.info(
+#        f"load audio data from: {manifest_path} "
+#        f"max_keep={max_keep}, min_keep={min_keep},  "
+#        f"loaded {len(audio_uttids)} audio, skipped {n_short} short and {n_long} long "
+#        f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}  audio_contents len: {len(audio_contents)}, " 
+#        f"audios: {audio_contents} "
+#        f"actual use {len(audio_contents)} tot: {tot} "
+#    )
+#    #with open("/workspace2/maduo/file1.txt",'w')as f:
+#    #    for line in audio_contents:
+#    #        f.write(f"{line}\n")
+#    return root, audio_contents, audio_uttids, tot, sizes
+
 
 
 def repeat_audio(
@@ -91,7 +133,7 @@ def repeat_audio(
     # return audio_namess
 
 
-def repeat_label(labels: List[Tensor], text_ratio: int) -> List[Tensor]:
+def repeat_label(labels: List[str], text_ratio: int) -> List[str]:
     labelss = []
     for i in range(text_ratio):
         labelss.append(labels)
@@ -100,7 +142,7 @@ def repeat_label(labels: List[Tensor], text_ratio: int) -> List[Tensor]:
 
 
 def load_text(manifest_text_path, max_keep, min_keep):
-    logger.info(f"manifest_text_path: {manifest_text_path}")
+    #logger.info(f"manifest_text_path: {manifest_text_path}")
     text_contents = []
     text_uttids = []
     sizes = []
@@ -119,9 +161,11 @@ def load_text(manifest_text_path, max_keep, min_keep):
                 text_contents.append(items)
                 sizes.append(sz)
     logger.info(
+        f"load text data from: {manifest_text_path} "
         f"max_keep={max_keep}, min_keep={min_keep},  "
         f"loaded {len(text_uttids)} texts, skipped {n_short} short and {n_long} long "
         f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}"
+        f"actual use {len(text_contents)}"
     )
     return text_uttids, text_contents
 
@@ -152,13 +196,17 @@ def load_label_offset(label_path, inds, tot):
     [0, 786, 2150, 2930, 3891, 4775, 5995, 6428, 7341, 7689, 8996]
     [(0, 786), (2150, 2930), (3891, 4775), (6428, 7341), (7341, 7689), (7689, 8996)]
     """
-    logger.info(f"label_path:{label_path}")
+    logger.info(f"load audio label data from :{label_path}")
     with open(label_path) as f:
         code_lengths = [len(line.encode("utf-8")) for line in f]
         assert (
             len(code_lengths) == tot
         ), f"number of labels does not match ({len(code_lengths)} != {tot})"
         offsets = list(itertools.accumulate([0] + code_lengths))
+        #logger.info(f"load_label_offset(): inds len: {len(inds)},tot: {tot}, offsets len: {len(offsets)}")
+        #logger.info(f"inds len: {len(inds)}, offsets len: {len(offsets)}")
+        #logger.info(f"inds: {inds}")
+        #logger.info(f"offsets: {offsets}")
         offsets = [(offsets[i], offsets[i + 1]) for i in inds]
     return offsets
 
@@ -268,7 +316,7 @@ def load_post_text(
 
 
 def post_final_audio_text(
-    label_path,
+    label_paths,
     manifest_path,
     max_keep_sample_size,
     min_keep_sample_size,
@@ -287,32 +335,37 @@ def post_final_audio_text(
     )
 
     if len(text_contents) > len(audio_names) and text_ratio > 1:
+        logger.info(f"len(text_contents) > len(audio_names) and text_ratio > 1!!! ")
         ## repeat audio
         audio_namess, audio_indss, audio_sizess, tots = repeat_audio(
             audio_names, audio_inds, audio_sizes, tot, text_ratio
         )
         ## repeat label
-        labels = get_pre_labels(label_path[0], inds, tot, sizes)
+        labels = get_pre_labels(label_paths[0], inds, tot, sizes)
         labels = repeat_label(labels, text_ratio)
+        #logger.info(f"labels part: {labels[:3]}")
         ## prepare text
         text_contents = get_small_list_from_big_list(text_contents, audio_namess)
         text_uttids, text_contents = load_post_text(text_contents, labels)
-    # elif len(text_contents) > len(self.audio_names) and text_ratio==1:
     elif len(text_contents) > len(audio_names) and text_ratio == 1:
+        logger.info(f"len(text_contents) > len(audio_names) and text_ratio == 1!!!!")
         audio_namess = audio_names
         audio_indss = inds
         audio_sizess = sizes
         tots = tot
         text_contents = get_small_list_from_big_list(text_contents, audio_namess)
-        labels = get_pre_labels(label_path[0], inds, tot, sizes)
+        labels = get_pre_labels(label_paths[0], inds, tot, sizes)
+        #logger.info(f"labels part: {labels[:3]}")
         text_uttids, text_contents = load_post_text(text_contents, labels)
 
     else:
+        logger.info(f"len(text_contents) < len(audio_names)!!!")
         audio_namess = audio_names
         audio_indss = inds
         audio_sizess = sizes
         tots = tot
-        labels = get_pre_labels(label_path[0], inds, tot, sizes)
+        labels = get_pre_labels(label_paths[0], inds, tot, sizes)
+        #logger.info(f"labels part: {labels[:3]}")
         text_uttids, text_contents = load_post_text(text_contents, labels)
 
     return (
@@ -339,8 +392,9 @@ def verify_label_lengths(
         logger.info(f"{label_path} is sequence label. skipped")
         return
 
-    lengths = [len(line.rstrip().split()) for line in labels]
-    assert len(lengths) == tot
+    lengths = [len(line.strip().split()) for line in labels]
+    
+    assert len(lengths) == len(inds),f"len(lengths): {len(lengths)}, len(inds): {len(inds)}"
     num_invalid = 0
     for i, ind in enumerate(inds):
         dur_from_audio = audio_sizes[i] / audio_rate
@@ -416,17 +470,18 @@ class Voicelm2DatasetBigtext(FairseqDataset):
         text_ratio: int = 1,  # more than 1, it means repeat audio utterances to  get the number of text utterances.
         pair_data: bool = False,  # if false, it means speech and text is unpaired , otherwise it is paired
     ):
+        self.text_drop = text_drop
         if not self.text_drop:
             (
                 self.audio_root,
-                self.audio_names,
-                self.labels,
-                self.text_contents,
+                self.audio_namess,
                 self.audio_indss,
                 self.audio_sizess,
                 self.tots,
+                self.labels,
+                self.text_contents,
             ) = post_final_audio_text(
-                label_path,
+                label_paths,
                 manifest_path,
                 max_keep_sample_size,
                 min_keep_sample_size,
@@ -440,7 +495,7 @@ class Voicelm2DatasetBigtext(FairseqDataset):
 
         self.manifest_text_path = manifest_text_path
         #self.text_uttids = text_uttids
-        self.text_contents = text_contents
+        #self.text_contents = text_contents
         self.sample_rate = sample_rate
         self.shuffle = shuffle
         self.random_crop = random_crop
@@ -463,7 +518,7 @@ class Voicelm2DatasetBigtext(FairseqDataset):
         assert label_processors is None or len(label_processors) == self.num_labels
         for label_path, label_rate in zip(label_paths, self.label_rates):
             verify_label_lengths(
-                self.sizess, sample_rate, self.labels, label_rate, self.indss, self.tots
+                self.audio_sizess, sample_rate, self.labels, label_rate, self.audio_indss, self.tots
             )
 
         self.max_sample_size = (
@@ -521,7 +576,7 @@ class Voicelm2DatasetBigtext(FairseqDataset):
             return {"id": index, "source": wav, "label_list": labels}
 
     def __len__(self):
-        return len(self.sizess)
+        return len(self.audio_sizess)
 
     def crop_to_max_size(self, wav, target_size):
         size = len(wav)
@@ -737,8 +792,8 @@ class Voicelm2DatasetBigtext(FairseqDataset):
 
     def size(self, index):
         if self.pad_audio:
-            return self.sizess[index]
-        return min(self.sizess[index], self.max_sample_size)
+            return self.audio_sizess[index]
+        return min(self.audio_sizess[index], self.max_sample_size)
 
     def ordered_indices(self):
         if self.shuffle:
@@ -746,7 +801,7 @@ class Voicelm2DatasetBigtext(FairseqDataset):
         else:
             order = [np.arange(len(self))]
 
-        order.append(self.sizess)
+        order.append(self.audio_sizess)
         return np.lexsort(order)[::-1]
 
     def postprocess(self, wav, cur_sample_rate):
