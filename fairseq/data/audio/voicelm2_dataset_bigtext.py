@@ -327,7 +327,7 @@ def post_final_audio_text(
 ):
     ## step1: load text
     ## step0: load audio
-    audio_root, audio_names, inds, tot, sizes = load_audio(
+    audio_root, audio_names, audio_inds, tot, audio_sizes = load_audio(
         manifest_path, max_keep_sample_size, min_keep_sample_size
     )
     text_uttids, text_contents = load_text(
@@ -341,7 +341,7 @@ def post_final_audio_text(
             audio_names, audio_inds, audio_sizes, tot, text_ratio
         )
         ## repeat label
-        labels = get_pre_labels(label_paths[0], inds, tot, sizes)
+        labels = get_pre_labels(label_paths[0], audio_inds, tot, audio_sizes)
         labels = repeat_label(labels, text_ratio)
         #logger.info(f"labels part: {labels[:3]}")
         ## prepare text
@@ -350,21 +350,21 @@ def post_final_audio_text(
     elif len(text_contents) > len(audio_names) and text_ratio == 1:
         logger.info(f"len(text_contents) > len(audio_names) and text_ratio == 1!!!!")
         audio_namess = audio_names
-        audio_indss = inds
-        audio_sizess = sizes
+        audio_indss = audio_inds
+        audio_sizess = audio_sizes
         tots = tot
         text_contents = get_small_list_from_big_list(text_contents, audio_namess)
-        labels = get_pre_labels(label_paths[0], inds, tot, sizes)
+        labels = get_pre_labels(label_paths[0], audio_inds, tot, audio_sizes)
         #logger.info(f"labels part: {labels[:3]}")
         text_uttids, text_contents = load_post_text(text_contents, labels)
 
     else:
         logger.info(f"len(text_contents) < len(audio_names)!!!")
         audio_namess = audio_names
-        audio_indss = inds
-        audio_sizess = sizes
+        audio_indss = audio_inds
+        audio_sizess = audio_sizes
         tots = tot
-        labels = get_pre_labels(label_paths[0], inds, tot, sizes)
+        labels = get_pre_labels(label_paths[0], audio_inds, tot, audio_sizes)
         #logger.info(f"labels part: {labels[:3]}")
         text_uttids, text_contents = load_post_text(text_contents, labels)
 
