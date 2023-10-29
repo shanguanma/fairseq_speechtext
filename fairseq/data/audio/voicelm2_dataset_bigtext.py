@@ -535,7 +535,7 @@ class Voicelm2DatasetBigtext(FairseqDataset):
     def get_audio(self, index):
         import soundfile as sf
 
-        wav_path = os.path.join(self.audio_root, self.audio_names[index])
+        wav_path = os.path.join(self.audio_root, self.audio_namess[index])
         _path, slice_ptr = parse_path(wav_path)
         if len(slice_ptr) == 0:
             wav, cur_sample_rate = sf.read(_path)
