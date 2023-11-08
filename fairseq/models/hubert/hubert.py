@@ -464,6 +464,8 @@ class HubertModel(BaseFairseqModel):
         # x: (B, T, D), float
         # padding_mask: (B, T), bool
         # mask_indices: (B, T), bool
+        ## md note: _ means: (attn, layer_result), attn: attn representation of specify layer, layer_result: it is list, contains output of specify layer
+        ## if layer is not none: then x is output of specify layer. 
         x, _ = self.encoder(
             x,
             padding_mask=padding_mask,

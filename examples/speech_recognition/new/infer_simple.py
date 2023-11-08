@@ -333,7 +333,7 @@ def main(args, task=None, model_state=None):
     ## get audio uttid list by order
     audio_file=os.path.join(args.data, args.gen_subset + ".tsv")
     audio_uttids = read_tsv(audio_file)   
-    logger.info(f"audio_uttids list: {audio_uttids}")    
+    #logger.info(f"audio_uttids list: {audio_uttids}")    
     # hack to pass transitions to W2lDecoder
     if args.criterion == "asg_loss":
         raise NotImplementedError("asg_loss is currently not supported")
@@ -435,7 +435,7 @@ def main(args, task=None, model_state=None):
             gen_timer.stop(num_generated_tokens)
 
             for i, sample_id in enumerate(sample["id"].tolist()):
-                logging.info(f"sample_id: {sample_id+1}, audio uttid: {audio_uttids[sample_id]}")
+                #logging.info(f"sample_id: {sample_id+1}, audio uttid: {audio_uttids[sample_id]}")
                 speaker = None
                 # id = task.dataset(args.gen_subset).ids[int(sample_id)]
                 #id = sample_id

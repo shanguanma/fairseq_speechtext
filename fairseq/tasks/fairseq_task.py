@@ -408,10 +408,10 @@ class FairseqTask(object):
         # get indices ordered by example size
         #with data_utils.numpy_seed(seed):
         indices = dataset.ordered_indices() ## its order by example size
-        logger.info(f"indices: {indices}, its type: {type(indices)}")
+        #logger.info(f"indices: {indices}, its type: {type(indices)}")
         indices = np.sort(indices) ## its order by index value,
 
-        logger.info(f"expected indices: {indices}, its type: {type(indices)}")
+        #logger.info(f"expected indices: {indices}, its type: {type(indices)}")
         # create mini-batches with given size constraints
         batch_sampler = dataset.batch_by_size(
             indices,
@@ -419,7 +419,7 @@ class FairseqTask(object):
             max_sentences=max_sentences,
             required_batch_size_multiple=required_batch_size_multiple,
         )
-        logger.info(f"batch_sampler len: {len(batch_sampler)}, batch_sampler: {batch_sampler}")
+        #logger.info(f"batch_sampler len: {len(batch_sampler)}, batch_sampler: {batch_sampler}")
         # return a reusable, sharded iterator
         epoch_iter = iterators.EpochBatchIterator(
             dataset=dataset,

@@ -550,10 +550,13 @@ class Wav2vec_U(BaseFairseqModel):
 
         if not self.no_softmax:
             if self.training and self.gumbel:
+                #logger.info(f"using gumbel_softmax in normalize() for generator output.!!!")
                 dense_x = F.gumbel_softmax(
                     dense_x.float(), tau=self.curr_temp, hard=self.hard_gumbel
                 ).type_as(dense_x)
             else:
+                ## we use the branch.
+                #logger.info(f"using softmax in normalize() for generator output.!!!")
                 dense_x = dense_x.softmax(-1)
 
         return dense_x, code_perplexity, prob_perplexity

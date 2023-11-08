@@ -361,3 +361,81 @@ if [ ${stage} -le 35 ] && [ ${stop_stage} -ge 35 ];then
    done
 
 fi
+
+
+### 2023-11-6, I will use iter1-layer7 kmeans pesudo label of voicelm2 as target label of iter2  voicelm2
+## its performance maybe good.
+
+if [ ${stage} -le 40 ] && [ ${stop_stage} -ge 40 ];then
+   echo "pretrain hubert on wav2vec-u2.0 15 layer pesudo label, label_rate=50"
+   echo "training on 400k steps for train-960 of librispeech unpair speech"
+   echo "called by voicelm(only phn)"
+   fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   tsv_dir=/workspace2/maduo/dataset/format/librispeech
+   label_dir=$tsv_dir/librispeech_lm_monophncode_using_monophn_dict_librispeech_frame_monophncode_using_wav2vec-u2_model # ##postfix *.speechphncode *.textphncode files folder
+   #tsv_dir=$label_dir
+   config_dir=$fairseq_dir/examples/voicelm/
+   dir=/workspace2/maduo/exp
+   model_name=pretrain_on_base_voicelm_4gpu_8update_400k_w2vu2_librispeech_monophncode
+   exp_dir=$dir/pretrain/${model_name}
+   mkdir -p $exp_dir
+   world_size=4
+   update_freq=8
+   CUDA_VISIBLE_DEVICES=0,5,6,7 python $fairseq_dir/fairseq_cli/hydra_train.py \
+            --config-dir $config_dir/config/pretrain \
+            --config-name hubert_base_librispeech\
+            task.data=$tsv_dir\
+            task.label_dir=$label_dir\
+            task.labels='["speechphncode"]' \
+            model.label_rate=50\
+            common.user_dir=$fairseq_dir/examples/sthubert\
+            dataset.train_subset=train-960\
+            dataset.valid_subset=\'dev-other,dev-clean\'\
+            dataset.max_tokens=1400000\
+            distributed_training.distributed_world_size=${world_size}\
+            distributed_training.distributed_port=-1\
+            distributed_training.ddp_backend=legacy_ddp\
+            optimization.update_freq=[${update_freq}]\
+            common.tensorboard_logdir=$exp_dir\
+            checkpoint.save_dir=$exp_dir\
+            hydra.run.dir=$fairseq_dir/examples/sthubert\
+            hydra.job.name=$exp_dir/pretrain
+fi
+
+
+if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
+   echo "iter: pretrain voicelm on 7layer of hubert pesudo label and librispeech monophncode from w2vu2-model "
+   echo "training on 400k steps for train-960 of librispeech"
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   dir=/mntnfs/lee_data1/maduo/exp
+   label_dir=$tsv_dir/offical_hubert_codes_and_librispeech_frame_monophncode_using_wav2vec-u2_model
+   config_dir=$fairseq_dir/examples/voicelm
+   model_name=pretrain_on_base_voicelm_4gpu_8update_960h_400k_update
+   exp_dir=$dir/pretrain/${model_name}
+   mkdir -p $exp_dir
+   world_size=4
+   update_freq=8
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   python $fairseq_dir/fairseq_cli/hydra_train.py \
+            --config-dir $config_dir/config/pretrain \
+            --config-name voicelm_base_librispeech \
+            task.data=$tsv_dir\
+            task.label_dir=$label_dir\
+            task.labels='["speechphncode","km"]' \
+            model.label_rate=50\
+            common.user_dir=$fairseq_dir/examples/voicelm\
+            dataset.train_subset=train-960\
+            dataset.valid_subset=\'dev-other,dev-clean\'\
+            distributed_training.distributed_world_size=${world_size}\
+            distributed_training.distributed_port=-1\
+            distributed_training.ddp_backend=legacy_ddp\
+            optimization.update_freq=[${update_freq}]\
+            common.tensorboard_logdir=$exp_dir\
+            checkpoint.save_dir=$exp_dir\
+            hydra.run.dir=$fairseq_dir/examples/voicelm\
+            hydra.job.name=$exp_dir/pretrain
+### 4V100: training about 30.6 day
+###           200steps: about 22 minites
+fi
+

@@ -106,25 +106,27 @@ hydra:
   overrides:
     hydra:
     - hydra.run.dir=/workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2
-    - hydra.job.name=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_debug/pretrain
+    - hydra.job.name=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k/pretrain
     task:
     - task.data=/workspace2/maduo/dataset/format/librispeech//40M_librispeech_lm_monophncode_librispeech_frame_monophncode_using_wav2vec-u2_model
     - task.label_dir=/workspace2/maduo/dataset/format/librispeech//40M_librispeech_lm_monophncode_librispeech_frame_monophncode_using_wav2vec-u2_model
     - task.labels=["speechphncode","textphncode"]
     - task.text_ratio=5
+    - task.max_phone_size=250
+    - dataset.max_tokens=2400000
     - model.label_rate=50
     - common.user_dir=/workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2
     - dataset.train_subset=train-960
     - dataset.valid_subset='dev-other_2864,dev-clean'
-    - distributed_training.distributed_world_size=2
+    - distributed_training.distributed_world_size=4
     - distributed_training.distributed_port=-1
     - distributed_training.ddp_backend=legacy_ddp
-    - optimization.update_freq=[16]
-    - common.tensorboard_logdir=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_debug
-    - checkpoint.save_dir=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_debug
+    - optimization.update_freq=[8]
+    - common.tensorboard_logdir=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k
+    - checkpoint.save_dir=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k
   job:
-    name: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_debug/pretrain
-    override_dirname: checkpoint.save_dir-/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_debug__common.tensorboard_logdir-/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_debug__common.user_dir-/workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2__dataset.train_subset-train-960__dataset.valid_subset-'dev-other_2864,dev-clean'__distributed_training.ddp_backend-legacy_ddp__distributed_training.distributed_port--1__distributed_training.distributed_world_size-2__model.label_rate-50__optimization.update_freq-[16]__task.labels-["speechphncode","textphncode"]__task.text_ratio-5
+    name: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k/pretrain
+    override_dirname: checkpoint.save_dir-/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k__common.tensorboard_logdir-/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k__common.user_dir-/workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2__dataset.max_tokens-2400000__dataset.train_subset-train-960__dataset.valid_subset-'dev-other_2864,dev-clean'__distributed_training.ddp_backend-legacy_ddp__distributed_training.distributed_port--1__distributed_training.distributed_world_size-4__model.label_rate-50__optimization.update_freq-[8]__task.labels-["speechphncode","textphncode"]__task.max_phone_size-250__task.text_ratio-5
     id: ???
     num: ???
     config_name: voicelm2_base_librispeech_flash_attention_lr4e_4_text_ratio

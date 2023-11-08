@@ -449,10 +449,13 @@ class Voicelm2Model(BaseFairseqModel):
         }
 
         ## for  speech branch  loss
+        #if features_only:
+        #    if self.layer_norm_first and output_layer is not None:
+        #        result["x"] = self.post_layer_norm[-1](x)
+        #    return result
         if features_only:
-            if self.layer_norm_first and output_layer is not None:
-                result["x"] = self.post_layer_norm[-1](x)
-            return result
+            return {"x": x, "padding_mask": padding_mask, "features": features}
+
 
         layer_results = [
             layer_x.transpose(0, 1) for i, (layer_x, _) in enumerate(layer_results)

@@ -203,23 +203,25 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ];then
    label_dir=$tsv_dir/40M_librispeech_lm_monophncode_librispeech_frame_monophncode_using_wav2vec-u2_model
 
    config_dir=$fairseq_dir/examples/voicelm/voicelm2
-   model_name=pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_debug
+   model_name=pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k
    #model_name=pretrain_on_base_voicelm2_2gpu_16update_960h_400k_update_flash_attention_debug
    exp_dir=$dir/pretrain/${model_name}
    mkdir -p $exp_dir
-   #world_size=4
-   #update_freq=8
-   world_size=2
-   update_freq=16
+   world_size=4
+   update_freq=8
+   #world_size=2
+   #update_freq=16
 
     export PYTHONPATH=$fairseq_dir:$PYTHONPATH
-   CUDA_VISIBLE_DEVICES=5,6  python $fairseq_dir/fairseq_cli/hydra_train.py \
+   CUDA_VISIBLE_DEVICES=3,4,5,6  python $fairseq_dir/fairseq_cli/hydra_train.py \
             --config-dir $config_dir/config/pretrain \
             --config-name voicelm2_base_librispeech_flash_attention_lr4e_4_text_ratio \
             task.data=$label_dir\
             task.label_dir=$label_dir\
             task.labels='["speechphncode","textphncode"]' \
             task.text_ratio=5\
+            task.max_phone_size=250\
+            dataset.max_tokens=2400000\
             model.label_rate=50\
             common.user_dir=$fairseq_dir/examples/voicelm/voicelm2\
             dataset.train_subset=train-960\

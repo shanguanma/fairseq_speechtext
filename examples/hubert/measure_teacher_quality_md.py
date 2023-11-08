@@ -8,9 +8,10 @@ import os.path as op
 import re
 from tabulate import tabulate
 from collections import Counter
-
+import logging
 
 def comp_purity(p_xy, axis):
+    #logging.info(f"p_xy: {p_xy} in the comp_purity()")    
     max_p = p_xy.max(axis=axis)
     marg_p = p_xy.sum(axis=axis)
     indv_pur = max_p / marg_p
@@ -23,6 +24,7 @@ def comp_entropy(p):
 
 
 def comp_norm_mutual_info(p_xy):
+    #logging.info(f"p_xy: {p_xy} in the comp_norm_mutual_info")
     p_x = p_xy.sum(axis=1, keepdims=True)
     p_y = p_xy.sum(axis=0, keepdims=True)
     pmi = np.log(p_xy / np.matmul(p_x, p_y) + 1e-8)
@@ -65,7 +67,8 @@ def comp_joint_prob(uid2refs, uid2hyps):
             continue
         refs = uid2refs[uid]
         hyps = uid2hyps[uid]
-        print(f"uid: {uid}, refs len: {len(refs)}, hyps len:{len(hyps)}")
+        logging.info(f"uid: {uid}, refs len: {len(refs)}, hyps len:{len(hyps)}")
+        #print(f"uid: {uid}, refs len: {len(refs)}, hyps len:{len(hyps)}")
         abs_frmdiff += abs(len(refs) - len(hyps))
         min_len = min(len(refs), len(hyps))
         refs = refs[:min_len]
@@ -78,7 +81,10 @@ def comp_joint_prob(uid2refs, uid2hyps):
     ref2pid = dict(zip(ref_set, range(len(ref_set))))
     hyp2lid = dict(zip(hyp_set, range(len(hyp_set))))
     # print(hyp_set)
+    #logging.info(f"ref_set: {ref_set}, hyp_set: {hyp_set}")
+    #logging.info(f"ref2pid: {ref2pid}, hyp2lid: {hyp2lid}")
     p_xy = np.zeros((len(ref2pid), len(hyp2lid)), dtype=float)
+    #logging.info(f"p_xy: {p_xy} in the comp_joint_prob()")
     for (ref, hyp), cnt in cnts.items():
         p_xy[ref2pid[ref], hyp2lid[hyp]] = cnt
     p_xy /= p_xy.sum()
@@ -164,6 +170,8 @@ def main_phn_lab(
                 f"{tsv_dir}/{s}.tsv", f"{lab_dir}/{s}.{lab_name}", pad_len, upsample
             )
         )
+    #logging.info(f"uid2hyps: {uid2hyps} in the main_phn_lab()")
+    #logging.info(f"uid2refs: {uid2refs} in the main_phn_lab()")
     _main(uid2refs, uid2hyps, verbose)
 
 
@@ -175,12 +183,12 @@ def _main(uid2refs, uid2hyps, verbose):
     hyp_pur_by_ref, hyp_pur = comp_purity(p_xy, axis=1)
     (mi, mi_norm_by_ref, mi_norm_by_hyp, h_ref, h_hyp) = comp_norm_mutual_info(p_xy)
     outputs = {
-        "ref pur": ref_pur,
-        "hyp pur": hyp_pur,
+        "ref pur(phone purity)": ref_pur,
+        "hyp pur(cluster purity)": hyp_pur,
         "H(ref)": h_ref,
         "H(hyp)": h_hyp,
         "MI": mi,
-        "MI/H(ref)": mi_norm_by_ref,
+        "MI/H(ref)(PNMI)": mi_norm_by_ref, ## it shoud be PNMI of HuBert paper.
         "ref segL": comp_avg_seg_dur(uid2refs.values()),
         "hyp segL": comp_avg_seg_dur(uid2hyps.values()),
         "p_xy shape": p_xy.shape,
@@ -196,19 +204,24 @@ if __name__ == "__main__":
     """
     compute quality of labels with respect to phone or another labels if set
     """
+    logging.getLogger().setLevel(logging.INFO)
     import argparse
 
     parser = argparse.ArgumentParser()
     parser.add_argument("tsv_dir")
     parser.add_argument("lab_dir")
     parser.add_argument("lab_name")
-    parser.add_argument("--lab_sets", default=["dev-other"], type=str, nargs="+")
+    #parser.add_argument("--lab_sets", default=["dev-other"], type=str, nargs="+")
+    parser.add_argument("--lab_devsets", default="dev-other", type=str)
     parser.add_argument(
         "--phn_dir",
         default="/checkpoint/wnhsu/data/librispeech/960h/fa/raw_phn/phone_frame_align_v1",
     )
+    #parser.add_argument(
+    #    "--phn_sets", default=["dev-other"], type=str, nargs="+"
+    #)
     parser.add_argument(
-        "--phn_sets", default=["dev-other"], type=str, nargs="+"
+        "--phn_devsets", default="dev-other", type=str
     )
     parser.add_argument("--pad_len", default=0, type=int, help="padding for hypotheses")
     parser.add_argument(
@@ -218,6 +231,8 @@ if __name__ == "__main__":
     parser.add_argument("--ref_lab_name", default="")
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
+    args.lab_sets = [args.lab_devsets]
+    args.phn_sets = [args.phn_devsets]
 
     if args.ref_lab_dir and args.ref_lab_name:
         main_lab_lab(

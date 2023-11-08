@@ -7,7 +7,7 @@ common:
   log_file: null
   aim_repo: null
   aim_run_hash: null
-  tensorboard_logdir: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_debug
+  tensorboard_logdir: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k
   wandb_project: null
   azureml_logging: false
   seed: 1337
@@ -47,8 +47,8 @@ common_eval:
   results_path: null
 distributed_training:
   _name: null
-  distributed_world_size: 2
-  distributed_num_procs: 2
+  distributed_world_size: 4
+  distributed_num_procs: 4
   distributed_rank: 0
   distributed_backend: nccl
   distributed_init_method: null
@@ -90,7 +90,7 @@ dataset:
   _name: null
   num_workers: 6
   skip_invalid_size_inputs_valid_test: true
-  max_tokens: 1400000
+  max_tokens: 2400000
   batch_size: null
   required_batch_size_multiple: 1
   required_seq_len_multiple: 1
@@ -123,7 +123,7 @@ optimization:
   clip_norm: 10.0
   sentence_avg: false
   update_freq:
-  - 16
+  - 8
   lr:
   - 0.0004
   stop_min_lr: -1.0
@@ -132,7 +132,7 @@ optimization:
   debug_param_names: false
 checkpoint:
   _name: null
-  save_dir: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_debug
+  save_dir: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k
   restore_file: checkpoint_last.pt
   continue_once: null
   finetune_from_model: null
@@ -260,7 +260,7 @@ task:
   sample_rate: 16000
   max_sample_size: 250000
   min_sample_size: 32000
-  max_phone_size: 100
+  max_phone_size: 250
   min_phone_size: 50
   pad_audio: false
   random_crop: true
