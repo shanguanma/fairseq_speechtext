@@ -60,46 +60,6 @@ def load_audio(manifest_path, max_keep, min_keep):
         )
     )
     return root, names, inds, tot, sizes
-#def load_audio(manifest_path, max_keep, min_keep):
-#    #logger.info(f"manifest_text_path: {manifest_text_path}")
-#    audio_contents = []
-#    audio_uttids = []
-#    sizes = []
-#    n_long = 0
-#    n_short = 0
-#    with open(manifest_path, "r") as f:#, open("/workspace2/maduo/file_raw1.txt",'w')as f1:
-#        #root = f.readline().strip()
-#        for i, line in enumerate(f):
-#            if i == 0:
-#                root = line.strip()
-#            else:
-#                items = line.strip().split()
-#                assert len(items)==2, f"items: {items}"
-#                #sz = len(items.split())
-#                sz = int(items[1])
-#                audio_content=items[0]
-#                if min_keep is not None and sz < min_keep:
-#                    n_short += 1
-#                elif max_keep is not None and sz > max_keep:
-#                    n_long += 1
-#                else:
-#                    #f1.write(f"{audio_content}\n")
-#                    audio_uttids.append(i-1)
-#                    audio_contents.append(audio_content)
-#                    sizes.append(sz)
-#    tot = i 
-#    logger.info(
-#        f"load audio data from: {manifest_path} "
-#        f"max_keep={max_keep}, min_keep={min_keep},  "
-#        f"loaded {len(audio_uttids)} audio, skipped {n_short} short and {n_long} long "
-#        f"longest-loaded={max(sizes)}, shortest-loaded={min(sizes)}  audio_contents len: {len(audio_contents)}, " 
-#        f"audios: {audio_contents} "
-#        f"actual use {len(audio_contents)} tot: {tot} "
-#    )
-#    #with open("/workspace2/maduo/file1.txt",'w')as f:
-#    #    for line in audio_contents:
-#    #        f.write(f"{line}\n")
-#    return root, audio_contents, audio_uttids, tot, sizes
 
 
 
@@ -180,7 +140,7 @@ def load_label(label_path, inds, tot):
     return labels
 
 
-def load_label_offset(label_path, inds, tot):
+def load_label_offset(label_path: str, inds: List[int], tot: int):
     """
     >>> label_path="tests/dev-clean_10.speechphncode"
     >>> inds = [0,2,4,7,8,9] ## audio utts index list
@@ -211,9 +171,9 @@ def load_label_offset(label_path, inds, tot):
     return offsets
 
 
-def get_pre_labels(label_path, inds, tot, sizes) -> List[str]:
+def get_pre_labels(label_path: str, inds: List[int], tot: int, sizes: List[int]) -> List[str]:
     """get labels befor label_processing"""
-    label_offsets_list = load_label_offset(label_path, inds, tot)
+    label_offsets_list = load_model_label_offset(label_path, inds, tot)
     indexs = np.arange(len(sizes))
     labels = []
 
@@ -226,6 +186,9 @@ def get_pre_labels(label_path, inds, tot, sizes) -> List[str]:
             # assert label is str, f"label: {label}"
             labels.append(label)  # List[str]
     return labels
+
+
+
 
 
 def prepare_multi_modal_text_utt(label: Tensor, text_utt: str) -> str:
@@ -316,14 +279,16 @@ def load_post_text(
 
 
 def post_final_audio_text(
-    label_paths,
-    manifest_path,
-    max_keep_sample_size,
-    min_keep_sample_size,
-    manifest_text_path,
-    max_keep_phone_size,
-    min_keep_phone_size,
-    text_ratio,
+    label_paths: list[str], # its main purpose is used to construct multi-modal speech text utterance. 
+                            ## if len(label_paths) >1; label_paths[1] contains label path is used to pesudo label of voicelm2 model when iter >=2
+                            ## label_paths[0] contains label path is used to construct multi-modal speech text utterance.
+    manifest_path:,
+    max_keep_sample_size: int,
+    min_keep_sample_size: int,
+    manifest_text_path: str,
+    max_keep_phone_size: int ,
+    min_keep_phone_size: int,
+    text_ratio: int,
 ):
     ## step1: load text
     ## step0: load audio
@@ -346,7 +311,15 @@ def post_final_audio_text(
         #logger.info(f"labels part: {labels[:3]}")
         ## prepare text
         text_contents = get_small_list_from_big_list(text_contents, audio_namess)
-        text_uttids, text_contents = load_post_text(text_contents, labels)
+        text_uttids, text_contents = load_post_text(text_contents, pre_labels)
+
+        # if len(label_paths) >1; label_paths[1] contain label path is used to pesudo label of voicelm2 model when iter >=2
+        if len(label_paths)>1:
+            logger.info(f"currently training voicelm2 when iter >1 !!!")
+            labels = get_pre_labels(label_paths[1], audio_inds, tot, audio_sizes)
+            labels = repeat_label(labels, text_ratio)
+            
+
     elif len(text_contents) > len(audio_names) and text_ratio == 1:
         logger.info(f"len(text_contents) > len(audio_names) and text_ratio == 1!!!!")
         audio_namess = audio_names
@@ -357,7 +330,12 @@ def post_final_audio_text(
         labels = get_pre_labels(label_paths[0], audio_inds, tot, audio_sizes)
         #logger.info(f"labels part: {labels[:3]}")
         text_uttids, text_contents = load_post_text(text_contents, labels)
-
+ 
+        #if len(label_paths) >1; label_paths[1] contain label path is used to pesudo label of voicelm2 model when iter >=2
+        if len(label_paths)>1:
+            logger.info(f"currently training voicelm2 when iter >1 !!!")
+            labels = get_pre_labels(label_paths[1], audio_inds, tot, audio_sizes)
+            labels = repeat_label(labels, text_ratio)
     else:
         logger.info(f"len(text_contents) < len(audio_names)!!!")
         audio_namess = audio_names
@@ -367,6 +345,14 @@ def post_final_audio_text(
         labels = get_pre_labels(label_paths[0], audio_inds, tot, audio_sizes)
         #logger.info(f"labels part: {labels[:3]}")
         text_uttids, text_contents = load_post_text(text_contents, labels)
+
+        #if len(label_paths) >1; label_paths[1] contain label path is used to pesudo label of voicelm2 model when iter >=2
+        if len(label_paths)>1:
+            logger.info(f"currently training voicelm2 when iter >1 !!!")
+            labels = get_pre_labels(label_paths[1], audio_inds, tot, audio_sizes)
+            labels = repeat_label(labels, text_ratio)
+
+
 
     return (
         audio_root,
@@ -500,7 +486,7 @@ class Voicelm2DatasetBigtext(FairseqDataset):
         self.shuffle = shuffle
         self.random_crop = random_crop
         self.text_seq = text_seq
-        self.num_labels = len(label_paths)
+        #self.num_labels = len(label_paths)
         self.pad_list = pad_list
         self.eos_list = eos_list
         self.text_processors = text_processors
@@ -509,6 +495,13 @@ class Voicelm2DatasetBigtext(FairseqDataset):
         self.is_s2s = is_s2s
         self.text_drop = text_drop
         self.pair_data = pair_data
+
+        if len(label_paths)==1: ## iter1 voicelm2 training and finetune case
+            self.num_labels = len(label_paths)
+        elif len(label_paths)==2:
+            self.num_labels = len(label_paths[1])
+
+
 
         self.label_rates = (
             [label_rates for _ in range(len(label_paths))]
