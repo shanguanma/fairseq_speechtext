@@ -1,0 +1,146 @@
+hydra:
+  run:
+    dir: /workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2
+  sweep:
+    dir: ???
+    subdir: ${hydra.job.config_name}__${hydra.job.override_dirname}
+  hydra_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(asctime)s][HYDRA] %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+    root:
+      level: INFO
+      handlers:
+      - console
+    loggers:
+      logging_example:
+        level: DEBUG
+    disable_existing_loggers: false
+  job_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+      file:
+        class: logging.FileHandler
+        formatter: simple
+        filename: ${hydra.job.name}.log
+    root:
+      level: INFO
+      handlers:
+      - console
+      - file
+    disable_existing_loggers: false
+  sweeper:
+    _target_: hydra._internal.core_plugins.basic_sweeper.BasicSweeper
+    max_batch_size: null
+  launcher:
+    _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
+  help:
+    app_name: ${hydra.job.name}
+    header: '${hydra.help.app_name} is powered by Hydra.
+
+      '
+    footer: 'Powered by Hydra (https://hydra.cc)
+
+      Use --hydra-help to view Hydra specific help
+
+      '
+    template: '${hydra.help.header}
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (group=option)
+
+
+      $APP_CONFIG_GROUPS
+
+
+      == Config ==
+
+      Override anything in the config (foo.bar=value)
+
+
+      $CONFIG
+
+
+      ${hydra.help.footer}
+
+      '
+  hydra_help:
+    hydra_help: ???
+    template: 'Hydra (${hydra.runtime.version})
+
+      See https://hydra.cc for more info.
+
+
+      == Flags ==
+
+      $FLAGS_HELP
+
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (For example, append hydra/job_logging=disabled
+      to command line)
+
+
+      $HYDRA_CONFIG_GROUPS
+
+
+      Use ''--cfg hydra'' to Show the Hydra config.
+
+      '
+  output_subdir: .hydra
+  overrides:
+    hydra:
+    - hydra.run.dir=/workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2
+    - hydra.job.name=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k/pretrain
+    task:
+    - task.data=/workspace2/maduo/dataset/format/librispeech//40M_librispeech_lm_monophncode_librispeech_frame_monophncode_using_wav2vec-u2_model
+    - task.label_dir=/workspace2/maduo/dataset/format/librispeech//40M_librispeech_lm_monophncode_librispeech_frame_monophncode_using_wav2vec-u2_model
+    - task.labels=["speechphncode","textphncode"]
+    - task.text_ratio=5
+    - task.max_phone_size=250
+    - dataset.max_tokens=2400000
+    - model.label_rate=50
+    - common.user_dir=/workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2
+    - dataset.train_subset=train-960
+    - dataset.valid_subset='dev-other_2864,dev-clean'
+    - distributed_training.distributed_world_size=4
+    - distributed_training.distributed_port=-1
+    - distributed_training.ddp_backend=legacy_ddp
+    - optimization.update_freq=[8]
+    - common.tensorboard_logdir=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k
+    - checkpoint.save_dir=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k
+  job:
+    name: /workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k/pretrain
+    override_dirname: checkpoint.save_dir-/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k__common.tensorboard_logdir-/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_ratio5_bs2400k__common.user_dir-/workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2__dataset.max_tokens-2400000__dataset.train_subset-train-960__dataset.valid_subset-'dev-other_2864,dev-clean'__distributed_training.ddp_backend-legacy_ddp__distributed_training.distributed_port--1__distributed_training.distributed_world_size-4__model.label_rate-50__optimization.update_freq-[8]__task.labels-["speechphncode","textphncode"]__task.max_phone_size-250__task.text_ratio-5
+    id: ???
+    num: ???
+    config_name: voicelm2_base_librispeech_flash_attention_lr4e_4_text_ratio
+    env_set: {}
+    env_copy: []
+    config:
+      override_dirname:
+        kv_sep: '-'
+        item_sep: __
+        exclude_keys:
+        - run
+        - task.data
+        - task.label_dir
+  runtime:
+    version: 1.0.7
+    cwd: /workspace2/maduo
+  verbose: false

@@ -173,7 +173,7 @@ def load_label_offset(label_path: str, inds: List[int], tot: int):
 
 def get_pre_labels(label_path: str, inds: List[int], tot: int, sizes: List[int]) -> List[str]:
     """get labels befor label_processing"""
-    label_offsets_list = load_model_label_offset(label_path, inds, tot)
+    label_offsets_list = load_label_offset(label_path, inds, tot)
     indexs = np.arange(len(sizes))
     labels = []
 
@@ -282,7 +282,7 @@ def post_final_audio_text(
     label_paths: list[str], # its main purpose is used to construct multi-modal speech text utterance. 
                             ## if len(label_paths) >1; label_paths[1] contains label path is used to pesudo label of voicelm2 model when iter >=2
                             ## label_paths[0] contains label path is used to construct multi-modal speech text utterance.
-    manifest_path:,
+    manifest_path: str,
     max_keep_sample_size: int,
     min_keep_sample_size: int,
     manifest_text_path: str,
