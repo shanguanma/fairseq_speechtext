@@ -1,0 +1,13 @@
+- task.data=/workspace2/maduo/dataset/format/librispeech/
+- task.label_dir=/workspace2/maduo/dataset/format/librispeech//40M_librispeech_lm_monophncode_librispeech_frame_monophncode_using_wav2vec-u2_model_withiter1_voicelm2_12layer_500_kms
+- task.labels=["km","speechphncode","textphncode"]
+- model.label_rate=50
+- common.user_dir=/workspace2/maduo/fairseq_speechtext/examples/voicelm/voicelm2
+- dataset.train_subset=train-960
+- dataset.valid_subset='dev-other,dev-clean'
+- distributed_training.distributed_world_size=4
+- distributed_training.distributed_port=-1
+- distributed_training.ddp_backend=legacy_ddp
+- optimization.update_freq=[8]
+- common.tensorboard_logdir=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40_withiter1_voicelm2_12layer_500_kms
+- checkpoint.save_dir=/workspace2/maduo/exp/pretrain/pretrain_on_base_voicelm2_4gpu_8update_960h_400k_update_flash_attention_lr4e_4_40M_unpaired_text_1to40_withiter1_voicelm2_12layer_500_kms

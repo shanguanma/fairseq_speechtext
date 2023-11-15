@@ -163,7 +163,7 @@ class Voicelm2Model(BaseFairseqModel):
             pass
 
         self.feature_extractor_text = TextModel(
-            input_dim=len(dictionaries[1]), cfg=cfg, padding_idx=self.padding_idx
+            input_dim=len(dictionaries[-1]), cfg=cfg, padding_idx=self.padding_idx
         )
 
         if self.modality_fuse == "attention":
@@ -279,27 +279,13 @@ class Voicelm2Model(BaseFairseqModel):
             self.text_label_embs = None
             self.text_num_classes = None
 
-        """
         # modules below are not needed during fine-tuning
         if any([d is None for d in dictionaries]):
             logger.info("cannot find dictionary. assume will be used for fine-tuning")
         else:
-            self.num_classes = [
-                len(d) for d in dictionaries
-            ]  ##  because  audio and text are  used same  dictionary,
-            ##  so self.num_classes  should  be  one  element  of  list. ,this element should be 45
-            self.num_classes = [self.num_classes[0]]
-            # logger.info(f"self.num_classes: {self.num_classes},  its  len: {len(self.num_classes)}")
-            self.label_embs_concat = nn.Parameter(
-                torch.FloatTensor(sum(self.num_classes), final_dim)
-            )
-            nn.init.uniform_(self.label_embs_concat)
-        """
-        # modules below are not needed during fine-tuning
-        if any([d is None for d in dictionaries]):
-            logger.info("cannot find dictionary. assume will be used for fine-tuning")
-        else:
-            self.num_classes = [len(d) for d in dictionaries[:-1]] ## remove unpaired text dictionary
+            #self.num_classes = [len(d) for d in dictionaries[:-1]] ## remove unpaired text dictionary
+            self.num_classes = [len(d) for d in [dictionaries[0]]] ## emove unpaired text dictionary and unuse speech dictionary
+            logger.info(f"self.num_classes: {self.num_classes}")
             layer_dim = (
                 len(self.predict_layers)
                 if self.separate_layer_targets or self.separate_label_embeds
@@ -324,8 +310,10 @@ class Voicelm2Model(BaseFairseqModel):
     @classmethod
     def build_model(cls, cfg: Voicelm2Config, task: Voicelm2PretrainingTask):
         """Build a new model instance."""
+
+        logger.info(f"Display dictionary of model !!!")
         logger.info(
-            f"dictionary: {task.dictionaries[1].indices.items()}"
+            f"dictionary: {task.dictionaries[0].indices.items()}"
         )  # dictionary: dict_items([('<s>', 0),
         # ('<pad>', 1), ('</s>', 2), ('<unk>', 3), ('0', 4), ('1', 5), ('2', 6), ('3', 7), ('4', 8), ('5', 9),
         # ('6', 10), ('7', 11), ('8', 12), ('9', 13), ('10', 14), ('11', 15), ('12', 16), ('13', 17), ('14', 18),
@@ -333,10 +321,12 @@ class Voicelm2Model(BaseFairseqModel):
         # ('23', 27), ('24', 28), ('25', 29), ('26', 30), ('27', 31), ('28', 32), ('29', 33), ('30', 34),
         # ('31', 35), ('32', 36), ('33', 37), ('34', 38), ('35', 39), ('36', 40), ('37', 41), ('38', 42),
         # ('39', 43), ('40', 44)])
-        logger.info(f"dictionary bos index: {task.dictionaries[1].bos_index}")  ## 0
-        logger.info(f"dictionary pad index: {task.dictionaries[1].pad_index}")  ## 1
-        logger.info(f"dictionary eos index: {task.dictionaries[1].eos_index}")  ## 2
-        logger.info(f"dictionary unk index: {task.dictionaries[1].unk_index}")  ## 3
+        logger.info(f"dictionary bos index: {task.dictionaries[0].bos_index}")  ## 0
+        logger.info(f"dictionary pad index: {task.dictionaries[0].pad_index}")  ## 1
+        logger.info(f"dictionary eos index: {task.dictionaries[0].eos_index}")  ## 2
+        logger.info(f"dictionary unk index: {task.dictionaries[0].unk_index}")  ## 3
+
+
         model = Voicelm2Model(cfg, task.cfg, task.dictionaries)
         return model
 

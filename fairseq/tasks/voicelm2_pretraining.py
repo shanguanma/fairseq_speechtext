@@ -302,6 +302,7 @@ class Voicelm2PretrainingTask(FairseqTask):
             dicts_speech_label = (
                 [dicts[0]] if len(dicts) == 2 else dicts[:-1]
             )  # remove text phn dictionary
+            #dicts_speech_label = ([dicts[0]] if )
             dicts_text = [dicts[-1]]
             pad_list = [dict.pad() for dict in dicts_speech_label]
             eos_list = [dict.eos() for dict in dicts_speech_label]
