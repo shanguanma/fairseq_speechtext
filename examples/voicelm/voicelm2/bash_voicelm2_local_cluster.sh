@@ -195,11 +195,6 @@ fi
 if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ];then
    echo "iter: pretrain voicelm2 on librilm monophncode and librispeech monophncode from w2vu2-model "
    echo "training on 400k steps for train-960 of librispeech"
-   #fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
-   #tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
-   #dir=/mntnfs/lee_data1/maduo/exp
-
-
    fairseq_dir=/workspace2/maduo/fairseq_speechtext
    tsv_dir=/workspace2/maduo/dataset/format/librispeech/
    dir=/workspace2/maduo/exp
