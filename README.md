@@ -22,7 +22,7 @@ Avoiding code duplication is not a goal. Readability and hackability are.
   
 
 
-* for pytorch==2.0  version
+* for pytorch>=2.0  version
 ```
 . "/home/maduo/miniconda3/etc/profile.d/conda.sh"
 conda create -n fairseq_speechtext python=3.9 -y

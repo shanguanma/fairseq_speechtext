@@ -312,7 +312,8 @@ class StHubertConfig3(FairseqDataclass):
     )
     ### shared transformer config
     ### it is common network,
-    shared_transformer: WavLMConfig = WavLMConfig()
+    #shared_transformer: WavLMConfig = WavLMConfig()
+    shared_transformer: WavLMConfig = field(default=WavLMConfig)
     add_unit_encoder: bool = field(
         default=True,
         metadata={"help": "add shared transfromer network"},
