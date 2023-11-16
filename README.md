@@ -25,22 +25,13 @@ Avoiding code duplication is not a goal. Readability and hackability are.
 * for pytorch>=2.0  version
 ```
 . "/home/maduo/miniconda3/etc/profile.d/conda.sh"
-conda create -n fairseq_speechtext python=3.9 -y
- conda activate fairseq_speechtext
-cd /workspace2/maduo/fairseq_speechtext
+conda create -n fsq_speechtext python=3.11 -y
+ conda activate fsq_speechtext
+cd /workspace2/maduo/fsq_speechtext
 pip install --editable ./   -i https://pypi.tuna.tsinghua.edu.cn/simple
-pip install soundfile editdistance  tensorboardX  -i https://pypi.tuna.tsinghua.edu.cn/simple
-pip install librosa h5py einops -i https://pypi.tuna.tsinghua.edu.cn/simple
-pip install  timm  torchvision==0.15.1 -i https://pypi.tuna.tsinghua.edu.cn/simple
-pip install ninja 
 pip install flash-attn --no-build-isolation
-pip install tensorboard six -i https://pypi.tuna.tsinghua.edu.cn/simple
-
-for fixing ImportError: cannot import name 'get_ref_type' from 'omegaconf._utils'
-you  should pip install omegaconf==2.1.2 
 
 ```
-
 > [!NOTE]
 > We strong recommend install fairseq c++ part compile follow the command: `python setup.py build_ext --inplace`
 
