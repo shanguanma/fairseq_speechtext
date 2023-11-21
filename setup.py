@@ -203,7 +203,8 @@ def do_setup(package_data):
             "einops",
             "timm",
             "ninja",
-            "scikit-image",
+            "scikit-image", # for
+            "lightning", #for load big model checkpoint quickly.
 
         ],
         extras_require={
