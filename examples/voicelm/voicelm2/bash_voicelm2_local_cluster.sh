@@ -195,6 +195,11 @@ fi
 if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ];then
    echo "iter: pretrain voicelm2 on librilm monophncode and librispeech monophncode from w2vu2-model "
    echo "training on 400k steps for train-960 of librispeech"
+   #fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   #tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   #dir=/mntnfs/lee_data1/maduo/exp
+
+
    fairseq_dir=/workspace2/maduo/fairseq_speechtext
    tsv_dir=/workspace2/maduo/dataset/format/librispeech/
    dir=/workspace2/maduo/exp
@@ -210,7 +215,7 @@ if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ];then
    update_freq=8
    #world_size=2
    #update_freq=16
-
+   lr=0.00001
     export PYTHONPATH=$fairseq_dir:$PYTHONPATH
    CUDA_VISIBLE_DEVICES=3,4,5,6 python $fairseq_dir/fairseq_cli/hydra_train.py \
             --config-dir $config_dir/config/pretrain \
@@ -226,6 +231,7 @@ if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ];then
             distributed_training.distributed_port=-1\
             distributed_training.ddp_backend=legacy_ddp\
             optimization.update_freq=[${update_freq}]\
+            optimization.lr=[$lr]\
             common.tensorboard_logdir=$exp_dir\
             checkpoint.save_dir=$exp_dir\
             hydra.run.dir=$fairseq_dir/examples/voicelm/voicelm2\
@@ -253,6 +259,7 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ];then
    #debug
    world_size=2
    update_freq=4
+   #lr=0.000001
    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
    CUDA_VISIBLE_DEVICES=5,6   python $fairseq_dir/fairseq_cli/hydra_train.py \
             --config-dir $config_dir/config/finetune \
