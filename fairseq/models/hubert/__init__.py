@@ -15,3 +15,4 @@ from .sthubert3 import *  # noqa
 from .voicelm2 import *  # noqa
 #from .voicelm2plus import * # noqa
 from .voicelm2_asr import * # noqa
+from .hubert_with_llama import * # noqa 

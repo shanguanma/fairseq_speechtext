@@ -40,6 +40,7 @@ from fairseq.logging import meters, metrics, progress_bar
 from fairseq.model_parallel.megatron_trainer import MegatronTrainer
 from fairseq.trainer import Trainer
 
+from lightning.fabric.utilities.load import _lazy_load as lazy_load
 
 def main(cfg: FairseqConfig) -> None:
     if isinstance(cfg, argparse.Namespace):
@@ -94,6 +95,22 @@ def main(cfg: FairseqConfig) -> None:
             model = fsdp_wrap(task.build_model(cfg.model))
     else:
         model = task.build_model(cfg.model)
+    # load llama checkpoint for the encode layer
+    #logger.info(f"model att: {dir(model)}")
+    if hasattr(model,'llama'):
+        logger.info("Loading LLaMA checkpoints")
+        import time
+        start_time = time.time()
+        ## torch.load
+        #checkpoint = torch.load(cfg.model.llama_path, map_location={'cuda:5': 'cuda:6'})
+        checkpoint_llama= lazy_load(cfg.model.llama_path)
+        model.llama.custom_load_state_dict(checkpoint_llama, tail=True, strict=False)
+        logger.info(f"Loaded in {time.time() - start_time:.2f} seconds") 
+        logger.info("Loading offical base Hubert checkpoints")
+        start_time = time.time()
+        checkpoint_hubert= lazy_load(cfg.model.hubert_path)
+        model.load_state_dict(checkpoint_hubert,strict=False)
+        logger.info(f"Loaded in {time.time() - start_time:.2f} seconds")
     criterion = task.build_criterion(cfg.criterion)
     logger.info(model)
     logger.info("task: {}".format(task.__class__.__name__))
