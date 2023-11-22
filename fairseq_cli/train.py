@@ -97,7 +97,8 @@ def main(cfg: FairseqConfig) -> None:
         model = task.build_model(cfg.model)
     # load llama checkpoint for the encode layer
     #logger.info(f"model att: {dir(model)}")
-    if hasattr(model,'llama'):
+    if hasattr(model,'llama') and cfg.model.hubert_path:
+    #if cfg.model.llama_path and cfg.model.hubert_path: ## pretrain stage with llama case
         logger.info("Loading LLaMA checkpoints")
         import time
         start_time = time.time()
@@ -111,6 +112,15 @@ def main(cfg: FairseqConfig) -> None:
         checkpoint_hubert= lazy_load(cfg.model.hubert_path)
         model.load_state_dict(checkpoint_hubert,strict=False)
         logger.info(f"Loaded in {time.time() - start_time:.2f} seconds")
+    elif cfg.model.hubert_path: ## continue to pretrain hubert model
+        #assert cfg.model.llama_path is None, f"cfg.model.llama_path: {cfg.model.llama_path} in contine hubert pretrain case"
+        import time
+        logger.info("Loading offical base Hubert checkpoints")
+        start_time = time.time()
+        checkpoint_hubert= lazy_load(cfg.model.hubert_path)
+        model.load_state_dict(checkpoint_hubert,strict=False)
+        logger.info(f"Loaded in {time.time() - start_time:.2f} seconds")
+    
     criterion = task.build_criterion(cfg.criterion)
     logger.info(model)
     logger.info("task: {}".format(task.__class__.__name__))

@@ -30,13 +30,11 @@ from fairseq.tasks.hubert_pretraining import (
     HubertPretrainingTask,
 )
 
-from fairseq.models.hubert.lit_llama_worope import LLaMATransformer
-
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class LLaMAHubertConfig(FairseqDataclass):
+class ContinueHubertConfig(FairseqDataclass):
     label_rate: float = II("task.label_rate")
 
     extractor_mode: EXTRACTOR_MODE_CHOICES = field(
@@ -238,44 +236,13 @@ class LLaMAHubertConfig(FairseqDataclass):
         metadata={"help": "Positional encoding type to use in conformer"},
     )
     fp16: bool = field(default=False, metadata={"help": "If fp16 is being used"})
-    ## llama config
-    ## llama-1 7B(we actual use OpenLLaMA-7B V1)
-    llama_path: str = field(
-        default="",
-        metadata={"help": "llama checkpoint path"},
-    )
-    hubert_path: str = field(default="",metadata={"help": "offical base hubert model"},)
-    n_layer: int = field(default=32, metadata={"help": "llama-7b layer numbers"},)
-    n_head: int = field(
-        default=32, metadata={"help": "llama-7b attention head numbers"},
-    )
-    n_embd: int = field(default=4096, metadata={"help": "llama-7b model dimension"},)
-    ## llama-1 13B
-    # n_layer: int = 40
-    # n_head: int = 40
-    # n_embd: int = 5120
+    hubert_path: str = field(default="",metadata={"help": "offical base hubert model"},) 
 
-    multiple_of: int = field(
-        default=256,
-        metadata={
-            "help": "# make SwiGLU hidden layer size multiple of large power of 2"
-        },
-    )
-    first_layer: int = field(default=31, metadata={"help": "selected layer"},)
-    n_layers: int = field(default=32, metadata={"help": "llama-7b layer numbers"},)
-    llama_post_norm: bool = field(
-        default=False,
-        metadata={
-            "help": " ## Whether the llama output feature is subjected to layer norm"
-        },
-    )
-
-
-@register_model("LLaMAhubert", dataclass=LLaMAHubertConfig)
-class LLaMAHubertModel(BaseFairseqModel):
+@register_model("continuehubert", dataclass=ContinueHubertConfig)
+class ContinueHubertModel(BaseFairseqModel):
     def __init__(
         self,
-        cfg: LLaMAHubertConfig,
+        cfg: ContinueHubertConfig,
         task_cfg: HubertPretrainingConfig,
         dictionaries: List[Dictionary],
     ) -> None:
@@ -321,8 +288,6 @@ class LLaMAHubertModel(BaseFairseqModel):
         self.logit_temp = cfg.logit_temp
         self.skip_masked = cfg.skip_masked
         self.skip_nomask = cfg.skip_nomask
-        
-        self.llama_path = cfg.llama_path
 
         final_dim = cfg.final_dim if cfg.final_dim > 0 else cfg.encoder_embed_dim
 
@@ -331,32 +296,7 @@ class LLaMAHubertModel(BaseFairseqModel):
         )
 
         self.encoder = TransformerEncoder(cfg)
-
-
-        
-        ## llama part
-        self.llama = LLaMATransformer(cfg)
-        for param in self.llama.parameters():
-            param.requires_grad = False
-        self.llama_dim_mapper1 = nn.Linear(
-            cfg.encoder_embed_dim, cfg.n_embd, bias=False
-        )
-        self.llama_dim_mapper2 = nn.Linear(
-            cfg.n_embd, cfg.encoder_embed_dim, bias=False
-        )
-        self.layer_norm = LayerNorm(self.embed)  # for cnn feature
-        self.llama_post_norm = cfg.llama_post_norm
-        if self.llama_post_norm:
-            self.llama_norm = LayerNorm(self.cfg.encoder_embed_dim)
-        else:
-            self.llama_norm = None
-        
-             
-
-
-
-
-
+        self.layer_norm = LayerNorm(self.embed)
 
         self.target_glu = None
         if cfg.target_glu:
@@ -389,10 +329,10 @@ class LLaMAHubertModel(BaseFairseqModel):
         return state_dict
 
     @classmethod
-    def build_model(cls, cfg: LLaMAHubertConfig, task: HubertPretrainingTask):
+    def build_model(cls, cfg: ContinueHubertConfig, task: HubertPretrainingTask):
         """Build a new model instance."""
 
-        model = LLaMAHubertModel(cfg, task.cfg, task.dictionaries)
+        model = ContinueHubertModel(cfg, task.cfg, task.dictionaries)
         return model
 
     def apply_mask(self, x, padding_mask, target_list):
@@ -525,21 +465,13 @@ class LLaMAHubertModel(BaseFairseqModel):
         # padding_mask: (B, T), bool
         # mask_indices: (B, T), bool
         ## md note: _ means: (attn, layer_result), attn: attn representation of specify layer, layer_result: it is list, contains output of specify layer
-        ## if layer is not none: then x is output of specify layer.
+        ## if layer is not none: then x is output of specify layer. 
         x, _ = self.encoder(
             x,
             padding_mask=padding_mask,
             layer=None if output_layer is None else output_layer - 1,
         )
-        #logger.info(f"after self.encoder(): x dtype: {x.dtype}")
-        ## llama block
-        x = self.llama_dim_mapper1(x)
-        x = self.llama(x)
-        #logger.info(f"after self.llama(): x dtype: {x.dtype}")
-        x = self.llama_dim_mapper2(x)
 
-        if self.llama_post_norm:
-            x = self.llama_norm(x)
         if features_only:
             return {"x": x, "padding_mask": padding_mask, "features": features}
 
@@ -598,7 +530,7 @@ class LLaMAHubertModel(BaseFairseqModel):
         self,
         source: torch.Tensor,
         padding_mask: Optional[torch.Tensor] = None,
-        mask: bool = False,  ## it is setted by apply_mask config of hubert_asr.py, offical default is true.
+        mask: bool = False, ## it is setted by apply_mask config of hubert_asr.py, offical default is true.
         ret_conv: bool = False,
         output_layer: Optional[int] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
