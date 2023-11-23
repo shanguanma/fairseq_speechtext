@@ -19,9 +19,6 @@ import torch.nn as nn
 from torch.nn import functional as F
 from typing_extensions import Self
 
-#MaskCache = torch.Tensor
-#RoPECache = torch.Tensor
-#KVCache = Tuple[torch.Tensor, torch.Tensor]
 
 
 
@@ -43,24 +40,6 @@ class LLaMAConfig:
     first_layer: int = 31 ## select layer
     #norm_eps: float = 1e-5
 """
-class LLaMAConfig:
-    block_size: int = 2048
-    vocab_size: int = 32000
-    padded_vocab_size: Optional[int] = None
-    n_layer: int = 32
-    n_head: int = 32
-    n_embd: int = 4096
-    dim: int = 512 ## RMSnorm dim
-    n_layers: int =32 ## 7B  model layers
-    first_layer: int = 31 ## select layer
-    def __post_init__(self):
-        if self.padded_vocab_size is None:
-            self.padded_vocab_size = find_multiple(self.vocab_size, 64)
-
-    @classmethod
-    def from_name(cls, name: str) -> Self:
-        return cls(**llama_configs[name])
-
 
 llama_configs = {
     "7B": dict(n_layer=32, n_head=32, n_embd=4096),
@@ -196,9 +175,6 @@ class LLaMATransformer(nn.Module):
         self.norm = LitRMSNorm(config.n_embd)
         # work-around for PEFT, Huggingface
         self.prepare_inputs_for_generation = None
-    #@classmethod
-    #def from_name(cls, name: str) -> Self:
-    #    return cls(LLaMAConfig.from_name(name)) 
    
     def forward(self, tokens: torch.Tensor):
         bsz, token_num, hidden_dim = tokens.shape
@@ -207,7 +183,6 @@ class LLaMATransformer(nn.Module):
             h = layer(h)
         h = self.norm(h)
 
-        #return h.float()
         return h
 
     def custom_load_state_dict(self, checkpoint, tail=False, strict=False):
@@ -252,11 +227,4 @@ class LLaMATransformer(nn.Module):
                     layer_checkpoint, strict=strict)
         return
 
-if __name__ == "__main__":
-   checkpoint_path="model_hub/OPT-LLM/lit-llama/7b/7B/lit-llama.pth"
-   checkpoint = torch.load(checkpoint_path,map_location={'cuda:3': 'cuda:4'}) ## two gpus
-   name = "7B"
-   model = LLaMATransformer.from_name(name)
-   print(f"model: {model}")
-   model.custom_load_state_dict(checkpoint, tail=True, strict=False)
   
