@@ -269,7 +269,11 @@ class LLaMAHubertConfig(FairseqDataclass):
             "help": " ## Whether the llama output feature is subjected to layer norm"
         },
     )
-
+    add_qk_lora: bool = False ## they are implemented in transformer attention layer of raw lora paper
+                              ## q means one linear layer for query, k means one linear layer for key
+    add_attn_proj_lora: bool = False
+    add_mlp_lora: bool = False
+    lora_r: int = 0 ## usually set to 16, if it is 0, means that we don't use lora technology.
 
 @register_model("LLaMAhubert", dataclass=LLaMAHubertConfig)
 class LLaMAHubertModel(BaseFairseqModel):
@@ -335,9 +339,14 @@ class LLaMAHubertModel(BaseFairseqModel):
 
         
         ## llama part
-        self.llama = LLaMATransformer(cfg)
-        for param in self.llama.parameters():
-            param.requires_grad = False
+        if cfg.lora_r>0: ## lora pretrain
+            self.llama = LLaMATransformer(cfg) ## it will load LLM checkpoint use # 
+                                               ## This sets requires_grad to False for all parameters without the string "lora_" in their names using the below code.
+                                               ##  lora.mark_only_lora_as_trainable(model)
+        else:
+            self.llama = LLaMATransformer(cfg)
+            for param in self.llama.parameters():
+                param.requires_grad = False
         self.llama_dim_mapper1 = nn.Linear(
             cfg.encoder_embed_dim, cfg.n_embd, bias=False
         )

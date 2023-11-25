@@ -21,7 +21,7 @@ logging.basicConfig(
     level=os.environ.get("LOGLEVEL", "INFO").upper(),
     stream=sys.stdout,
 )
-logger = logging.getLogger("fairseq_cli.train")
+logger = logging.getLogger("fairseq_cli.train_for_with_llama")
 
 import numpy as np
 import torch
@@ -95,7 +95,52 @@ def main(cfg: FairseqConfig) -> None:
             model = fsdp_wrap(task.build_model(cfg.model))
     else:
         model = task.build_model(cfg.model)
-     
+    # load llama checkpoint for the encode layer
+    #logger.info(f"model att: {dir(model)}")
+#    if cfg.task.finetune:
+#        if hasattr(model,'llama'):
+#            logger.info("Loading LLaMA checkpoints")
+#            import time
+#            start_time = time.time()
+#            ## torch.load
+#            #checkpoint = torch.load(cfg.model.llama_path, map_location={'cuda:5': 'cuda:6'})
+#            checkpoint_llama= lazy_load(cfg.model.llama_path)
+#            model.llama.custom_load_state_dict(checkpoint_llama, tail=True, strict=False)
+#            for name, params in model.named_parameters():
+#                if "llama" in name:
+#                    params.requires_grad = False 
+#            logger.info(f"Loaded in {time.time() - start_time:.2f} seconds")
+#        else:
+#             pass ## (todo)
+    if hasattr(model,'llama') and cfg.model.hubert_path:
+    #if cfg.model.llama_path and cfg.model.hubert_path: ## pretrain stage with llama case
+        logger.info("Loading LLaMA checkpoints")
+        import time
+        start_time = time.time()
+        ## torch.load
+        #checkpoint = torch.load(cfg.model.llama_path, map_location={'cuda:5': 'cuda:6'})
+        checkpoint_llama= lazy_load(cfg.model.llama_path)
+        model.llama.custom_load_state_dict(checkpoint_llama, tail=True, strict=False) 
+        logger.info(f"Loaded in {time.time() - start_time:.2f} seconds") 
+        logger.info("Loading offical base Hubert checkpoints")
+        start_time = time.time()
+        #checkpoint_hubert= lazy_load(cfg.model.hubert_path)
+        #model.load_state_dict(checkpoint_hubert,strict=False)
+        state = checkpoint_utils.load_checkpoint_to_cpu(cfg.model.hubert_path)
+        model.load_state_dict(state["model"],strict=False)
+        logger.info(f"Loaded in {time.time() - start_time:.2f} seconds")
+    elif not hasattr(model,'llama') and cfg.model.hubert_path: ## continue to pretrain hubert model
+        #assert cfg.model.llama_path is None, f"cfg.model.llama_path: {cfg.model.llama_path} in contine hubert pretrain case"
+        import time
+        logger.info("Loading Hubert checkpoints")
+        start_time = time.time()
+        #checkpoint_hubert= lazy_load(cfg.model.hubert_path)
+        state = checkpoint_utils.load_checkpoint_to_cpu(cfg.model.hubert_path)
+        model.load_state_dict(state["model"],strict=False)
+        logger.info(f"Loaded in {time.time() - start_time:.2f} seconds")
+        #logger.info(f"display pretrain weight")
+        #for name, params in model.named_parameters():
+                    
     criterion = task.build_criterion(cfg.criterion)
     logger.info(model)
     logger.info("task: {}".format(task.__class__.__name__))

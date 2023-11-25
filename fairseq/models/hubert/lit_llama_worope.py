@@ -6,7 +6,7 @@ We can easily load and modify lit format LLM.
 1. remove RoPE for attention query and key 
 2. remove Causal self-attention, because we will combine them the speech pretrain encoder, no need to causal.
 3. remove input postion operation
-
+4. add support lora 
 """
 
 
@@ -19,6 +19,7 @@ import torch.nn as nn
 from torch.nn import functional as F
 from typing_extensions import Self
 
+import loralib as lora
 
 
 
@@ -38,6 +39,12 @@ class LLaMAConfig:
 
     n_layers: int =32 ## 7B  model layers
     first_layer: int = 31 ## select layer
+    add_qk_lora: bool = False ## they are implemented in transformer attention layer of raw lora paper 
+                              ## q means one linear layer for query, k means one linear layer for key
+    add_attn_proj_lora: bool = False
+    add_mlp_lora: bool = False
+    lora_r: int = 16
+    
     #norm_eps: float = 1e-5
 """
 
@@ -90,10 +97,14 @@ class MLP(nn.Module):
         hidden_dim = 4 * config.n_embd
         n_hidden = int(2 * hidden_dim / 3)
         n_hidden = find_multiple(n_hidden, config.multiple_of)
-
-        self.c_fc1 = nn.Linear(config.n_embd, n_hidden, bias=False)
-        self.c_fc2 = nn.Linear(config.n_embd, n_hidden, bias=False)
-        self.c_proj = nn.Linear(n_hidden, config.n_embd, bias=False)
+        if config.add_mlp_lora: 
+            self.c_fc1 = lora.Linear(config.n_embd, n_hidden, bias=False, r=config.lora_r)
+            self.c_fc2 = lora.Linear(config.n_embd, n_hidden, bias=False, r=config.lora_r)
+            self.c_proj = lora.Linear(n_hidden, config.n_embd, bias=False, r=config.lora_r) 
+        else:            
+            self.c_fc1 = nn.Linear(config.n_embd, n_hidden, bias=False)
+            self.c_fc2 = nn.Linear(config.n_embd, n_hidden, bias=False)
+            self.c_proj = nn.Linear(n_hidden, config.n_embd, bias=False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = F.silu(self.c_fc1(x)) * self.c_fc2(x)
@@ -105,11 +116,16 @@ class Attention(nn.Module):
     def __init__(self, config: LLaMAConfig) -> None:
         super().__init__()
         assert config.n_embd % config.n_head == 0
-
-        # key, query, value projections for all heads, but in a batch
-        self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd, bias=False)
-        # output projection
-        self.c_proj = nn.Linear(config.n_embd, config.n_embd, bias=False)
+        if config.add_qk_lora:
+            self.c_attn = lora.MergedLinear(config.n_embd, 3* config.n_embd, r=config.lora_r, enable_lora=[True, False, True])
+        else:
+            # key, query, value projections for all heads, but in a batch
+            self.c_attn = nn.Linear(config.n_embd, 3 * config.n_embd, bias=False)
+        if config.add_attn_proj_lora:
+            self.c_proj = lora.Linear(in_features, out_features, r=config.lora_r)
+        else:
+            # output projection
+            self.c_proj = nn.Linear(config.n_embd, config.n_embd, bias=False)
 
         self.n_head = config.n_head
         self.n_embd = config.n_embd
@@ -173,8 +189,7 @@ class LLaMATransformer(nn.Module):
 
         #self.norm = RMSNorm(config['dim'], eps=config['norm_eps'])
         self.norm = LitRMSNorm(config.n_embd)
-        # work-around for PEFT, Huggingface
-        self.prepare_inputs_for_generation = None
+        
    
     def forward(self, tokens: torch.Tensor):
         bsz, token_num, hidden_dim = tokens.shape
@@ -217,14 +232,20 @@ class LLaMATransformer(nn.Module):
         transformer.h.31.rms_2.scale
         transformer.ln_f.scale
         lm_head.weight
+        
         """
         if tail:
             for i in range(self.first_layer,self.n_layers): ##(TODO) md modify more correct name i.e. select layer?
                 layer_checkpoint_keys = [k for k in checkpoint.keys() if f'transformer.h.{i}.' in k] ## full name weight key
                 layer_checkpoint_keys = [k.replace(f'transformer.h.{i}.', '') for k in layer_checkpoint_keys] # weight key
-                layer_checkpoint = {k: checkpoint[f'transformer.h.{i}.{k}'] for k in layer_checkpoint_keys} ## weight
+                from lightning.fabric.utilities.load import  _materialize_tensors, _NotYetLoadedTensor
+                ## because I use lazy_load("model_hub/OPT-LLM/lit-llama/7b/7B/lit-llama.pth"), 
+                ## it will encode weight tensor into  _NotYetLoadedTensor  e.g.: _NotYetLoadedTensor(tensor(..., device='meta', size=(4096,)))
+                ## then I will used _materialize_tensors to decode it.
+                layer_checkpoint = {k: _materialize_tensors(checkpoint[f'transformer.h.{i}.{k}']) for k in layer_checkpoint_keys} ## weight 
+                
                 self.layers[i - self.first_layer].load_state_dict(
                     layer_checkpoint, strict=strict)
         return
 
-  
+ 
