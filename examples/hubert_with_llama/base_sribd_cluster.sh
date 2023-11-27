@@ -152,3 +152,39 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
             hydra.job.name=pretrain
 fi
 
+
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ];then
+   echo "finetune llamahubert on 10h on 25k steps in letter ctc loss mode"
+   echo "freeze llama layer layer in finetune mode"
+
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   dir=/mntnfs/lee_data1/maduo/exp
+   config_dir=$fairseq_dir/examples/hubert_with_llama
+   model_name=continue_pretain_on_hubert_iter2_with_llama_on_train_360_ft_style
+   exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune_2gpus
+   exp_dir=$dir/pretrain/${model_name}
+   mkdir -p $exp_finetune_dir
+   world_size=2
+   update_freq=4
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   python $fairseq_dir/fairseq_cli/hydra_train.py \
+            --config-dir $config_dir/config/finetune \
+            --config-name base_10h \
+            task.data=$tsv_dir\
+            task.label_dir=$tsv_dir\
+            task.labels='["ltr"]' \
+            model.w2v_path=$exp_dir/checkpoint_192_100000.pt\
+            common.user_dir=$fairseq_dir/examples/hubert_with_llama\
+            dataset.train_subset=train-10h\
+            dataset.valid_subset=\'dev-other\'\
+            distributed_training.distributed_world_size=${world_size}\
+            distributed_training.distributed_port=-1\
+            distributed_training.ddp_backend=legacy_ddp\
+            optimization.update_freq=[${update_freq}]\
+            common.tensorboard_logdir=$exp_finetune_dir\
+            checkpoint.save_dir=$exp_finetune_dir\
+            hydra.run.dir=$exp_finetune_dir\
+            hydra.job.name=finetune
+
+fi
