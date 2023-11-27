@@ -235,7 +235,7 @@ def prepare_multi_modal_text_utt(label: Tensor, text_utt: str) -> str:
 
 ## step: load big text -> random cut into small text, on small text, we construt multi modal text utterance
 def get_small_list_from_big_list(
-    text_contents: List[str], audio_names: List[str]
+        text_contents: List[str], audio_names: List[str], idx_num_from_iter1: int = None,
 ) -> List[str]:
     assert len(text_contents) >= len(
         audio_names
@@ -252,9 +252,15 @@ def get_small_list_from_big_list(
     logger.info(
             f"model actual using text utterance nums: {steps}, it accounts for a {len(sublists_contents)} of the total text ! "
     )
-    idx = np.random.choice(
-        np.arange(len(sublists_contents))
-    )  ## np.arange(nums), is nums is very big, so np.arange(nums) will consum big time.
+    ## iter>1 case
+    idx = None
+    if idx_num_from_iter1 is not None:
+        idx = idx_num_from_iter1
+    else:
+        ## iter == 1 case
+        idx = np.random.choice(
+            np.arange(len(sublists_contents))
+        )   ## np.arange(nums), is nums is very big, so np.arange(nums) will consum big time.
     logger.info(f"after cut text, choice index: {idx}!!! ")
     text_contents = sublists_contents[
         idx
@@ -293,6 +299,7 @@ def post_final_audio_text(
     max_keep_phone_size: int ,
     min_keep_phone_size: int,
     text_ratio: int,
+    idx_num_from_iter1: int = None,
 ):
     ## step1: load text
     ## step0: load audio
@@ -314,7 +321,7 @@ def post_final_audio_text(
         labels = repeat_label(labels, text_ratio)
         #logger.info(f"labels part: {labels[:3]}")
         ## prepare text
-        text_contents = get_small_list_from_big_list(text_contents, audio_namess)
+        text_contents = get_small_list_from_big_list(text_contents, audio_namess, idx_num_from_iter1)
         text_uttids, text_contents = load_post_text(text_contents, labels)
 
         # if len(label_paths) >1; label_paths[1] contain label path is used to pesudo label of voicelm2 model when iter >=2
@@ -322,7 +329,7 @@ def post_final_audio_text(
             logger.info(f"currently training voicelm2 when iter >1 !!!")
             #labels = get_pre_labels(label_paths[1], audio_inds, tot, audio_sizes)
             labels = get_model_labels(label_paths[0])
-            labels = repeat_label(labels, text_ratio)
+            #labels = repeat_label(labels, text_ratio)
             
 
     elif len(text_contents) > len(audio_names) and text_ratio == 1:
@@ -341,7 +348,7 @@ def post_final_audio_text(
             logger.info(f"currently training voicelm2 when iter >1 !!!")
             #labels = get_model_labels(label_paths[1], audio_inds, tot, audio_sizes)
             labels = get_model_labels(label_paths[0])
-            labels = repeat_label(labels, text_ratio)
+            #labels = repeat_label(labels, text_ratio)
     else:
         logger.info(f"len(text_contents) < len(audio_names)!!!")
         audio_namess = audio_names
@@ -355,8 +362,9 @@ def post_final_audio_text(
         #if len(label_paths) >1; label_paths[1] contain label path is used to pesudo label of voicelm2 model when iter >=2
         if len(label_paths)>1:
             logger.info(f"currently training voicelm2 when iter >1 !!!")
+            logger.info(f"label_paths[0]: {label_paths[0]}")
             labels = get_model_labels(label_paths[0])
-            labels = repeat_label(labels, text_ratio)
+            #labels = repeat_label(labels, text_ratio)
 
 
 
@@ -461,6 +469,7 @@ class Voicelm2DatasetBigtext(FairseqDataset):
         # if it is false, speech and paired code label and unpair text code are used to pretrain model.
         text_ratio: int = 1,  # more than 1, it means repeat audio utterances to  get the number of text utterances.
         pair_data: bool = False,  # if false, it means speech and text is unpaired , otherwise it is paired
+        idx_num_from_iter1: int = None, # default is None, means iter==1 case, otherwise model is training at iter>1 case
     ):
         self.text_drop = text_drop
         if not self.text_drop:
@@ -481,6 +490,7 @@ class Voicelm2DatasetBigtext(FairseqDataset):
                 max_keep_phone_size,
                 min_keep_phone_size,
                 text_ratio,
+                idx_num_from_iter1,
             )
         else:
             self.text_contents=None

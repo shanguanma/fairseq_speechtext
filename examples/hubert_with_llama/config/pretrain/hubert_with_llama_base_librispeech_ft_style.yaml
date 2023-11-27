@@ -47,21 +47,25 @@ criterion:
   pred_nomask_weight: 0.0
   loss_weights: [10,]
 
+
 optimization:
-  max_update: 400000
-  lr: [0.0005]
-  clip_norm: 10.0
-  update_freq: [8] ## default 4gpus, total 4gpus*8=32gpus
+  max_update: 100000
+  lr: [0.00003]
+  sentence_avg: true
+  update_freq: [1]
 
 optimizer:
   _name: adam
   adam_betas: (0.9,0.98)
-  adam_eps: 1e-06
-  weight_decay: 0.01
+  adam_eps: 1e-08
 
 lr_scheduler:
-  _name: polynomial_decay
-  warmup_updates: 32000
+  _name: tri_stage
+  #warmup_steps: 8000
+  #hold_steps: 0
+  #decay_steps: 72000
+  phase_ratio: [0.1, 0.4, 0.5]
+  final_lr_scale: 0.05
 
 model:
   _name: LLaMAhubert

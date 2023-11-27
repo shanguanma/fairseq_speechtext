@@ -206,7 +206,10 @@ class Voicelm2PretrainingConfig(FairseqDataclass):
             "help": "it is diffence from finetune mode, because here the finetune model can accept two style label. inference_model=true, it will only accept one style label"
         },
     )
-
+    idx_num_from_iter1: Optional[int] = field(
+        default=None,
+        metadata={"help": " default is None, means iter==1 case, otherwise model is training at iter>1 case"},
+    )
 
 @register_task("voicelm2_pretraining", dataclass=Voicelm2PretrainingConfig)
 class Voicelm2PretrainingTask(FairseqTask):
@@ -401,6 +404,7 @@ class Voicelm2PretrainingTask(FairseqTask):
                     single_target=self.cfg.single_target,
                     is_s2s=self.cfg.is_s2s,  ## choice ctc or seq2seq finetune flag
                     text_drop=self.cfg.text_drop,  ## whether unpaired text is used to finetune
+
                 )
         else:  ## pretrain case
             #            self.datasets[split] = Voicelm2Dataset1(
@@ -454,6 +458,7 @@ class Voicelm2PretrainingTask(FairseqTask):
                 text_drop=False,
                 text_ratio=self.cfg.text_ratio,
                 pair_data=self.cfg.pair_data,
+                idx_num_from_iter1=self.cfg.idx_num_from_iter1,
             )
 
     def max_positions(self) -> Tuple[int, int]:

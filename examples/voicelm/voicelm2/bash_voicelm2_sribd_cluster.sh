@@ -1331,6 +1331,7 @@ if [ ${stage} -le 70 ] && [ ${stop_stage} -ge 70 ];then
    mkdir -p $exp_dir
    world_size=4
    update_freq=8
+   lr=0.00001
    #world_size=2
    #update_freq=16
 
@@ -1343,15 +1344,17 @@ if [ ${stage} -le 70 ] && [ ${stop_stage} -ge 70 ];then
             task.labels='["km","speechphncode","textphncode"]' \
             task.text_ratio=10\
             task.max_phone_size=300\
+            +task.idx_num_from_iter1=6\
             dataset.max_tokens=3400000\
             model.label_rate=50\
             common.user_dir=$fairseq_dir/examples/voicelm/voicelm2\
             dataset.train_subset=train-960\
-            dataset.valid_subset=\'dev-other_2864,dev-clean\'\
+            dataset.valid_subset=\'dev-other,dev-clean\'\
             distributed_training.distributed_world_size=${world_size}\
             distributed_training.distributed_port=-1\
             distributed_training.ddp_backend=legacy_ddp\
             optimization.update_freq=[${update_freq}]\
+            optimization.lr=[$lr]\
             common.tensorboard_logdir=$exp_dir\
             checkpoint.save_dir=$exp_dir\
             hydra.run.dir=$fairseq_dir/examples/voicelm/voicelm2\
@@ -1374,8 +1377,8 @@ if [ ${stage} -le 71 ] && [ ${stop_stage} -ge 71 ];then
    #exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
    exp_dir=$dir/pretrain/${model_name}
    mkdir -p $exp_finetune_dir
-   world_size=2
-   update_freq=4
+   world_size=1
+   update_freq=8
    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
    python $fairseq_dir/fairseq_cli/hydra_train.py \
             --config-dir $config_dir/config/finetune \
@@ -1399,7 +1402,7 @@ if [ ${stage} -le 71 ] && [ ${stop_stage} -ge 71 ];then
             hydra.job.name=$exp_finetune_dir/finetune
 fi
 
-if [ ${stage} -le 62 ] && [ ${stop_stage} -ge 62 ];then
+if [ ${stage} -le 72 ] && [ ${stop_stage} -ge 72 ];then
    echo "inference voicelm2  model on dev-other, dev-clean, test-other, test-clean of librispeech"
    fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
    tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
@@ -1430,4 +1433,10 @@ if [ ${stage} -le 62 ] && [ ${stop_stage} -ge 62 ];then
                 dataset.gen_subset=$name
 
    done
+   ## (fsq_speechtext) [maduo@pbcmlg01 maduo]$ grep -rn 'Word error rate' logs/bash_voicelm2_sribd_cluster_flash_attention_lr4e_4_with_40M_unpaired_text_ratio10_iter2_pretrain_infer.log
+   ## 8153:[2023-11-21 16:40:42,317][__main__][INFO] - Word error rate: 5.6469
+   ##16775:[2023-11-21 16:41:26,297][__main__][INFO] - Word error rate: 14.0821
+   ##24662:[2023-11-21 16:42:09,888][__main__][INFO] - Word error rate: 5.8249
+   ##33518:[2023-11-21 16:42:53,684][__main__][INFO] - Word error rate: 13.9181
+
    fi
