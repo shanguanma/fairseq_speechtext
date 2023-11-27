@@ -7,8 +7,8 @@ import glob
 import math
 
 parser = argparse.ArgumentParser()
-parser.add_argument("exp_path")
-parser.add_argument("dev_name", default="dev-other")
+parser.add_argument("--exp_path")
+parser.add_argument("--dev_name", default="dev-other")
 args = parser.parse_args()
 
 best_uer = (math.inf, math.inf, "", "", "")
@@ -19,7 +19,8 @@ best_ppl = (math.inf, math.inf, "", "", "")
 all_infos = {}
 # for file_path in glob.glob(f"{args.exp_path}/*/*.txt"):
 if __name__ == "__main__":
-    for file_path in glob.glob(f"{args.exp_path}/*/*.log"):
+    #for file_path in glob.glob(f"{args.exp_path}/*/*.log"):
+    for file_path in glob.glob(f"{args.exp_path}/*.log"):
         #setting_index_name = file_path.split("/")[-2]
         exp_name = file_path.split("/")[-2]
         #print(f"exp_name: {exp_name}")
@@ -72,7 +73,7 @@ if __name__ == "__main__":
     step_2.sort(key=lambda x: x[0][f"{args.dev_name}_lm_score_sum"])
 
     print(f"best_ppl:::{best_ppl}")
-    print(best_uer)
+    print(f"best_uer:::{best_uer}")
 
     print("Best checkpoint is:")
     print(step_2)

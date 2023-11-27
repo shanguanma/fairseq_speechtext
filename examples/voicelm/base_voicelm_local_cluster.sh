@@ -403,26 +403,34 @@ if [ ${stage} -le 40 ] && [ ${stop_stage} -ge 40 ];then
 fi
 
 
-if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
-   echo "iter: pretrain voicelm on 7layer of hubert pesudo label and librispeech monophncode from w2vu2-model "
+
+
+
+## using half of unpaired text to train wav2vec-u2 model and get librispeech monophncode
+if [ ${stage} -le 50 ] && [ ${stop_stage} -ge 50 ];then
+   echo "iter: pretrain voicelm on 6layer of hubert pesudo label and librispeech monophncode from w2vu2-model "
    echo "training on 400k steps for train-960 of librispeech"
-   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
-   tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
-   dir=/mntnfs/lee_data1/maduo/exp
-   label_dir=$tsv_dir/offical_hubert_codes_and_librispeech_frame_monophncode_using_wav2vec-u2_model
+   #fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   #tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+
+   fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   tsv_dir=/workspace2/maduo/dataset/format/librispeech
+   #dir=/mntnfs/lee_data1/maduo/exp
+   dir=/workspace2/maduo/exp
+   label_dir=$tsv_dir/offical_hubert_codes_and_librispeech_frame_monophncode_using_wav2vec-u2_model_on_unpaired_text_half
    config_dir=$fairseq_dir/examples/voicelm
-   model_name=pretrain_on_base_voicelm_4gpu_8update_960h_400k_update
+   model_name=pretrain_on_base_voicelm_4gpu_8update_960h_400k_update_on_unpaired_text_half
    exp_dir=$dir/pretrain/${model_name}
    mkdir -p $exp_dir
    world_size=4
    update_freq=8
    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
-   python $fairseq_dir/fairseq_cli/hydra_train.py \
+   CUDA_VISIBLE_DEVICES=3,4,5,6  python $fairseq_dir/fairseq_cli/hydra_train.py \
             --config-dir $config_dir/config/pretrain \
             --config-name voicelm_base_librispeech \
             task.data=$tsv_dir\
             task.label_dir=$label_dir\
-            task.labels='["speechphncode","km"]' \
+            task.labels='["unsupphncode1","km"]' \
             model.label_rate=50\
             common.user_dir=$fairseq_dir/examples/voicelm\
             dataset.train_subset=train-960\
@@ -438,4 +446,3 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
 ### 4V100: training about 30.6 day
 ###           200steps: about 22 minites
 fi
-

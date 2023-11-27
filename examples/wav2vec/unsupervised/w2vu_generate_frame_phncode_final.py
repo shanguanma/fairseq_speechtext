@@ -453,7 +453,7 @@ def generate(cfg: UnsupGenerateConfig, models, saved_cfg, use_cuda):
     logger.info(f"Finish extracting features")
 
     #phone_id_code_file= cfg.fairseq.task.data + '/' + cfg.fairseq.dataset.gen_subset + ".unsupphncode"    
-    phone_id_code_file= cfg.results_path + '/' + cfg.fairseq.dataset.gen_subset + ".unsupphncode"
+    phone_id_code_file= cfg.results_path + '/' + cfg.fairseq.dataset.gen_subset + ".unsupphncode1"
     with progress_bar.build_progress_bar(cfg.fairseq.common, itr) as t, open(phone_id_code_file,'w')as fw:
         for i, sample in enumerate(t):
             ## import data information of display
@@ -482,6 +482,7 @@ def generate(cfg: UnsupGenerateConfig, models, saved_cfg, use_cuda):
                                                      ## adds four specify symbol),
                                                      ## its id  is equal to monophone sets.
                 hyp = [int(s)-4 for s in hyp]  ## reduce 4
+                #hyp = [int(s) for s in hyp]
                 hyp_id = ' '.join(map(str,hyp)) ## 
                 fw.write(hyp_id+'\n')
               
