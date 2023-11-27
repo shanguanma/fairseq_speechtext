@@ -465,6 +465,7 @@ if [ ${stage} -le 14 ] && [ ${stop_stage} -ge 14 ];then
 
 fi
 
+#(todo) run2023-11-27 for voicelm 
 ## using half of unpaired text to train wav2vec-u2 model and get librispeech monophncode
 if [ ${stage} -le 20 ] && [ ${stop_stage} -ge 20 ];then
    echo "iter: pretrain voicelm on 6layer of hubert pesudo label and librispeech monophncode from w2vu2-model "
@@ -485,7 +486,7 @@ if [ ${stage} -le 20 ] && [ ${stop_stage} -ge 20 ];then
             --config-name voicelm_base_librispeech \
             task.data=$tsv_dir\
             task.label_dir=$label_dir\
-            task.labels='["phncode","km"]' \
+            task.labels='["unsupphncode1","km"]' \
             model.label_rate=50\
             common.user_dir=$fairseq_dir/examples/voicelm\
             dataset.train_subset=train-960\
