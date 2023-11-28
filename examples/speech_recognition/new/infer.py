@@ -47,7 +47,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 config_path = Path(__file__).resolve().parent / "conf"
-
+print(f"config_path: {config_path}")
 
 @dataclass
 class DecodingConfig(DecoderConfig, FlashlightDecoderConfig):
@@ -66,12 +66,12 @@ class DecodingConfig(DecoderConfig, FlashlightDecoderConfig):
 @dataclass
 class InferConfig(FairseqDataclass):
     task: Any = None
-    decoding: DecodingConfig = DecodingConfig()
-    common: CommonConfig = CommonConfig()
-    common_eval: CommonEvalConfig = CommonEvalConfig()
-    checkpoint: CheckpointConfig = CheckpointConfig()
-    distributed_training: DistributedTrainingConfig = DistributedTrainingConfig()
-    dataset: DatasetConfig = DatasetConfig()
+    decoding: DecodingConfig = field(default=DecodingConfig)
+    common: CommonConfig = field(default=CommonConfig)
+    common_eval: CommonEvalConfig = field(default=CommonEvalConfig)
+    checkpoint: CheckpointConfig = field(default=CheckpointConfig)
+    distributed_training: DistributedTrainingConfig = field(default=DistributedTrainingConfig)
+    dataset: DatasetConfig = field(default=DatasetConfig)
     is_ax: bool = field(
         default=False,
         metadata={
@@ -460,7 +460,7 @@ def main(cfg: InferConfig) -> float:
         return wer
 
 
-@hydra.main(config_path=config_path, config_name="infer")
+@hydra.main( config_path=config_path, config_name="infer")
 def hydra_main(cfg: InferConfig) -> Union[float, Tuple[float, Optional[float]]]:
     container = OmegaConf.to_container(cfg, resolve=True, enum_to_str=True)
     cfg = OmegaConf.create(container)

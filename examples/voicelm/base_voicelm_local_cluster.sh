@@ -4,8 +4,8 @@ stage=0
 
 stop_stage=1000
 .  utils/parse_options.sh
-#. path_for_fairseq_speechtext.sh ## pytorch 2.0 fairseq flashnight-text flashnight sequence 
-. path_for_fsq_speechtext.sh
+#. path_for_fairseq_speechtext.sh ## pytorch 2.0 fairseq flashnight-text flashnight sequence , python=3.9
+. path_for_fsq_speechtext.sh # python=3.11 , it is not work in infer stage.
 export HYDRA_FULL_ERROR=1
 export CUDA_LAUNCH_BLOCKING=1
 
