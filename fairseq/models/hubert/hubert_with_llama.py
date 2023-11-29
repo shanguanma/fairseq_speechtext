@@ -274,7 +274,7 @@ class LLaMAHubertConfig(FairseqDataclass):
     add_attn_proj_lora: bool = False
     add_mlp_lora: bool = False
     lora_r: int = 0 ## usually set to 16, if it is 0, means that we don't use lora technology.
-
+    freeze_hubert_layer_nums: int = 0 ## if >0, it will freeze first `freeze_hubert_layer_num` layer weigth
 @register_model("LLaMAhubert", dataclass=LLaMAHubertConfig)
 class LLaMAHubertModel(BaseFairseqModel):
     def __init__(

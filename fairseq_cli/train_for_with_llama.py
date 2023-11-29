@@ -41,6 +41,54 @@ from fairseq.model_parallel.megatron_trainer import MegatronTrainer
 from fairseq.trainer import Trainer
 
 from lightning.fabric.utilities.load import _lazy_load as lazy_load
+import time
+from packaging import version
+
+def load_llama_weight(model, cfg):
+    if hasattr(model,'llama') and cfg.model.hubert_path: 
+        if version.parse(torch.__version__).base_version>='2.1.0':
+            logger.info("Loading LLaMA checkpoints using native pytorch2.1 load with mmap mode")
+            start_time = time.time()
+            state_dict_llama = torch.load(cfg.model.llama_path,mmap=True)
+            model.llama.custom_load_state_dict_native_torch(state_dict_llama, tail=True, strict=False)
+            logger.info(f"Loaded in {time.time() - start_time:.2f} seconds in native pytorch2.1 load with mmap")
+        else: 
+            logger.info("Loading LLaMA checkpoints using lightning lazy load mode")
+            start_time = time.time()
+            state_dict_llama = lazy_load(cfg.model.llama_path)
+            model.llama.custom_load_state_dict(state_dict_llama, tail=True, strict=False)
+            logger.info(f"Loaded in {time.time() - start_time:.2f} seconds in lightning lazy load mode")
+
+def load_hubert_weight(model, cfg):
+    logger.info("Loading offical base Hubert checkpoints")
+    start_time = time.time()
+    state = checkpoint_utils.load_checkpoint_to_cpu(cfg.model.hubert_path)
+    model.load_state_dict(state["model"],strict=False)
+    logger.info(f"Loaded in {time.time() - start_time:.2f} seconds")
+
+
+def freeze_model_layer(model, freeze_hubert_layer_nums:int, freeze_llama: bool = True):
+    freeze_keys=[]
+    for k, params in model.named_parameters():
+        if f'feature_extractor.' in k:
+            freeze_keys.append(k)
+        elif f'post_extract_proj.' in k:
+            freeze_keys.append(k)
+        elif f'encoder.pos_conv.' in k:
+            freeze_keys.append(k)
+        elif freeze_llama and f'llama.' in k:
+            freeze_keys.append(k)
+        else:
+            for n in range(freeze_hubert_layer_nums):
+                if f'encoder.layers.{n}.' in k:
+                    freeze_keys.append(k)
+   
+    print(f"freeze_keys: {freeze_keys}!!!!")
+    for name, params in model.named_parameters():
+        if name in freeze_keys:
+            params.requires_grad = False
+
+
 
 def main(cfg: FairseqConfig) -> None:
     if isinstance(cfg, argparse.Namespace):
@@ -94,53 +142,23 @@ def main(cfg: FairseqConfig) -> None:
         with fsdp_enable_wrap(cfg.distributed_training):
             model = fsdp_wrap(task.build_model(cfg.model))
     else:
-        model = task.build_model(cfg.model)
-    # load llama checkpoint for the encode layer
-    #logger.info(f"model att: {dir(model)}")
-#    if cfg.task.finetune:
-#        if hasattr(model,'llama'):
-#            logger.info("Loading LLaMA checkpoints")
-#            import time
-#            start_time = time.time()
-#            ## torch.load
-#            #checkpoint = torch.load(cfg.model.llama_path, map_location={'cuda:5': 'cuda:6'})
-#            checkpoint_llama= lazy_load(cfg.model.llama_path)
-#            model.llama.custom_load_state_dict(checkpoint_llama, tail=True, strict=False)
-#            for name, params in model.named_parameters():
-#                if "llama" in name:
-#                    params.requires_grad = False 
-#            logger.info(f"Loaded in {time.time() - start_time:.2f} seconds")
-#        else:
-#             pass ## (todo)
-    if hasattr(model,'llama') and cfg.model.hubert_path:
-    #if cfg.model.llama_path and cfg.model.hubert_path: ## pretrain stage with llama case
-        logger.info("Loading LLaMA checkpoints")
-        import time
-        start_time = time.time()
-        ## torch.load
-        #checkpoint = torch.load(cfg.model.llama_path, map_location={'cuda:5': 'cuda:6'})
-        checkpoint_llama= lazy_load(cfg.model.llama_path)
-        model.llama.custom_load_state_dict(checkpoint_llama, tail=True, strict=False) 
-        logger.info(f"Loaded in {time.time() - start_time:.2f} seconds") 
-        logger.info("Loading offical base Hubert checkpoints")
-        start_time = time.time()
-        #checkpoint_hubert= lazy_load(cfg.model.hubert_path)
-        #model.load_state_dict(checkpoint_hubert,strict=False)
-        state = checkpoint_utils.load_checkpoint_to_cpu(cfg.model.hubert_path)
-        model.load_state_dict(state["model"],strict=False)
-        logger.info(f"Loaded in {time.time() - start_time:.2f} seconds")
-    elif not hasattr(model,'llama') and cfg.model.hubert_path: ## continue to pretrain hubert model
-        #assert cfg.model.llama_path is None, f"cfg.model.llama_path: {cfg.model.llama_path} in contine hubert pretrain case"
-        import time
-        logger.info("Loading Hubert checkpoints")
-        start_time = time.time()
-        #checkpoint_hubert= lazy_load(cfg.model.hubert_path)
-        state = checkpoint_utils.load_checkpoint_to_cpu(cfg.model.hubert_path)
-        model.load_state_dict(state["model"],strict=False)
-        logger.info(f"Loaded in {time.time() - start_time:.2f} seconds")
-        #logger.info(f"display pretrain weight")
-        #for name, params in model.named_parameters():
-                    
+        model = task.build_model(cfg.model)  ## create model
+
+    ## You can freeze the parameters right after the model creation and before the training
+    ## step1: create model (model = task.build_model(cfg.model))
+
+    ## step2: load pretrain model weight( Apply pretrained model weights)
+    ## step3: freeze the weights of the specify layers
+    ## step4: Define the optimizer
+
+    
+    ## step2: load pretrain model weigth
+    load_llama_weight(model, cfg)
+    load_hubert_weight(model, cfg)
+    ## step3 freeze the weights of the specify layers
+    freeze_model_layer(model, cfg.model.freeze_hubert_layer_nums, freeze_llama=True)
+
+
     criterion = task.build_criterion(cfg.criterion)
     logger.info(model)
     logger.info("task: {}".format(task.__class__.__name__))

@@ -181,8 +181,10 @@ class LLaMATransformer(nn.Module):
     def __init__(self, config: LLaMAConfig):
         super().__init__()
         self.config = config
-        self.n_layers = config['n_layers']
-        self.first_layer = config['first_layer']
+        #self.n_layers = config['n_layers']
+        #self.first_layer = config['first_layer']
+        self.n_layers = config.n_layers
+        self.first_layer = config.first_layer
         self.layers = torch.nn.ModuleList()
         for layer_id in range(self.first_layer, self.n_layers):
             self.layers.append(Block(config))
@@ -200,7 +202,7 @@ class LLaMATransformer(nn.Module):
 
         return h
 
-    def custom_load_state_dict(self, checkpoint, tail=False, strict=False):
+    def custom_load_state_dict(self, state_dict, tail=False, strict=False):
         """
         I use OpenLLaMA version, it is from https://github.com/Lightning-AI/lit-llama/blob/main/howto/download_weights.md
         final get lit version weight format , it is as follows:
@@ -236,16 +238,25 @@ class LLaMATransformer(nn.Module):
         """
         if tail:
             for i in range(self.first_layer,self.n_layers): ##(TODO) md modify more correct name i.e. select layer?
-                layer_checkpoint_keys = [k for k in checkpoint.keys() if f'transformer.h.{i}.' in k] ## full name weight key
-                layer_checkpoint_keys = [k.replace(f'transformer.h.{i}.', '') for k in layer_checkpoint_keys] # weight key
+                layer_state_dict_keys = [k for k in state_dict.keys() if f'transformer.h.{i}.' in k] ## full name weight key
+                layer_state_dict_keys = [k.replace(f'transformer.h.{i}.', '') for k in layer_state_dict_keys] # weight key
                 from lightning.fabric.utilities.load import  _materialize_tensors, _NotYetLoadedTensor
                 ## because I use lazy_load("model_hub/OPT-LLM/lit-llama/7b/7B/lit-llama.pth"), 
                 ## it will encode weight tensor into  _NotYetLoadedTensor  e.g.: _NotYetLoadedTensor(tensor(..., device='meta', size=(4096,)))
                 ## then I will used _materialize_tensors to decode it.
-                layer_checkpoint = {k: _materialize_tensors(checkpoint[f'transformer.h.{i}.{k}']) for k in layer_checkpoint_keys} ## weight 
+                layer_state_dict = {k: _materialize_tensors(state_dict[f'transformer.h.{i}.{k}']) for k in layer_state_dict_keys} ## weight 
                 
                 self.layers[i - self.first_layer].load_state_dict(
-                    layer_checkpoint, strict=strict)
+                    layer_state_dict, strict=strict)
         return
 
- 
+    def custom_load_state_dict_native_torch(self, state_dict, tail=False, strict=False): 
+        if tail:
+            for i in range(self.first_layer,self.n_layers): ##(TODO) md modify more correct name i.e. select layer?
+                layer_state_dict_keys = [k for k in state_dict.keys() if f'transformer.h.{i}.' in k] ## full name weight key
+                layer_state_dict_keys = [k.replace(f'transformer.h.{i}.', '') for k in layer_state_dict_keys] # weight key
+                layer_state_dict = {k: state_dict[f'transformer.h.{i}.{k}'] for k in layer_state_dict_keys} ## weight
+
+                self.layers[i - self.first_layer].load_state_dict(
+                    layer_state_dict, strict=strict)
+        return
