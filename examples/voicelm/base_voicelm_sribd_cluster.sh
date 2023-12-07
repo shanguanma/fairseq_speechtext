@@ -5,14 +5,14 @@ stage=0
 stop_stage=1000
 .  utils/parse_options.sh
 . path_for_fairseq_speechtext.sh ## pytorch 2.0 fairseq flashnight-text flashnight sequence 
-
+#. path_for_fsq_speechtext.sh
 export HYDRA_FULL_ERROR=1
 export CUDA_LAUNCH_BLOCKING=1
 
 ## build c++ part using CUDA, however in head node of this slurm server system hasn't cuda gpu.
 cd /mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
 pip install ninja ## using fast  distutils backend training for pytorch, it is very important
-pip install --editable ./  ## for python package, it can be installed at local environment
+#pip install --editable ./  ## for python package, it can be installed at local environment
 python setup.py build_ext --inplace
 
 
@@ -497,7 +497,7 @@ if [ ${stage} -le 20 ] && [ ${stop_stage} -ge 20 ];then
             optimization.update_freq=[${update_freq}]\
             common.tensorboard_logdir=$exp_dir\
             checkpoint.save_dir=$exp_dir\
-            hydra.run.dir=$fairseq_dir/examples/voicelm\
+            hydra.run.dir=$exp_dir\
             hydra.job.name=$exp_dir/pretrain
 ### 4V100: training about 30.6 day
 ###           200steps: about 22 minites
