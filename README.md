@@ -25,12 +25,16 @@ Avoiding code duplication is not a goal. Readability and hackability are.
 * for pytorch>=2.0  version
 ```
 . "/home/maduo/miniconda3/etc/profile.d/conda.sh"
-conda create -n fsq_speechtext python=3.11 -y
+conda create -n fsq_speechtext python=3.9 -y
  conda activate fsq_speechtext
+conda install pytorch==2.0.1  torchaudio==2.0.2 pytorch-cuda=11.7 -c pytorch -c nvidia -c https://mirrors.bfsu.edu.cn/anaconda/cloud/pytorch/linux-64/ -y
+or
+## for hltsz cluster
+conda install pytorch=2.1.1  torchaudio==2.1.1 pytorch-cuda=11.8 -c pytorch -c nvidia -c https://mirrors.bfsu.edu.cn/anaconda/cloud/pytorch/linux-64/ -y
 cd /workspace2/maduo/fsq_speechtext
-pip install --editable ./   -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install -e ./
 pip install flash-attn --no-build-isolation
-
+ pip install https://github.com/kpu/kenlm/archive/master.zip 
 ```
 > [!NOTE]
 > We strong recommend install fairseq c++ part compile follow the command: `python setup.py build_ext --inplace`
