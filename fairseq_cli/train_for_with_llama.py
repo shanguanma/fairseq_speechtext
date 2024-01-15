@@ -77,8 +77,10 @@ def freeze_model_layer(model, freeze_hubert_layer_nums:int, freeze_llama: bool =
         elif f'encoder.pos_conv.' in k:
             freeze_keys.append(k)
         elif freeze_llama and f'llama.' in k:
-            freeze_keys.append(k)
-        else:
+            if f'.lora_' not in k:
+                freeze_keys.append(k)
+        
+        elif freeze_hubert_layer_nums>0:
             for n in range(freeze_hubert_layer_nums):
                 if f'encoder.layers.{n}.' in k:
                     freeze_keys.append(k)
@@ -88,7 +90,10 @@ def freeze_model_layer(model, freeze_hubert_layer_nums:int, freeze_llama: bool =
         if name in freeze_keys:
             params.requires_grad = False
 
-
+    for name, params in model.named_parameters():
+        if name not in freeze_keys:
+            assert params.requires_grad==True, f"name: {name}, params: {params}"
+            logger.info(f"name: {name}: params requires_grad : {params.requires_grad}!!")
 
 def main(cfg: FairseqConfig) -> None:
     if isinstance(cfg, argparse.Namespace):
@@ -153,11 +158,13 @@ def main(cfg: FairseqConfig) -> None:
 
     
     ## step2: load pretrain model weigth
-    load_llama_weight(model, cfg)
-    load_hubert_weight(model, cfg)
-    ## step3 freeze the weights of the specify layers
-    freeze_model_layer(model, cfg.model.freeze_hubert_layer_nums, freeze_llama=True)
-
+    if not cfg.task.fine_tuning: ## pretrain stage
+        load_llama_weight(model, cfg)
+        load_hubert_weight(model, cfg)
+        ## step3 freeze the weights of the specify layers
+        freeze_model_layer(model, cfg.model.freeze_hubert_layer_nums, freeze_llama=True)
+    else: ## finetune stage
+        freeze_model_layer(model, cfg.model.freeze_hubert_layer_nums, freeze_llama=True)
 
     criterion = task.build_criterion(cfg.criterion)
     logger.info(model)

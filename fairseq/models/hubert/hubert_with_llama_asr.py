@@ -143,7 +143,7 @@ class HubertAsrConfig(FairseqDataclass):
         default=False,
         metadata={"help": "when hubertctc, it will add last linear layer."},
     )
-
+    freeze_hubert_layer_nums: int = 0 ## if >0, it will freeze first `freeze_hubert_layer_num` layer weigth
 
 @dataclass
 class HubertCtcConfig(HubertAsrConfig):
