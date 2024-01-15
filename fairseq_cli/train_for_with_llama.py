@@ -77,7 +77,8 @@ def freeze_model_layer(model, freeze_hubert_layer_nums:int, freeze_llama: bool =
         elif f'encoder.pos_conv.' in k:
             freeze_keys.append(k)
         elif freeze_llama and f'llama.' in k:
-            freeze_keys.append(k)
+            if f'.lora_' not in k:
+                freeze_keys.append(k)
         
         elif freeze_hubert_layer_nums>0:
             for n in range(freeze_hubert_layer_nums):
@@ -89,7 +90,10 @@ def freeze_model_layer(model, freeze_hubert_layer_nums:int, freeze_llama: bool =
         if name in freeze_keys:
             params.requires_grad = False
 
-
+    for name, params in model.named_parameters():
+        if name not in freeze_keys:
+            assert params.requires_grad==True, f"name: {name}, params: {params}"
+            logger.info(f"name: {name}: params requires_grad : {params.requires_grad}!!")
 
 def main(cfg: FairseqConfig) -> None:
     if isinstance(cfg, argparse.Namespace):
