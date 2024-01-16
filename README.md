@@ -17,55 +17,41 @@ Avoiding code duplication is not a goal. Readability and hackability are.
 # Setup
 * base environment requirenment:
   * [PyTorch](http://pytorch.org/) version >= 1.10.0
-  * Python version >= 3.8
+  * Python version >= 3.7
   * For training new models, you'll also need an NVIDIA GPU and [NCCL](https://github.com/NVIDIA/nccl)
   
-
-
-* for pytorch>=2.0  version
 ```
+We recommand you can use python version=3.9
+## for sribd cluster
 . "/home/maduo/miniconda3/etc/profile.d/conda.sh"
+
+## python==3.9 pytorch==2.0.1
 conda create -n fsq_speechtext python=3.9 -y
  conda activate fsq_speechtext
 conda install pytorch==2.0.1  torchaudio==2.0.2 pytorch-cuda=11.7 -c pytorch -c nvidia -c https://mirrors.bfsu.edu.cn/anaconda/cloud/pytorch/linux-64/ -y
+## python==3.7 pytorch=1.12.1
+conda create -n py37 python=3.7 -y
+conda activate py37
+conda install pytorch==1.12.1 torchaudio==0.12.1 cudatoolkit=11.6 -c pytorch -c conda-forge  -c https://mirrors.bfsu.edu.cn/anaconda/cloud/pytorch/linux-64/ -y
 or
 ## for hltsz cluster
+## python=3.9 pytorch=2.1.1
 conda install pytorch=2.1.1  torchaudio==2.1.1 pytorch-cuda=11.8 -c pytorch -c nvidia -c https://mirrors.bfsu.edu.cn/anaconda/cloud/pytorch/linux-64/ -y
-cd /workspace2/maduo/fsq_speechtext
+cd /path/to/fsq_speechtext
+## Because head node don't contain cuda, the below command can only compile cpp  part into cpu device
 pip install -e ./
-pip install flash-attn --no-build-isolation
- pip install https://github.com/kpu/kenlm/archive/master.zip 
+pip install flash-attn --no-build-isolation  ## support flash attention
+
+
+
+# You must include the below command when you submit your script in your cluster server,
+# And your user environment must cuda home path, because the below code need it.
+## i.e.: in slurm cluster server, 
+# you  can find cuda via 'module av | grep cuda'
+# module load cuda11.8/toolkit/11.8.0 
+cd /path/to/fairseq_speechtext
+python setup.py build_ext --inplace
 ```
-> [!NOTE]
-> We strong recommend install fairseq c++ part compile follow the command: `python setup.py build_ext --inplace`
-
-
-
-
-* For pytorch 1. version(e.g. pytorch=1.11.0)
-
-``` bash
-. "/home/maduo/miniconda3/etc/profile.d/conda.sh"
-conda create -n fairseq_speechtext python=3.9 -y
- conda activate fairseq_speechtext
-cd /workspace2/maduo/fairseq_speechtext
-## edit fairseq/pyproject.toml, set "torch==1.11.0"
-## edit  fairseq/setup.py set "torch==1.11.0","torchaudio==0.11.0",
-pip install --editable ./   -i https://pypi.tuna.tsinghua.edu.cn/simple
-pip install soundfile editdistance tensorboardX  -i https://pypi.tuna.tsinghua.edu.cn/simple
-pip install librosa h5py -i https://pypi.tuna.tsinghua.edu.cn/simple
-pip install hydra-core --upgrade
-pip3 install torch==1.11.0+cu113  torchaudio===0.11.0+cu113 -f https://download.pytorch.org/whl/cu113/torch_stable.html  -i https://pypi.tuna.tsinghua.edu.cn/simple
-pip install bitarray tqdm  -i https://pypi.tuna.tsinghua.edu.cn/simple
-pip install --upgrade --force-reinstall sacrebleu -i https://pypi.tuna.tsinghua.edu.cn/simple
-pip install  timm  torchvision==0.12.0 -i https://pypi.tuna.tsinghua.edu.cn/simple
-
-for fixing ImportError: cannot import name 'get_ref_type' from 'omegaconf._utils'
-you  should pip install omegaconf==2.1.2
-```
-> [!NOTE]
-> We strong recommend install fairseq c++ part compile follow the command: `python setup.py build_ext --inplace`
-
 
 * For ASR decoding, you need install the below library:
 ``` bash
