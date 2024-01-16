@@ -10,7 +10,18 @@ import torch
 import torch.nn as nn
 from einops import rearrange, repeat
 
-from flash_attn.utils.distributed import get_dim_for_local_rank
+import warnings
+
+try:
+    from flash_attn.utils.distributed import get_dim_for_local_rank
+except:
+    warnings.warn(
+    """
+    you need to install flash_attn package following the command:
+    pip install flash-attn --no-build-isolation
+    """
+
+    )
 
 try:
     from flash_attn import (
