@@ -1,11 +1,12 @@
 
-Why provide such an installation tutorial?
-> Some clusters may not provide such tools and only provide cuda drivers.
-> For cpp projects that require direct operation of cuda, such as flash_attn and k2, they cannot be compiled, even if they are installed using anaconda cudatookit
+# Why provide such an installation tutorial?
+ * Some clusters may not provide such tools and only provide cuda drivers.
+ * For cpp projects that require direct operation of cuda, such as flash_attn and k2, they cannot be compiled, even if they are installed using anaconda cudatookit
 
-## reference: https://k2-fsa.github.io/k2/installation/cuda-cudnn.html
+# reference: https://k2-fsa.github.io/k2/installation/cuda-cudnn.html
 
-#Install cuDNN and CUDA 11.8
+# Install cuDNN and CUDA 11.8
+
 ```
 You can use the following commands to install CUDA 11.8.0. We install it into /home/maduo/installed/cuda-11.8.0. You can replace it if needed.
 wget https://developer.download.nvidia.com/compute/cuda/11.8.0/local_installers/cuda_11.8.0_520.61.05_linux.run
@@ -48,13 +49,13 @@ Copyright (c) 2005-2022 NVIDIA Corporation
 Built on Wed_Sep_21_10:33:58_PDT_2022
 Cuda compilation tools, release 11.8, V11.8.89
 Build cuda_11.8.r11.8/compiler.31833905_0
+
 ```
 
+# Install cuDNN and CUDA 12.1
 
 
-#Install cuDNN and CUDA 12.1
 ```
-
 You can use the following commands to install CUDA 12.1. We install it into /home/maduo/installed/cuda-12.1.0. You can replace it if needed.
 wget https://developer.download.nvidia.com/compute/cuda/12.1.0/local_installers/cuda_12.1.0_530.30.02_linux.run
 
