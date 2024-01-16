@@ -517,12 +517,17 @@ class VADIterator:
 
 def collect_chunks(tss: List[dict],
                    wav: torch.Tensor):
+
+    #if tss is None:
+    #    return None
     chunks = []
     for i in tss:
         chunks.append(wav[i['start']: i['end']])
-    return torch.cat(chunks)
-
-
+    try:
+        return torch.cat(chunks) ## skip chunks is None
+    except Exception as e:
+        pass
+    
 def drop_chunks(tss: List[dict],
                 wav: torch.Tensor):
     chunks = []

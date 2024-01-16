@@ -13,6 +13,11 @@ import logging
 #import tqdm
 from tqdm import tqdm
 import soundfile
+import torchaudio.backend.sox_io_backend as sox
+from typing import List
+import time
+AUDIO_FORMAT_SETS = set(['flac', 'mp3', 'm4a', 'ogg', 'opus', 'wav', 'wma'])
+
 
 torch.set_num_threads(1)
 torch.set_num_interop_threads(1)
@@ -23,15 +28,10 @@ torchrun --nproc_per_node=5 --master_port=12345  codebase/fairseq_speechtext/exa
 
 from utils_vad import (init_jit_model,
                        get_speech_timestamps,
-                       get_number_ts,
-                       get_language,
-                       get_language_and_group,
                        save_audio,
                        read_audio,
                        VADIterator,
                        collect_chunks,
-                       drop_chunks,
-                       Validator,
                        OnnxWrapper)
 
 
@@ -92,10 +92,19 @@ def silero_vad(model_dir, onnx=False, force_onnx_cpu=False):
 def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--wavscp", default="", type=str)
-    parser.add_argument("--onnx", type=str2bool, default=True)
+    parser.add_argument("--onnx", type=str2bool, default=True,help="if true, it will vad onnx model, it will faster than vad jit model")
     parser.add_argument("--out", type=str)
+    parser.add_argument('--segments', default=None, help='segments file')
+    parser.add_argument('--text_file', help='text file')
+    parser.add_argument('--resample',
+                        type=int,
+                        default=16000,
+                        help='segments file')
     return parser
-def load_wav(wavscp):
+
+
+
+def load_data_list_ref(wavscp) -> List[tuple[str,str]]:
     # load paths
     #paths = dict()
     paths = []
@@ -111,7 +120,7 @@ def load_wav(wavscp):
     return paths
 
 
-def load_audio(audio):
+def load_audio_ref(audio) -> torch.float32:
     ## soundfile read audio, get float64 data, however torchaudio.load get float32 data.
     data, sr = soundfile.read(audio) # data is np.float64, it is same as  stage of computing vads.
     data = torch.from_numpy(data).to(torch.float32) # data is torch.float32 
@@ -128,7 +137,7 @@ def write_audio(path: str, data: torch.Tensor, sampling_rate: int=16000):
 
 
         
-def creat_output_wavname(args,path):
+def creat_output_wavname(args,path)->str:
     ## assume the wavform path is as follows:
     ## '/mntcephfs/lee_dataset/asr/WenetSpeech/untar/audio/train/youtube/B00000/Y0000000000_--5llN02F84.opus'
     # >>> os.path.dirname(path).split("/",maxsplit=6)
@@ -147,46 +156,124 @@ def creat_output_wavname(args,path):
     return outpath
 
 
+
+def load_data_list(args):
+
+    wav_table = {}
+    with open(args.wav_file, 'r', encoding='utf8') as fin:
+        for line in fin:
+            arr = line.strip().split()
+            assert len(arr) == 2
+            wav_table[arr[0]] = arr[1]
+
+    no_segments = True
+    segments_table = {}
+    if args.segments is not None:
+        no_segments = False
+        with open(args.segments, 'r', encoding='utf8') as fin:
+            for line in fin:
+                arr = line.strip().split()
+                assert len(arr) == 4
+                segments_table[arr[0]] = (arr[1], float(arr[2]), float(arr[3]))
+
+    data = []
+    with open(args.text_file, 'r', encoding='utf8') as fin:
+        for line in fin:
+            arr = line.strip().split(maxsplit=1)
+            key = arr[0]
+            txt = arr[1] if len(arr) > 1 else ''
+            if no_segments:
+                assert key in wav_table
+                wav = wav_table[key]
+                data.append((key, txt, wav))
+            else:
+                wav_key, start, end = segments_table[key]
+                wav = wav_table[wav_key]
+                data.append((key, txt, wav, start, end))
+    return data,no_segments
+
+def load_audio(item, no_segments,resample=16000)-> torch.float32:
+    #for item in data_list:
+    if no_segments:
+        key, txt, wav = item
+    else:
+        key, txt, wav, start, end = item    
+    suffix = wav.split('.')[-1]
+    assert suffix in AUDIO_FORMAT_SETS
+    if no_segments:
+        # read & resample
+        #ts = time.time()
+        audio, sample_rate = sox.load(wav, normalize=False)
+        if sample_rate != resample:
+            audio = torchaudio.transforms.Resample(
+                sample_rate, resample)(audio.float())
+    else:
+        waveforms, sample_rate = sox.load(wav, normalize=False)
+        start = int(start * sample_rate)
+        end = int(end * sample_rate)
+        audio = waveforms[:1, start:end]
+        # resample
+        if sample_rate != resample:
+            if not audio.is_floating_point():
+                # normalize the audio before resample
+                # because resample can't process int audio
+                audio = audio / (1 << 15)
+                audio = torchaudio.transforms.Resample(
+                    sample_rate, resample)(audio)
+                audio = (audio * (1 << 15)).short()
+            else:
+                audio = torchaudio.transforms.Resample(
+                    sample_rate, resample)(audio)
+    assert audio.dtype==torch.float32,f"audio.dtype: {audio.dtype}"
+    return audio
+
 from torch.distributed.elastic.multiprocessing.errors import record
 @record
 def main():
     parser = get_parser()
     args = parser.parse_args()
+     
 
+    ## prepared mulit-process utils
     rank = int(os.environ['LOCAL_RANK'])        ## processing id
     threads_num = int(os.environ['WORLD_SIZE']) ## cpu numbers, is setted by --nproc_per_node 
     logging.info("rank {}/{}.".format(
         rank, threads_num,
     ))
-    SAMPLING_RATE=16000
-    paths = load_wav(args.wavscp)
-    paths.sort(key=lambda x: x[0])
-    local_all_paths = paths[rank::threads_num]
+
+
+
+
+    ## load vad model
     #logging.info(f"local_all_paths: {local_all_paths}")
     local_model_path="/mntnfs/lee_data1/maduo/codebase/silero-vad/files"
-    #model, utils = torch.hub.load(repo_or_dir=local_model_path,
-    #                            model='silero_vad',
-    #                            source="local",
-    #                            force_reload=True,
-    #                            onnx=True)
     model, utils = silero_vad(model_dir=local_model_path, onnx=args.onnx, force_onnx_cpu=False)
     (get_speech_timestamps,
-    save_audio,
-    read_audio,
-    VADIterator,
+    _,
+    _,
+    _,
     collect_chunks) = utils
+
+
+
+    ## split data on rank
+    data_list, no_segments = load_data_list(args)
+    #paths.sort(key=lambda x: x[0])
+    local_data_list = data_list[rank::threads_num] 
+
     i=0
-    for i, (uttid, path) in tqdm(enumerate(local_all_paths), total=len(local_all_paths),ascii=True):
-        data = load_audio(path)
+    #for i, (uttid, path) in tqdm(enumerate(local_all_paths), total=len(local_all_paths),ascii=True):
+    for i, item in tqdm(enumerate(local_data_list),total=len(local_data_list),ascii=True):
+        audio = load_audio(item,no_segments, args.resample) # load audio and resample
         # get speech timestamps from full audio file
-        speech_timestamps = get_speech_timestamps(data, model, sampling_rate=SAMPLING_RATE)
+        speech_timestamps = get_speech_timestamps(audio, model, sampling_rate=args.resample)
         logging.info(f"speech_timestamps: {speech_timestamps}")
         if speech_timestamps is  not None:
             data_wo_silence = collect_chunks(speech_timestamps, data) ## data_wo_silence maybe None
             if data_wo_silence is None:
                 continue
             outpath = creat_output_wavname(args,path)
-            write_audio(outpath, data_wo_silence, sampling_rate=SAMPLING_RATE)
+            write_audio(outpath, data_wo_silence, sampling_rate=args.resample)
             i = i+1
             if i%100==0:
                 logging.info("{}/{}: process {}.".format(rank, threads_num, uttid))
