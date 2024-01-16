@@ -23,7 +23,9 @@ wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-linux-x86_64-8.9
 
 tar xvf cudnn-linux-x86_64-8.9.1.23_cuda11-archive.tar.xz --strip-components=1 -C /home/maduo/installed/cuda-11.8.0
 
-You can save the following code to activate-cuda-11.8.sh
+Note that we have to set the following environment variables after installing CUDA 11.8. You can save the following code to activate-cuda-11.8.sh
+and use source activate-cuda-11.8.sh if you want to activate CUDA 11.8.
+
 export CUDA_HOME=/home/maduo/installed/cuda-11.8.0
 export PATH=$CUDA_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
@@ -73,8 +75,11 @@ Now, install cuDNN for CUDA 12.1.
 wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-linux-x86_64-8.9.5.29_cuda12-archive.tar.xz
 
 tar xvf cudnn-linux-x86_64-8.9.5.29_cuda12-archive.tar.xz --strip-components=1 -C /home/maduo/installed/cuda-12.1.0
+
 Set environment variables for CUDA 12.1
-Note that we have to set the following environment variables after installing CUDA 11.8. You can save the following code to activate-cuda-12.1.sh and use source activate-cuda-12.1.sh if you want to activate CUDA 12.1.
+Note that we have to set the following environment variables after installing CUDA 11.8. You can save the following code to activate-cuda-12.1.sh 
+and use source activate-cuda-12.1.sh if you want to activate CUDA 12.1.
+
 export CUDA_HOME=/home/maduo/installed/cuda-12.1.0
 export PATH=$CUDA_HOME/bin:$PATH
 export LD_LIBRARY_PATH=$CUDA_HOME/lib64:$LD_LIBRARY_PATH
@@ -89,6 +94,9 @@ export CUDA_PATH=$CUDA_HOME
 export CUDA_INC_PATH=$CUDA_HOME/targets/x86_64-linux
 export CFLAGS=-I$CUDA_HOME/targets/x86_64-linux/include:$CFLAGS
 export CUDAToolkit_TARGET_DIR=$CUDA_HOME/targets/x86_64-linux
+
+
+
 To check that you have installed CUDA 12.1 successfully, please run:
 which nvcc
 
