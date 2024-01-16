@@ -3,7 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 import math
 import numpy as np
@@ -83,7 +83,7 @@ class Wav2vec_UConfig(FairseqDataclass):
     temp: Tuple[float, float, float] = (2, 0.1, 0.99995)
     input_dim: int = 128
 
-    segmentation: SegmentationConfig = SegmentationConfig()
+    segmentation: SegmentationConfig = field(default=SegmentationConfig)
 
 
 class Segmenter(nn.Module):

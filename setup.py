@@ -187,12 +187,14 @@ def do_setup(package_data):
             "regex",
             "sacrebleu>=1.4.12",
             # "torch>=1.13",
-            "torch>=2.0.1",
+            #"torch>=2.0.1",
+            #"torch==2.0.1",
             "tqdm",
             "bitarray",
             # "torchaudio>=0.8.0",
             # "torchaudio==0.11.0",
-            "torchaudio>=2.0.2",
+            #"torchaudio>=2.0.2",
+            #"torchaudio==2.0.2",
             "scikit-learn",
             "packaging",
             "soundfile",
@@ -203,9 +205,9 @@ def do_setup(package_data):
             "einops",
             "timm",
             "ninja",
-            "scikit-image", # for
+            "scikit-image", # for voicelm2 generate mix utterances
             "lightning", #for load big model checkpoint quickly.
-
+            "loralib", # for lora finetune model
         ],
         extras_require={
             "dev": ["flake8", "pytest", "black==22.3.0"],

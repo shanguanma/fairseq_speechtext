@@ -84,7 +84,7 @@ class UnpairedAudioTextConfig(FairseqDataclass):
     word_decoder_config: Optional[KaldiDecoderConfig] = None
     word_kenlm_path: Optional[str] = None
 
-    decoding_config: DecodingConfig = DecodingConfig()
+    decoding_config: DecodingConfig = field(default=DecodingConfig)
 
 
 @register_task("unpaired_audio_text", dataclass=UnpairedAudioTextConfig)

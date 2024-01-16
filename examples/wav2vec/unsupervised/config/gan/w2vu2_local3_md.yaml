@@ -28,6 +28,7 @@ task:
 
 dataset:
   num_workers: 6
+  #num_workers: 2 # 2024-1-4 base on /home/maduo/.conda/envs/fsq_speechtext/lib/python3.9/site-packages/torch/utils/data/dataloader.py:557: UserWarning: This DataLoader will create 6 worker processes in total. Our suggested max number of worker in current system is 2, which is smaller than what this DataLoader is going to create. Please be aware that excessive worker creation might get DataLoader running slow or even freeze, lower the worker number to avoid potential slowness/freeze if necessary.
   batch_size: 160
   skip_invalid_size_inputs_valid_test: true
   valid_subset: valid
@@ -132,35 +133,51 @@ model:
 
 
 
+#hydra:
+#  job:
+#    config:
+#      override_dirname:
+#        kv_sep: ':'
+#        item_sep: '__'
+#        exclude_keys:
+#          - run_config
+#          - distributed_training.distributed_port
+#          - common.user_dir
+#          - task.data
+#          - task.kenlm_path
+#          - task.text_data
+#          - model.generator_layers
+#          - task.labels
+#          - task.force_model_seed
+#          - dataset.train_subset
+#          - dataset.valid_subset
+#          - dataset.batch_size
+#          - dataset.num_workers
+#          - distributed_training.distributed_world_size
+#          - distributed_training.ddp_backend
+#          - optimization.update_freq
+#          - common.tensorboard_logdir
+#          - hydra.run.dir
+#  sweep:
+#    dir: ${common.tensorboard_logdir}
+#    #dir: ""
+#    #subdir: ${hydra.job.num}    
+
 hydra:
   job:
     config:
       override_dirname:
-        kv_sep: ':'
+        kv_sep: '-'
         item_sep: '__'
         exclude_keys:
-          - run_config
-          - distributed_training.distributed_port
-          - common.user_dir
+          - run
           - task.data
-          - task.kenlm_path
-          - task.text_data
-          - model.generator_layers
-          - task.labels
-          - task.force_model_seed
-          - dataset.train_subset
-          - dataset.valid_subset
-          - dataset.batch_size
-          - dataset.num_workers
-          - distributed_training.distributed_world_size
-          - distributed_training.ddp_backend
-          - optimization.update_freq
-          - common.tensorboard_logdir
-          - hydra.run.dir
+          - task.label_dir
+  run:
+    dir: ???
   sweep:
-    dir: ${common.tensorboard_logdir}
-    #dir: ""
-    #subdir: ${hydra.job.num}    
+    dir: ???
+    subdir: ${hydra.job.config_name}__${hydra.job.override_dirname}
 
 checkpoint:
   save_interval: 1000 ## offical default  setting is  1000

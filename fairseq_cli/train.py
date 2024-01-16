@@ -40,7 +40,7 @@ from fairseq.logging import meters, metrics, progress_bar
 from fairseq.model_parallel.megatron_trainer import MegatronTrainer
 from fairseq.trainer import Trainer
 
-from lightning.fabric.utilities.load import _lazy_load as lazy_load
+#from lightning.fabric.utilities.load import _lazy_load as lazy_load
 
 def main(cfg: FairseqConfig) -> None:
     if isinstance(cfg, argparse.Namespace):
