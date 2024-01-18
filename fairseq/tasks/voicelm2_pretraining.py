@@ -207,8 +207,8 @@ class Voicelm2PretrainingConfig(FairseqDataclass):
         },
     )
     #idx_num_from_iter1: Optional[int] = field(
-    idx_num_from_iter1: int = field(
-        default=None,
+    idx_num_from_iter1: Optional[int] = field(
+        default=1,
         metadata={"help": " default is None, means iter==1 case, otherwise model is training at iter>1 case"},
     )
 

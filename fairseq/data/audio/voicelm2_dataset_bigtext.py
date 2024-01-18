@@ -254,7 +254,7 @@ def get_small_list_from_big_list(
     )
     ## iter>1 case
     idx = None
-    if idx_num_from_iter1 is not None:
+    if idx_num_from_iter1 > 1:
         idx = idx_num_from_iter1
     else:
         ## iter == 1 case
