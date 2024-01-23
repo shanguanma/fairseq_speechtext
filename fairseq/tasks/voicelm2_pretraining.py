@@ -206,8 +206,9 @@ class Voicelm2PretrainingConfig(FairseqDataclass):
             "help": "it is diffence from finetune mode, because here the finetune model can accept two style label. inference_model=true, it will only accept one style label"
         },
     )
+    #idx_num_from_iter1: Optional[int] = field(
     idx_num_from_iter1: Optional[int] = field(
-        default=None,
+        default=1,
         metadata={"help": " default is None, means iter==1 case, otherwise model is training at iter>1 case"},
     )
 

@@ -13,7 +13,7 @@ import logging
 #import tqdm
 from tqdm import tqdm
 import soundfile
-import torchaudio.backend.sox_io_backend as sox
+#import torchaudio.backend.sox_io_backend as sox
 from typing import List
 import time
 AUDIO_FORMAT_SETS = set(['flac', 'mp3', 'm4a', 'ogg', 'opus', 'wav', 'wma'])
@@ -91,7 +91,7 @@ def silero_vad(model_dir, onnx=False, force_onnx_cpu=False):
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--wavscp", default="", type=str)
+    parser.add_argument("--wav_file", default="", type=str)
     parser.add_argument("--onnx", type=str2bool, default=True,help="if true, it will vad onnx model, it will faster than vad jit model")
     parser.add_argument("--out", type=str)
     parser.add_argument('--segments', default=None, help='segments file')
@@ -137,7 +137,7 @@ def write_audio(path: str, data: torch.Tensor, sampling_rate: int=16000):
 
 
         
-def creat_output_wavname(args,path)->str:
+def creat_output_wavname_ref(args,path)->str:
     ## assume the wavform path is as follows:
     ## '/mntcephfs/lee_dataset/asr/WenetSpeech/untar/audio/train/youtube/B00000/Y0000000000_--5llN02F84.opus'
     # >>> os.path.dirname(path).split("/",maxsplit=6)
@@ -157,6 +157,23 @@ def creat_output_wavname(args,path)->str:
 
 
 
+def creat_output_wavname(args,path, key, no_segments)->str:
+    if no_segments:
+        os.makedirs(args.out,exist_ok=True)
+        out = os.path.splitext(path)[0].split("/",maxsplit=6)[-1]
+        #outpath = args.out + '/'+ out + ".wav" ## torchaudio.save don't support save as opus.
+        outpath = args.out + '/'+ out + ".opus" # soundfile support save as opus, reference:https://github.com/bastibe/python-soundfile/issues/252
+        output_dir = args.out + '/' + os.path.dirname(path).split("/",maxsplit=6)[-1]
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir,exist_ok=True)
+        return outpath
+    else:
+        os.makedirs(args.out,exist_ok=True)
+        out = os.path.dirname(path).split("/",maxsplit=6)[-1]
+        output_dir=args.out + '/'+ out
+        os.makedirs(output_dir,exist_ok=True)
+        outpath = output_dir + '/'+ key + ".opus"
+        return outpath
 def load_data_list(args):
 
     wav_table = {}
@@ -203,15 +220,21 @@ def load_audio(item, no_segments,resample=16000)-> torch.float32:
     if no_segments:
         # read & resample
         #ts = time.time()
-        audio, sample_rate = sox.load(wav, normalize=False)
+        #audio, sample_rate = torchaudio.load(wav, normalize=False,backend="soundfile")
+        data, sample_rate = soundfile.read(wav) # data is np.float64, it is same as  stage of computing vads.
+        data = torch.from_numpy(data).to(torch.float32) # data is torch.float32
+        #assert sr==16000,f"expected sample rate is 16000, however uttid is {uttid}, sample rate: {sr}"
         if sample_rate != resample:
             audio = torchaudio.transforms.Resample(
                 sample_rate, resample)(audio.float())
     else:
-        waveforms, sample_rate = sox.load(wav, normalize=False)
+        #waveforms, sample_rate = torchaudio.load(wav, normalize=False,backend="soundfile")
+        waveforms, sample_rate = soundfile.read(wav) # data is np.float64, it is same as  stage of computing vads.
+        waveforms = torch.from_numpy(waveforms).to(torch.float32) # data is torch.float32
+        #assert sr==16000,f"expected sample rate is 16000, however uttid is {uttid}, sample rate: {sr}"
         start = int(start * sample_rate)
         end = int(end * sample_rate)
-        audio = waveforms[:1, start:end]
+        audio = waveforms[start:end]
         # resample
         if sample_rate != resample:
             if not audio.is_floating_point():
@@ -225,7 +248,11 @@ def load_audio(item, no_segments,resample=16000)-> torch.float32:
                 audio = torchaudio.transforms.Resample(
                     sample_rate, resample)(audio)
     assert audio.dtype==torch.float32,f"audio.dtype: {audio.dtype}"
-    return audio
+    return audio, wav, key
+
+
+
+
 
 from torch.distributed.elastic.multiprocessing.errors import record
 @record
@@ -264,15 +291,15 @@ def main():
     i=0
     #for i, (uttid, path) in tqdm(enumerate(local_all_paths), total=len(local_all_paths),ascii=True):
     for i, item in tqdm(enumerate(local_data_list),total=len(local_data_list),ascii=True):
-        audio = load_audio(item,no_segments, args.resample) # load audio and resample
+        audio, path, key = load_audio(item,no_segments, args.resample) # load audio and resample
         # get speech timestamps from full audio file
         speech_timestamps = get_speech_timestamps(audio, model, sampling_rate=args.resample)
         logging.info(f"speech_timestamps: {speech_timestamps}")
         if speech_timestamps is  not None:
-            data_wo_silence = collect_chunks(speech_timestamps, data) ## data_wo_silence maybe None
+            data_wo_silence = collect_chunks(speech_timestamps, audio) ## data_wo_silence maybe None
             if data_wo_silence is None:
                 continue
-            outpath = creat_output_wavname(args,path)
+            outpath = creat_output_wavname(args, path, key, no_segments)
             write_audio(outpath, data_wo_silence, sampling_rate=args.resample)
             i = i+1
             if i%100==0:

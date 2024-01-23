@@ -144,6 +144,8 @@ class HubertAsrConfig(FairseqDataclass):
         metadata={"help": "when hubertctc, it will add last linear layer."},
     )
     freeze_hubert_layer_nums: int = 0 ## if >0, it will freeze first `freeze_hubert_layer_num` layer weigth
+    finetune_llama_model: str = field(default='freeze',metadata={"help":"freeze: freeze all llama layer, lora_mlp: only update  llama lora mlp layer in llama network."},)
+
 
 @dataclass
 class HubertCtcConfig(HubertAsrConfig):
@@ -384,9 +386,15 @@ class HubertEncoder(FairseqEncoder):
                 ## name: llama.layers.0.mlp.c_fc2.weight
                 ## name: llama.layers.0.mlp.c_proj.weight
                 ## name: llama.norm.scale
-                if name.startswith('llama'):
-                    params.requires_grad=False
-            print(f"llama layer weight grad in model: {state['model']['llama.layers.0.attn.c_attn.weight'].requires_grad} !!!!")
+                if cfg.finetune_llama_model=="freeze":
+                    if name.startswith('llama'):
+                        params.requires_grad=False
+                    logger.info(f"llama layer weight grad in model: {state['model']['llama.layers.0.attn.c_attn.weight'].requires_grad} !!!!")
+                elif cfg.finetune_llama_model=="lora_mlp":
+                    if f'llama.' in name and f'.lora_' not in name:
+                        params.requires_grad=False
+                    logger.info(f"llama lora layer grad in model: {state['model']['llama.layers.0.mlp.c_fc1.lora_B'].requires_grad}")
+
             # set strict=False because we omit some modules
             model.load_state_dict(state["model"], strict=False)
 
