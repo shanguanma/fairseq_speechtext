@@ -647,6 +647,149 @@ if [ ${stage} -le 21 ] && [ ${stop_stage} -ge 21 ];then
             task.labels='["ltr"]' \
             model.w2v_path=$exp_dir/checkpoint_192_100000.pt\
             +model.finetune_llama_model='lora_mlp'\
+            common.user_dir=$fairseq_dir/examples/hubert_with_llama\
+            dataset.train_subset=train-10h\
+            dataset.valid_subset=\'dev-other\'\
+            distributed_training.distributed_world_size=${world_size}\
+            distributed_training.distributed_port=-1\
+            distributed_training.ddp_backend=legacy_ddp\
+            optimization.update_freq=[${update_freq}]\
+            common.tensorboard_logdir=$exp_finetune_dir\
+            checkpoint.save_dir=$exp_finetune_dir\
+            hydra.run.dir=$exp_finetune_dir\
+            hydra.job.name=finetune
+
+fi
+
+
+if [ ${stage} -le 22 ] && [ ${stop_stage} -ge 22 ];then
+   echo "inference llamahubert  model on dev-other, dev-clean, test-other, test-clean of librispeech"
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   dir=/mntnfs/lee_data1/maduo/exp
+
+   #fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   #tsv_dir=/workspace2/maduo/dataset/format/librispeech
+   config_dir=$fairseq_dir/examples/hubert_with_llama
+   #dir=/workspace2/maduo/exp
+
+   model_name=continue_pretain_on_hubert_iter2_with_llama_on_train_360_ft_style_freeze_first8layers_lora_mlp
+   exp_finetune_dir=$dir/finetune/${model_name}_10h_asr_finetune_2gpus
+   #results_path=$exp_finetune_dir/decode_on_100h
+   results_path=$exp_finetune_dir/decode_normalize_false
+   mkdir -p $results_path
+   testsets="dev-clean dev-other test-clean test-other"
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+
+   for name in $testsets;do
+     python $fairseq_dir/examples/speech_recognition/new/infer.py \
+                --config-dir $config_dir/config/decode\
+                --config-name infer_viterbi_librispeech\
+                task.data=$tsv_dir\
+                task.label_dir=$tsv_dir\
+                task.normalize=false\
+                common_eval.results_path=$results_path\
+                common_eval.path=$exp_finetune_dir/checkpoint_best.pt\
+                dataset.gen_subset=$name
+
+   done
+fi
+
+
+if [ ${stage} -le 23 ] && [ ${stop_stage} -ge 23 ];then
+   echo "finetune llamahubert on 10h on 25k steps in letter ctc loss mode"
+   echo "only update llama lora mlp  layer in llama network in finetune mode"
+
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   dir=/mntnfs/lee_data1/maduo/exp
+   config_dir=$fairseq_dir/examples/hubert_with_llama
+   model_name=continue_pretain_on_hubert_iter2_with_llama_on_train_360_ft_style_freeze_first8layers_lora_mlp
+   exp_finetune_dir=$dir/finetune/${model_name}_10h_asr_finetune_2gpus_checkpoint_best
+   exp_dir=$dir/pretrain/${model_name}
+   mkdir -p $exp_finetune_dir
+   world_size=2
+   update_freq=4
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   python $fairseq_dir/fairseq_cli/hydra_train_for_with_llama.py \
+            --config-dir $config_dir/config/finetune \
+            --config-name base_10h \
+            task.data=$tsv_dir\
+            task.label_dir=$tsv_dir\
+            task.labels='["ltr"]' \
+            model.w2v_path=$exp_dir/checkpoint_best.pt\
+            +model.finetune_llama_model='lora_mlp'\
+            common.user_dir=$fairseq_dir/examples/hubert_with_llama\
+            dataset.train_subset=train-10h\
+            dataset.valid_subset=\'dev-other\'\
+            distributed_training.distributed_world_size=${world_size}\
+            distributed_training.distributed_port=-1\
+            distributed_training.ddp_backend=legacy_ddp\
+            optimization.update_freq=[${update_freq}]\
+            common.tensorboard_logdir=$exp_finetune_dir\
+            checkpoint.save_dir=$exp_finetune_dir\
+            hydra.run.dir=$exp_finetune_dir\
+            hydra.job.name=finetune
+
+fi
+if [ ${stage} -le 24 ] && [ ${stop_stage} -ge 24 ];then
+   echo "inference llamahubert  model on dev-other, dev-clean, test-other, test-clean of librispeech"
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   dir=/mntnfs/lee_data1/maduo/exp
+
+   #fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   #tsv_dir=/workspace2/maduo/dataset/format/librispeech
+   config_dir=$fairseq_dir/examples/hubert_with_llama
+   #dir=/workspace2/maduo/exp
+
+   model_name=continue_pretain_on_hubert_iter2_with_llama_on_train_360_ft_style_freeze_first8layers_lora_mlp
+   exp_finetune_dir=$dir/finetune/${model_name}_10h_asr_finetune_2gpus_checkpoint_best
+   #results_path=$exp_finetune_dir/decode_on_100h
+   results_path=$exp_finetune_dir/decode_normalize_false
+   mkdir -p $results_path
+   testsets="dev-clean dev-other test-clean test-other"
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+
+   for name in $testsets;do
+     python $fairseq_dir/examples/speech_recognition/new/infer.py \
+                --config-dir $config_dir/config/decode\
+                --config-name infer_viterbi_librispeech\
+                task.data=$tsv_dir\
+                task.label_dir=$tsv_dir\
+                task.normalize=false\
+                common_eval.results_path=$results_path\
+                common_eval.path=$exp_finetune_dir/checkpoint_best.pt\
+                dataset.gen_subset=$name
+
+   done
+fi
+
+
+## (todo) debug
+if [ ${stage} -le 30 ] && [ ${stop_stage} -ge 30 ];then
+   echo "finetune llamahubert on 10h on 25k steps in letter ctc loss mode"
+   echo "only update llama lora mlp  layer in llama network in finetune mode"
+
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   dir=/mntnfs/lee_data1/maduo/exp
+   config_dir=$fairseq_dir/examples/hubert_with_llama
+   model_name=continue_pretain_on_hubert_iter2_with_llama_on_train_360_ft_style_freeze_first8layers_lora_mlp
+   exp_finetune_dir=$dir/finetune/${model_name}_10h_asr_finetune_2gpus
+   exp_dir=$dir/pretrain/${model_name}
+   mkdir -p $exp_finetune_dir
+   world_size=2
+   update_freq=4
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   python $fairseq_dir/fairseq_cli/hydra_train_for_with_llama.py \
+            --config-dir $config_dir/config/finetune \
+            --config-name base_10h \
+            task.data=$tsv_dir\
+            task.label_dir=$tsv_dir\
+            task.labels='["ltr"]' \
+            model.w2v_path=$exp_dir/checkpoint_192_100000.pt\
+            +model.finetune_llama_model='lora_mlp'\
             +model.freeze_hubert_layer_nums=8\
             common.user_dir=$fairseq_dir/examples/hubert_with_llama\
             dataset.train_subset=train-10h\

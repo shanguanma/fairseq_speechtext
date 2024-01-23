@@ -303,7 +303,8 @@ def main():
             write_audio(outpath, data_wo_silence, sampling_rate=args.resample)
             i = i+1
             if i%100==0:
-                logging.info("{}/{}: process {}.".format(rank, threads_num, uttid))
+                #logging.info("{}/{}: process {}.".format(rank, threads_num, uttid))
+                logging.info("{}/{}: process {}.".format(rank, threads_num, key))
     logging.info(f"write {i} utterances , finish!!!!!")
 
 if __name__ == "__main__":
