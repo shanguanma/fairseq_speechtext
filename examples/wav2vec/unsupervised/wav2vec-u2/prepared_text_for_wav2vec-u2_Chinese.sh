@@ -101,4 +101,14 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
    echo "finish get final phone dictionary and compress train.txt into train.bin and train.idx for model training"
 fi
 
+### training phone level 4-gram for wav2vec-u2 gan training stage.
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ];then
+   echo "prepared Chinese phone 4-gram"
+   kenlm_root=codebase/kenlm/build/bin
+   dest_dir=dataset/format/Chinese/aishell-2_norm_phn_seq
+   $kenlm_root/lmplz -o 4 < $dest_dir/lm.phones.filtered.txt\
+        --discount_fallback > $dest_dir/lm.phones.filtered.arpa
+   $kenlm_root/build_binary $dest_dir/lm.phones.filtered.arpa $dest_dir/lm.phones.filtered.bin
+
+fi
 
