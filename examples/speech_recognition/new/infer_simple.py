@@ -263,6 +263,7 @@ def optimize_models(args, use_cuda, models):
             model.half()
         if use_cuda:
             model.cuda()
+            model.eval() ## if lora, Calling model.eval() will trigger the merging of LoRA parameters with the corresponding pretrained ones, which eliminates additional latency for subsequent forward passes.
 
 
 class ExistingEmissionsDecoder(object):

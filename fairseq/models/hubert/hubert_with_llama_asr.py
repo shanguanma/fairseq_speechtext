@@ -375,6 +375,7 @@ class HubertEncoder(FairseqEncoder):
 
         model = pretrain_task.build_model(w2v_args.model, from_checkpoint=True)
         if state is not None and not cfg.no_pretrained_weights:
+            """
             for name, params in state["model"].items():
                 #print(f"name: {name}, parameters: {params}")
                 #print(f"name: {name}")
@@ -394,7 +395,7 @@ class HubertEncoder(FairseqEncoder):
                     if f'llama.' in name and f'.lora_' not in name:
                         params.requires_grad=False
                     logger.info(f"llama lora layer grad in model: {state['model']['llama.layers.0.mlp.c_fc1.lora_B'].requires_grad}")
-
+            """
             # set strict=False because we omit some modules
             model.load_state_dict(state["model"], strict=False)
 

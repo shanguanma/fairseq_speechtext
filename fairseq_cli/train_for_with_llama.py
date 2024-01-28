@@ -22,7 +22,7 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 logger = logging.getLogger("fairseq_cli.train_for_with_llama")
-
+import re
 import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf
@@ -59,12 +59,172 @@ def load_llama_weight(model, cfg):
             model.llama.custom_load_state_dict(state_dict_llama, tail=True, strict=False)
             logger.info(f"Loaded in {time.time() - start_time:.2f} seconds in lightning lazy load mode")
 
+
+
+def load_split_hubert_weight(model, cfg):
+    logger.info("Loading offical base Hubert checkpoints")
+    start_time = time.time()
+    """
+
+    
+    weight_map = {
+        "mask_emb": "mask_emb",
+        "label_embs_concat": "label_embs_concat",
+        "feature_extractor.conv_layers.0.0.weight": "feature_extractor.conv_layers.0.0.weight",
+        'feature_extractor.conv_layers.0.2.weight': "feature_extractor.conv_layers.0.2.weight",
+        'feature_extractor.conv_layers.0.2.bias':'feature_extractor.conv_layers.0.2.bias',
+        'feature_extractor.conv_layers.1.0.weight': 'feature_extractor.conv_layers.1.0.weight',
+        'feature_extractor.conv_layers.2.0.weight': 'feature_extractor.conv_layers.2.0.weight',
+        'feature_extractor.conv_layers.3.0.weight': 'feature_extractor.conv_layers.3.0.weight',
+        'feature_extractor.conv_layers.4.0.weight': 'feature_extractor.conv_layers.4.0.weight',
+        'feature_extractor.conv_layers.5.0.weight':'feature_extractor.conv_layers.5.0.weight',
+        'feature_extractor.conv_layers.6.0.weight':'feature_extractor.conv_layers.6.0.weight',
+        'post_extract_proj.weight': 'post_extract_proj.weight', 
+        'post_extract_proj.bias': 'post_extract_proj.bias',
+        'encoder.pos_conv.0.bias': 'encoder.pos_conv.0.bias',
+        'encoder.pos_conv.0.weight_g': 'encoder.pos_conv.0.weight_g',
+        'encoder.pos_conv.0.weight_v':'encoder.pos_conv.0.weight_v',
+        'encoder.layers.0.self_attn.k_proj.weight': 'encoder1.layers.0.self_attn.k_proj.weight',
+        'encoder.layers.0.self_attn.k_proj.bias':'encoder1.layers.0.self_attn.k_proj.bias',
+        'encoder.layers.0.self_attn.v_proj.weight': 'encoder1.layers.0.self_attn.v_proj.weight', 
+        'encoder.layers.0.self_attn.v_proj.bias': 'encoder1.layers.0.self_attn.v_proj.bias', 
+        'encoder.layers.0.self_attn.q_proj.weight': 'encoder1.layers.0.self_attn.q_proj.weight',
+        'encoder.layers.0.self_attn.q_proj.bias': 'encoder1.layers.0.self_attn.q_proj.bias',
+        'encoder.layers.0.self_attn.out_proj.weight': 'encoder1.layers.0.self_attn.out_proj.weight',
+        'encoder.layers.0.self_attn.out_proj.bias': 'encoder1.layers.0.self_attn.out_proj.bias',
+        'encoder.layers.0.self_attn_layer_norm.weight': 'encoder1.layers.0.self_attn_layer_norm.weight',
+        'encoder.layers.0.self_attn_layer_norm.bias': 'encoder1.layers.0.self_attn_layer_norm.bias',
+        'encoder.layers.0.fc1.weight': 'encoder1.layers.0.fc1.weight' ,
+        'encoder.layers.0.fc1.bias': 'encoder1.layers.0.fc1.bias',
+        'encoder.layers.0.fc2.weight': 'encoder1.layers.0.fc2.weight',
+        'encoder.layers.0.fc2.bias': 'encoder1.layers.0.fc2.bias', 
+        'encoder.layers.0.final_layer_norm.weight': 'encoder1.layers.0.final_layer_norm.weight',
+        'encoder.layers.0.final_layer_norm.bias': 'encoder1.layers.0.final_layer_norm.bias',
+        
+        'encoder.layers.1.self_attn.k_proj.weight': 'encoder1.layers.1.self_attn.k_proj.weight',
+        'encoder.layers.1.self_attn.k_proj.bias':'encoder1.layers.1.self_attn.k_proj.bias',
+        'encoder.layers.1.self_attn.v_proj.weight': 'encoder1.layers.1.self_attn.v_proj.weight',
+        'encoder.layers.1.self_attn.v_proj.bias': 'encoder1.layers.1.self_attn.v_proj.bias',
+        'encoder.layers.1.self_attn.q_proj.weight': 'encoder1.layers.1.self_attn.q_proj.weight',
+        'encoder.layers.1.self_attn.q_proj.bias': 'encoder1.layers.1.self_attn.q_proj.bias',
+        'encoder.layers.1.self_attn.out_proj.weight': 'encoder1.layers.1.self_attn.out_proj.weight',
+        'encoder.layers.1.self_attn.out_proj.bias': 'encoder1.layers.1.self_attn.out_proj.bias',
+        'encoder.layers.1.self_attn_layer_norm.weight': 'encoder1.layers.1.self_attn_layer_norm.weight',
+        'encoder.layers.1.self_attn_layer_norm.bias': 'encoder1.layers.1.self_attn_layer_norm.bias',
+        'encoder.layers.1.fc1.weight': 'encoder1.layers.1.fc1.weight' ,
+        'encoder.layers.1.fc1.bias': 'encoder1.layers.1.fc1.bias',
+        'encoder.layers.1.fc2.weight': 'encoder1.layers.1.fc2.weight',
+        'encoder.layers.1.fc2.bias': 'encoder1.layers.1.fc2.bias',
+        'encoder.layers.1.final_layer_norm.weight': 'encoder1.layers.1.final_layer_norm.weight',
+        'encoder.layers.1.final_layer_norm.bias': 'encoder1.layers.1.final_layer_norm.bias',  
+
+        'encoder.layers.2.self_attn.k_proj.weight': 'encoder1.layers.2.self_attn.k_proj.weight',
+        'encoder.layers.2.self_attn.k_proj.bias':'encoder1.layers.2.self_attn.k_proj.bias',
+        'encoder.layers.2.self_attn.v_proj.weight': 'encoder1.layers.2.self_attn.v_proj.weight',
+        'encoder.layers.2.self_attn.v_proj.bias': 'encoder1.layers.2.self_attn.v_proj.bias',
+        'encoder.layers.2.self_attn.q_proj.weight': 'encoder1.layers.2.self_attn.q_proj.weight',
+        'encoder.layers.2.self_attn.q_proj.bias': 'encoder1.layers.2.self_attn.q_proj.bias',
+        'encoder.layers.2.self_attn.out_proj.weight': 'encoder1.layers.2.self_attn.out_proj.weight',
+        'encoder.layers.2.self_attn.out_proj.bias': 'encoder1.layers.2.self_attn.out_proj.bias',
+        'encoder.layers.2.self_attn_layer_norm.weight': 'encoder1.layers.2.self_attn_layer_norm.weight',
+        'encoder.layers.2.self_attn_layer_norm.bias': 'encoder1.layers.2.self_attn_layer_norm.bias',
+        'encoder.layers.2.fc1.weight': 'encoder1.layers.2.fc1.weight' ,
+        'encoder.layers.2.fc1.bias': 'encoder1.layers.2.fc1.bias',
+        'encoder.layers.2.fc2.weight': 'encoder1.layers.2.fc2.weight',
+        'encoder.layers.2.fc2.bias': 'encoder1.layers.2.fc2.bias',
+        'encoder.layers.2.final_layer_norm.weight': 'encoder1.layers.2.final_layer_norm.weight',
+        'encoder.layers.2.final_layer_norm.bias': 'encoder1.layers.2.final_layer_norm.bias',
+    """
+    state = checkpoint_utils.load_checkpoint_to_cpu(cfg.model.hubert_path)
+    #new_state_dict={}# key: name, value : parameters
+    #for name , p in state["model"].items():
+    #   if f'feature_extractor.' in name:
+    new_state_dict={} # key: name, value : parameters
+    for name, p in state['model'].items():
+        for n in range(7):
+            if f'encoder.layers.{n}' in name:
+                new_key= re.sub(r'encoder.',r'encoder1.',name)
+                new_state_dict[new_key] = p
+                print(f"new_key: {new_key}")
+
+    for name, p in state['model'].items():
+        for n in range(7,12,1):
+            if f'encoder.layers.{n}' in name:
+                split = name.split(".")
+                new_num = int(split[2])-7
+                res_part = '.'.join(split[3:])
+                new_name = f'encoder2.'+f"{new_num}."+res_part
+                #new_key2 = re.sub(f'encoder.layers.{n}', f'encoder2.layers.{n-7}', name)
+                #new_keys.append(new_name)
+                new_state_dict[new_name] = p
+                print(f'new_name: {new_name}')
+
+    for name, p in state['model'].items():
+        if f'encoder.layer_norm.' in name:
+            new_key= re.sub(r'encoder.',r'encoder2.',name)
+            #new_keys.append(new_key)
+            new_state_dict[new_key] = p
+            print(f"new_key: {new_key}")
+
+    for name, p in state['model'].items():
+        if f'encoder.pos_conv.' in name:
+            new_key= re.sub(r'encoder.',r'encoder1.',name)
+            #new_keys.append(new_key)
+            new_state_dict[new_key] = p
+            print(f"new_key: {new_key}")
+
+
+    for name, p in state['model'].items():
+        if f'encoder.layers.' not in name and f'encoder.layer_norm.' not in name and  f'encoder.pos_conv.' not  in name:
+            #new_keys.append(na me)
+            new_state_dict[name] = p
+            print(f"name: {name}")
+
+    model.load_state_dict(new_state_dict,strict=False)
+    logger.info(f"Loaded in {time.time() - start_time:.2f} seconds")
+
+
+
+
+
 def load_hubert_weight(model, cfg):
     logger.info("Loading offical base Hubert checkpoints")
     start_time = time.time()
     state = checkpoint_utils.load_checkpoint_to_cpu(cfg.model.hubert_path)
     model.load_state_dict(state["model"],strict=False)
     logger.info(f"Loaded in {time.time() - start_time:.2f} seconds")
+
+
+def freeze_split_model_layer(model, freeze_hubert_layer_nums:int, freeze_llama: bool = True):
+    freeze_keys=[]
+    for k, params in model.named_parameters():
+        if f'feature_extractor.' in k:
+            freeze_keys.append(k)
+        elif f'post_extract_proj.' in k:
+            freeze_keys.append(k)
+        elif f'encoder1.pos_conv.' in k:
+            freeze_keys.append(k)
+        elif freeze_llama and f'llama.' in k:
+            if f'.lora_' not in k:
+                freeze_keys.append(k)
+
+        elif freeze_hubert_layer_nums>0:
+            for n in range(freeze_hubert_layer_nums):
+                if f'encoder1.layers.{n}.' in k:
+                    freeze_keys.append(k)
+
+    print(f"freeze_keys: {freeze_keys}!!!!")
+    for name, params in model.named_parameters():
+        if name in freeze_keys:
+            params.requires_grad = False
+            logger.info(f"name: {name}: params requires_grad : {params.requires_grad}!!")
+
+
+    for name, params in model.named_parameters():
+        if name not in freeze_keys:
+            assert params.requires_grad==True, f"name: {name}, params: {params}"
+            logger.info(f"name: {name}: params requires_grad : {params.requires_grad}!!")
+
 
 
 def freeze_model_layer(model, freeze_hubert_layer_nums:int, freeze_llama: bool = True):
@@ -89,6 +249,8 @@ def freeze_model_layer(model, freeze_hubert_layer_nums:int, freeze_llama: bool =
     for name, params in model.named_parameters():
         if name in freeze_keys:
             params.requires_grad = False
+            logger.info(f"name: {name}: params requires_grad : {params.requires_grad}!!")
+
 
     for name, params in model.named_parameters():
         if name not in freeze_keys:
@@ -159,12 +321,21 @@ def main(cfg: FairseqConfig) -> None:
     
     ## step2: load pretrain model weigth
     if not cfg.task.fine_tuning: ## pretrain stage
-        load_llama_weight(model, cfg)
-        load_hubert_weight(model, cfg)
-        ## step3 freeze the weights of the specify layers
-        freeze_model_layer(model, cfg.model.freeze_hubert_layer_nums, freeze_llama=True)
+        if not cfg.model.split_model_mode: ## llama layer position at top layer of hubert 
+            load_llama_weight(model, cfg)
+            load_hubert_weight(model, cfg)
+            ## step3 freeze the weights of the specify layers
+            freeze_model_layer(model, cfg.model.freeze_hubert_layer_nums, freeze_llama=True)
+        else:
+            load_llama_weight(model, cfg)
+            load_split_hubert_weight(model, cfg)
+            ## step3 freeze the weights of the specify layers
+            freeze_split_model_layer(model, cfg.model.freeze_hubert_layer_nums, freeze_llama=True)
     else: ## finetune stage
-        freeze_model_layer(model, cfg.model.freeze_hubert_layer_nums, freeze_llama=True)
+        if not cfg.model.split_model_mode:
+            freeze_model_layer(model, cfg.model.freeze_hubert_layer_nums, freeze_llama=True)
+        else:
+            freeze_split_model_layer(model, cfg.model.freeze_hubert_layer_nums, freeze_llama=True)
 
     criterion = task.build_criterion(cfg.criterion)
     logger.info(model)

@@ -23,6 +23,7 @@ from fairseq.models.wav2vec.wav2vec2 import (
     LAYER_TYPE_CHOICES,
     ConvFeatureExtractionModel,
     TransformerEncoder,
+    TransformerSentenceEncoderLayer,
 )
 from fairseq.modules import GradMultiply, LayerNorm
 from fairseq.tasks.hubert_pretraining import (
@@ -36,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class LLaMAHubertConfig(FairseqDataclass):
+class LLaMAHubertConfigv2(FairseqDataclass):
     label_rate: float = II("task.label_rate")
 
     extractor_mode: EXTRACTOR_MODE_CHOICES = field(
@@ -47,9 +48,17 @@ class LLaMAHubertConfig(FairseqDataclass):
             "has layer norms in every block (meant to use with normalize=True)"
         },
     )
+    # encoder_layers: int = field(
+    #    default=12, metadata={"help": "num encoder layers in the transformer"}
+    # encoder_layers: int = field(
+    #    default=12, metadata={"help": "num encoder layers in the transformer"}
+    # )
     encoder_layers: int = field(
-        default=12, metadata={"help": "num encoder layers in the transformer"}
+        default=7, metadata={"help": "num encoder layers in the transformer"}
     )
+    # encoder_layers2: int = field(
+    #    default=5, metadata={"help": "num encoder layers in the transformer"}
+    # )
     encoder_embed_dim: int = field(
         default=768, metadata={"help": "encoder embedding dimension"}
     )
@@ -244,12 +253,22 @@ class LLaMAHubertConfig(FairseqDataclass):
         default="",
         metadata={"help": "llama checkpoint path"},
     )
-    hubert_path: str = field(default="",metadata={"help": "offical base hubert model"},)
-    n_layer: int = field(default=32, metadata={"help": "llama-7b layer numbers"},)
-    n_head: int = field(
-        default=32, metadata={"help": "llama-7b attention head numbers"},
+    hubert_path: str = field(
+        default="",
+        metadata={"help": "offical base hubert model"},
     )
-    n_embd: int = field(default=4096, metadata={"help": "llama-7b model dimension"},)
+    n_layer: int = field(
+        default=32,
+        metadata={"help": "llama-7b layer numbers"},
+    )
+    n_head: int = field(
+        default=32,
+        metadata={"help": "llama-7b attention head numbers"},
+    )
+    n_embd: int = field(
+        default=4096,
+        metadata={"help": "llama-7b model dimension"},
+    )
     ## llama-1 13B
     # n_layer: int = 40
     # n_head: int = 40
@@ -261,32 +280,45 @@ class LLaMAHubertConfig(FairseqDataclass):
             "help": "# make SwiGLU hidden layer size multiple of large power of 2"
         },
     )
-    first_layer: int = field(default=31, metadata={"help": "selected layer"},)
-    n_layers: int = field(default=32, metadata={"help": "llama-7b layer numbers"},)
+    first_layer: int = field(
+        default=31,
+        metadata={"help": "selected layer"},
+    )
+    n_layers: int = field(
+        default=32,
+        metadata={"help": "llama-7b layer numbers"},
+    )
     llama_post_norm: bool = field(
         default=False,
         metadata={
             "help": " ## Whether the llama output feature is subjected to layer norm"
         },
     )
-    add_qk_lora: bool = False ## they are implemented in transformer attention layer of raw lora paper
-                              ## q means one linear layer for query, k means one linear layer for key
+    add_qk_lora: bool = (
+        False  ## they are implemented in transformer attention layer of raw lora paper
+    )
+    ## q means one linear layer for query, k means one linear layer for key
     add_attn_proj_lora: bool = False
     add_mlp_lora: bool = False
-    lora_r: int = 0 ## usually set to 16, if it is 0, means that we don't use lora technology.
-    freeze_hubert_layer_nums: int = 0 ## if >0, it will freeze first `freeze_hubert_layer_num` layer weigth
-    split_model_mode: bool = False ## if false, its means that I will insert llama layer into hubert top layer.
+    lora_r: int = (
+        0  ## usually set to 16, if it is 0, means that we don't use lora technology.
+    )
+    freeze_hubert_layer_nums: int = (
+        0  ## if >0, it will freeze first `freeze_hubert_layer_num` layer weigth
+    )
+    split_model_mode: bool = True  ## if true, its means that I will insert llama layer into hubert medium layer.
 
-@register_model("LLaMAhubert", dataclass=LLaMAHubertConfig)
-class LLaMAHubertModel(BaseFairseqModel):
+
+@register_model("LLaMAhubertv2", dataclass=LLaMAHubertConfigv2)
+class LLaMAHubertModelv2(BaseFairseqModel):
     def __init__(
         self,
-        cfg: LLaMAHubertConfig,
+        cfg: LLaMAHubertConfigv2,
         task_cfg: HubertPretrainingConfig,
         dictionaries: List[Dictionary],
     ) -> None:
         super().__init__()
-        logger.info(f"HubertModel Config: {cfg}")
+        logger.info(f"LLaMAHubertModelv2 Config: {cfg}")
 
         feature_enc_layers = eval(cfg.conv_feature_layers)  # noqa
         self.embed = feature_enc_layers[-1][0]
@@ -327,7 +359,7 @@ class LLaMAHubertModel(BaseFairseqModel):
         self.logit_temp = cfg.logit_temp
         self.skip_masked = cfg.skip_masked
         self.skip_nomask = cfg.skip_nomask
-        
+
         self.llama_path = cfg.llama_path
 
         final_dim = cfg.final_dim if cfg.final_dim > 0 else cfg.encoder_embed_dim
@@ -336,15 +368,30 @@ class LLaMAHubertModel(BaseFairseqModel):
             torch.FloatTensor(cfg.encoder_embed_dim).uniform_()
         )
 
-        self.encoder = TransformerEncoder(cfg)
+        # self.encoder = TransformerEncoder(cfg)
+        self.encoder1 = TransformerEncoder(cfg)
+        # self.encoder2 = TransformerEncoder(encoder_layers=cfg.encoder_layers2,**cfg)
 
+        #self.encoder2 = nn.ModuleList(
+        self.encoder2 = nn.ModuleList(
+            TransformerSentenceEncoderLayer(
+                embedding_dim=cfg.encoder_embed_dim,
+                ffn_embedding_dim=cfg.encoder_ffn_embed_dim,
+                num_attention_heads=cfg.encoder_attention_heads,
+                dropout=cfg.dropout,
+                attention_dropout=cfg.attention_dropout,
+                activation_dropout=cfg.activation_dropout,
+                activation_fn=cfg.activation_fn,
+                layer_norm_first=cfg.layer_norm_first,
+            )
+            for i in range(7, 12, 1)
+        )
 
-        
         ## llama part
-        if cfg.lora_r>0: ## lora pretrain
-            self.llama = LLaMATransformer(cfg) ## it will load LLM checkpoint use # 
-                                               ## This sets requires_grad to False for all parameters without the string "lora_" in their names using the below code.
-                                               ##  lora.mark_only_lora_as_trainable(model)
+        if cfg.lora_r > 0:  ## lora pretrain
+            self.llama = LLaMATransformer(cfg)  ## it will load LLM checkpoint use #
+            ## This sets requires_grad to False for all parameters without the string "lora_" in their names using the below code.
+            ##  lora.mark_only_lora_as_trainable(model)
         else:
             self.llama = LLaMATransformer(cfg)
             for param in self.llama.parameters():
@@ -361,13 +408,6 @@ class LLaMAHubertModel(BaseFairseqModel):
             self.llama_norm = LayerNorm(self.cfg.encoder_embed_dim)
         else:
             self.llama_norm = None
-        
-             
-
-
-
-
-
 
         self.target_glu = None
         if cfg.target_glu:
@@ -400,10 +440,10 @@ class LLaMAHubertModel(BaseFairseqModel):
         return state_dict
 
     @classmethod
-    def build_model(cls, cfg: LLaMAHubertConfig, task: HubertPretrainingTask):
+    def build_model(cls, cfg: LLaMAHubertConfigv2, task: HubertPretrainingTask):
         """Build a new model instance."""
 
-        model = LLaMAHubertModel(cfg, task.cfg, task.dictionaries)
+        model = LLaMAHubertModelv2(cfg, task.cfg, task.dictionaries)
         return model
 
     def apply_mask(self, x, padding_mask, target_list):
@@ -537,17 +577,35 @@ class LLaMAHubertModel(BaseFairseqModel):
         # mask_indices: (B, T), bool
         ## md note: _ means: (attn, layer_result), attn: attn representation of specify layer, layer_result: it is list, contains output of specify layer
         ## if layer is not none: then x is output of specify layer.
-        x, _ = self.encoder(
+        x, _ = self.encoder1(
             x,
             padding_mask=padding_mask,
             layer=None if output_layer is None else output_layer - 1,
         )
-        #logger.info(f"after self.encoder(): x dtype: {x.dtype}")
+
+        # logger.info(f"after self.encoder(): x dtype: {x.dtype}")
         ## llama block
         x = self.llama_dim_mapper1(x)
         x = self.llama(x)
-        #logger.info(f"after self.llama(): x dtype: {x.dtype}")
+        # logger.info(f"after self.llama(): x dtype: {x.dtype}")
         x = self.llama_dim_mapper2(x)
+
+        #x, _ = self.encoder2(
+        #    x,
+            #padding_mask=padding_mask,
+            #layer=None if output_layer is None else output_layer - 1,
+        #)
+        # B x T x C -> T x B x C
+        x = x.transpose(0, 1) 
+
+        for i, layer in enumerate(self.encoder2):
+            x, (z, lr) = layer(
+                x,
+                self_attn_padding_mask=padding_mask,
+                need_weights=False,
+            )
+        # T x B x C -> B x T x C 
+        x = x.transpose(0, 1)
 
         if self.llama_post_norm:
             x = self.llama_norm(x)
