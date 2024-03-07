@@ -60,7 +60,10 @@ class ExtractedFeaturesDataset(FairseqDataset):
             path + f".{labels}", "r"
         ) if labels is not None else contextlib.ExitStack() as lbl_f:
             for line in len_f:
+                #print(f"lbl_f: {lbl_f}")
+                #print(f"path: {path}, labels: {labels}")
                 length = int(line.rstrip())
+                #print(f"length: {length}")
                 lbl = None if labels is None else next(lbl_f).rstrip().split()
                 if length >= min_length and (
                     max_length is None or length <= max_length

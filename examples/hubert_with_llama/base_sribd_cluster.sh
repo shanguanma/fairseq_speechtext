@@ -953,3 +953,126 @@ if [ ${stage} -le 40 ] && [ ${stop_stage} -ge 40 ];then
             hydra.run.dir=$exp_dir\
             hydra.job.name=pretrain
    fi
+
+
+
+if [ ${stage} -le 41 ] && [ ${stop_stage} -ge 41 ];then
+   echo "finetune llamahubert on 10h on 25k steps in letter ctc loss mode"
+   echo "freeze llama layer  and freeze first 8 layers of  hubert in finetune mode"
+
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   dir=/mntnfs/lee_data1/maduo/exp
+   config_dir=$fairseq_dir/examples/hubert_with_llama
+   model_name=continue_pretain_on_hubert_iter2_with_llama_on_train_360_ft_style_freeze_first6hubertlayers_llama_in_medium_position
+   exp_finetune_dir=$dir/finetune/${model_name}_10h_asr_finetune_2gpus_with_checkpoint_best
+   exp_dir=$dir/pretrain/${model_name}
+   mkdir -p $exp_finetune_dir
+   world_size=2
+   update_freq=4
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   python $fairseq_dir/fairseq_cli/hydra_train_for_with_llama.py \
+            --config-dir $config_dir/config/finetune \
+            --config-name base_10h \
+            task.data=$tsv_dir\
+            task.label_dir=$tsv_dir\
+            task.labels='["ltr"]' \
+            model.w2v_path=$exp_dir/checkpoint_best.pt\
+            +model.freeze_hubert_layer_nums=6\
+            common.user_dir=$fairseq_dir/examples/hubert_with_llama\
+            dataset.train_subset=train-10h\
+            dataset.valid_subset=\'dev-other\'\
+            distributed_training.distributed_world_size=${world_size}\
+            distributed_training.distributed_port=-1\
+            distributed_training.ddp_backend=legacy_ddp\
+            optimization.update_freq=[${update_freq}]\
+            common.tensorboard_logdir=$exp_finetune_dir\
+            checkpoint.save_dir=$exp_finetune_dir\
+            hydra.run.dir=$exp_finetune_dir\
+            hydra.job.name=finetune
+
+fi
+
+if [ ${stage} -le 42 ] && [ ${stop_stage} -ge 42 ];then
+   echo "inference llamahubert  model on dev-other, dev-clean, test-other, test-clean of librispeech"
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   dir=/mntnfs/lee_data1/maduo/exp
+
+   #fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   #tsv_dir=/workspace2/maduo/dataset/format/librispeech
+   config_dir=$fairseq_dir/examples/hubert_with_llama
+   #dir=/workspace2/maduo/exp
+
+   model_name=continue_pretain_on_hubert_iter2_with_llama_on_train_360_ft_style_freeze_first6hubertlayers_llama_in_medium_position
+   exp_finetune_dir=$dir/finetune/${model_name}_10h_asr_finetune_2gpus_with_checkpoint_best
+   #results_path=$exp_finetune_dir/decode_on_100h
+   results_path=$exp_finetune_dir/decode_normalize_false
+   mkdir -p $results_path
+   testsets="dev-clean dev-other test-clean test-other"
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+
+   for name in $testsets;do
+     python $fairseq_dir/examples/speech_recognition/new/infer.py \
+                --config-dir $config_dir/config/decode\
+                --config-name infer_viterbi_librispeech\
+                task.data=$tsv_dir\
+                task.label_dir=$tsv_dir\
+                task.normalize=false\
+                common_eval.results_path=$results_path\
+                common_eval.path=$exp_finetune_dir/checkpoint_best.pt\
+                dataset.gen_subset=$name
+
+   done
+   # grep -rn 'Word error rate' logs/hubert_with_llama_v2_infer_1gpu.log
+   # 8133:[2024-02-04 09:37:59,562][__main__][INFO] - Word error rate: 17.8560
+   # 16736:[2024-02-04 09:39:31,435][__main__][INFO] - Word error rate: 29.5148
+   # 24604:[2024-02-04 09:41:06,181][__main__][INFO] - Word error rate: 18.2947
+   # 33441:[2024-02-04 09:42:40,419][__main__][INFO] - Word error rate: 30.2415
+fi
+
+if [ ${stage} -le 43 ] && [ ${stop_stage} -ge 43 ];then
+   echo "inference llamahubert  model on dev-other, dev-clean, test-other, test-clean of librispeech with kenlm"
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   dir=/mntnfs/lee_data1/maduo/exp
+   #config_dir=$fairseq_dir/examples/voicelm/
+   #fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   #tsv_dir=/workspace2/maduo/dataset/format/librispeech
+   config_dir=$fairseq_dir/examples/hubert_with_llama
+   #dir=/workspace2/maduo/exp
+   model_name=continue_pretain_on_hubert_iter2_with_llama_on_train_360_ft_style_freeze_first6hubertlayers_llama_in_medium_position
+   exp_finetune_dir=$dir/finetune/${model_name}_10h_asr_finetune_2gpus_with_checkpoint_best
+
+   results_path=$exp_finetune_dir/decode_with_kenlm
+   mkdir -p $results_path
+   path_to_lexicon=/mntcephfs/lab_data/maduo/datasets/librispeech/kenlm_files/librispeech_lexicon.lst #word2letter
+   path_to_lm=/mntcephfs/lab_data/maduo/datasets/librispeech/kenlm_files/4-gram.arpa  ## word lm
+   testsets="dev-clean dev-other test-clean test-other"
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+
+   for name in $testsets;do
+       python $fairseq_dir/examples/speech_recognition/new/infer.py \
+                --config-dir $config_dir/config/decode\
+                --config-name infer_kenlm_lirispeech\
+                task.data=$tsv_dir\
+                task.label_dir=$tsv_dir\
+                task.normalize=false\
+                common_eval.results_path=$results_path\
+                common_eval.path=$exp_finetune_dir/checkpoint_best.pt\
+                dataset.gen_subset=$name\
+                decoding.type=kenlm\
+                decoding.lexicon=$path_to_lexicon\
+                decoding.lmpath=$path_to_lm\
+                decoding.nbest=1\
+                decoding.beam=1500 \
+                decoding.lmweight=3 \
+                decoding.wordscore=-1 \
+                decoding.beamthreshold=100\
+                common_eval.quiet=false
+
+   done
+  
+   # dev-clean dev-other test-clean test-other
+   # 3.9318     8.9412    4.3240    9.4952
+fi

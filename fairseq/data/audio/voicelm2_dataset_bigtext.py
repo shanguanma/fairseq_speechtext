@@ -289,7 +289,7 @@ def load_post_text(
 
 
 def post_final_audio_text(
-    label_paths: list[str], # its main purpose is used to construct multi-modal speech text utterance. 
+    label_paths: List[str], # its main purpose is used to construct multi-modal speech text utterance. 
                             ## if len(label_paths) >1; label_paths[0] contains label path is used to pesudo label of voicelm2 model when iter >=2
                             ## label_paths[1] contains label path is used to construct multi-modal speech text utterance.
     manifest_path: str,

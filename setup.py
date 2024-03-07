@@ -203,10 +203,10 @@ def do_setup(package_data):
             "librosa",
             "h5py",
             "einops",
-            "timm",
+            #"timm",# it will auto install cuda
             "ninja",
             "scikit-image", # for voicelm2 generate mix utterances
-            "lightning", #for load big model checkpoint quickly.
+            #"lightning", #for load big model checkpoint quickly.but i also auto install pytorch latest version, I can't control pytorch version, so, I drop it.
             "loralib", # for lora finetune model
         ],
         extras_require={

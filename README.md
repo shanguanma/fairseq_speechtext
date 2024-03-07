@@ -20,15 +20,14 @@ Avoiding code duplication is not a goal. Readability and hackability are.
   * Python version >= 3.7
   * For training new models, you'll also need an NVIDIA GPU and [NCCL](https://github.com/NVIDIA/nccl)
   
-```
-We recommand you can use python version=3.9
-## for sribd cluster
-. "/home/maduo/miniconda3/etc/profile.d/conda.sh"
 
+# creat python environment
+  ```
 ## python==3.9 pytorch==2.0.1
 conda create -n fsq_speechtext python=3.9 -y
  conda activate fsq_speechtext
 conda install pytorch==2.0.1  torchaudio==2.0.2 pytorch-cuda=11.7 -c pytorch -c nvidia -c https://mirrors.bfsu.edu.cn/anaconda/cloud/pytorch/linux-64/ -y
+
 ## python==3.7 pytorch=1.12.1
 conda create -n py37 python=3.7 -y
 conda activate py37
@@ -37,22 +36,42 @@ or
 ## for hltsz cluster
 ## python=3.9 pytorch=2.1.1
 conda install pytorch=2.1.1  torchaudio==2.1.1 pytorch-cuda=11.8 -c pytorch -c nvidia -c https://mirrors.bfsu.edu.cn/anaconda/cloud/pytorch/linux-64/ -y
+or
+(recommend in sribd cluster)
+pip3 --timeout=1000 install torch==2.1.2 torchaudio  --force-reinstall  --no-cache-dir --index-url https://download.pytorch.org/whl/cu118
+
+
+## python=3.8 pytorch=1.13.1 cuda11.6
+. activate_cuda11.6.sh
+conda create -n fsq1131_cuda116 python=3.8 -y
+conda activate fsq1131_cuda116
+pip install torch==1.13.1+cu116 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu116
+
+  ```
+
+# compile c++ part and install dependent python package
+```
 cd /path/to/fsq_speechtext
 ## Because head node don't contain cuda, the below command can only compile cpp  part into cpu device
 pip install -e ./
-pip install flash-attn --no-build-isolation  ## support flash attention
-
-
-
-# You must include the below command when you submit your script in your cluster server,
-# And your user environment must cuda home path, because the below code need it.
-## i.e.: in slurm cluster server, 
-# you  can find cuda via 'module av | grep cuda'
-# module load cuda11.8/toolkit/11.8.0 
-cd /path/to/fairseq_speechtext
-python setup.py build_ext --inplace
 ```
 
+# install flash-attn(optional)
+ 
+```
+for example:  cuda11.8 pytorch2.1
+#pip install flash-attn --no-build-isolation  ## support flash attention, but it will change before torch version.
+We recommend that you can install flash-attn via the below commnad:
+wget https://github.com/Dao-AILab/flash-attention/releases/download/v2.5.1/flash_attn-2.5.1+cu118torch2.1cxx11abiFALSE-cp39-cp39-linux_x86_64.whl
+pip install flash_attn-2.5.1+cu118torch2.1cxx11abiFALSE-cp39-cp39-linux_x86_64.whl
+
+
+for example: cuda11.6 pytorch1.13.1
+We recommend that you can install flash-attn via the below commnad:
+wget https://github.com/Dao-AILab/flash-attention/releases/download/v2.3.5/flash_attn-2.3.5+cu116torch1.13cxx11abiFALSE-cp38-cp38-linux_x86_64.whl
+pip install flash_attn-2.3.5+cu116torch1.13cxx11abiFALSE-cp38-cp38-linux_x86_64.whl
+ ```
+ ```
 * For ASR decoding, you need install the below library:
 ``` bash
 ## in order to use fairseq decoder, you now can install it as follows:

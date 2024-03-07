@@ -25,7 +25,7 @@ def get_parser():
     parser.add_argument('--split', help='which split to read', required=True)
     parser.add_argument('--save-dir', help='where to save the output', required=True)
     parser.add_argument('--checkpoint', type=str, help='checkpoint for hubert pretrain model', required=True)
-    parser.add_argument('--layer', type=int, default=14, help='which layer to use')
+    parser.add_argument('--layer', type=int, default=14, help='which layer to use, 0 order base, so, it actually is `--layer+1` layer.')
     # fmt: on
 
     return parser

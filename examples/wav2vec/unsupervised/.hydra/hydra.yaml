@@ -1,0 +1,161 @@
+hydra:
+  run:
+    dir: /mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/wav2vec/unsupervised
+  sweep:
+    dir: ${common.tensorboard_logdir}
+    subdir: ${hydra.job.num}
+  hydra_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(asctime)s][HYDRA] %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+    root:
+      level: INFO
+      handlers:
+      - console
+    loggers:
+      logging_example:
+        level: DEBUG
+    disable_existing_loggers: false
+  job_logging:
+    version: 1
+    formatters:
+      simple:
+        format: '[%(asctime)s][%(name)s][%(levelname)s] - %(message)s'
+    handlers:
+      console:
+        class: logging.StreamHandler
+        formatter: simple
+        stream: ext://sys.stdout
+      file:
+        class: logging.FileHandler
+        formatter: simple
+        filename: ${hydra.job.name}.log
+    root:
+      level: INFO
+      handlers:
+      - console
+      - file
+    disable_existing_loggers: false
+  sweeper:
+    _target_: hydra._internal.core_plugins.basic_sweeper.BasicSweeper
+    max_batch_size: null
+  launcher:
+    _target_: hydra._internal.core_plugins.basic_launcher.BasicLauncher
+  help:
+    app_name: ${hydra.job.name}
+    header: '${hydra.help.app_name} is powered by Hydra.
+
+      '
+    footer: 'Powered by Hydra (https://hydra.cc)
+
+      Use --hydra-help to view Hydra specific help
+
+      '
+    template: '${hydra.help.header}
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (group=option)
+
+
+      $APP_CONFIG_GROUPS
+
+
+      == Config ==
+
+      Override anything in the config (foo.bar=value)
+
+
+      $CONFIG
+
+
+      ${hydra.help.footer}
+
+      '
+  hydra_help:
+    hydra_help: ???
+    template: 'Hydra (${hydra.runtime.version})
+
+      See https://hydra.cc for more info.
+
+
+      == Flags ==
+
+      $FLAGS_HELP
+
+
+      == Configuration groups ==
+
+      Compose your configuration from those groups (For example, append hydra/job_logging=disabled
+      to command line)
+
+
+      $HYDRA_CONFIG_GROUPS
+
+
+      Use ''--cfg hydra'' to Show the Hydra config.
+
+      '
+  output_subdir: .hydra
+  overrides:
+    hydra:
+    - hydra.run.dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/wav2vec/unsupervised
+    - hydra.job.name=/mntnfs/lee_data1/maduo/exp//wav2vec-u2_gan_from_scratch/w2v_unsup_gan_xp_1gpu_1update_with_unpair_text_1M_md_setting/w2v_unsup_gan_xp
+    task:
+    - task.data=/mntcephfs/lab_data/maduo/datasets/wenetspeech_no_silence/hubert_large_feat_dir_no_silence
+    - task.text_data=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq/unpair_text
+    - task.kenlm_path=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq/lm.phones.filtered.bin
+    - dataset.train_subset=train_m
+    - dataset.valid_subset=dev
+    - dataset.batch_size=160
+    - dataset.num_workers=6
+    - common.user_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/wav2vec/unsupervised
+    - model.code_penalty=2
+    - model.gradient_penalty=1.5
+    - model.smoothness_weight=0.5
+    - distributed_training.distributed_world_size=1
+    - distributed_training.distributed_port=-1
+    - distributed_training.ddp_backend=legacy_ddp
+    - optimization.update_freq=[1]
+    - common.tensorboard_logdir=/mntnfs/lee_data1/maduo/exp//wav2vec-u2_gan_from_scratch/w2v_unsup_gan_xp_1gpu_1update_with_unpair_text_1M_md_setting
+  job:
+    name: /mntnfs/lee_data1/maduo/exp//wav2vec-u2_gan_from_scratch/w2v_unsup_gan_xp_1gpu_1update_with_unpair_text_1M_md_setting/w2v_unsup_gan_xp
+    override_dirname: model.code_penalty:2__model.gradient_penalty:1.5__model.smoothness_weight:0.5
+    id: ???
+    num: ???
+    config_name: w2vu2_local2_md
+    env_set: {}
+    env_copy: []
+    config:
+      override_dirname:
+        kv_sep: ':'
+        item_sep: __
+        exclude_keys:
+        - run_config
+        - distributed_training.distributed_port
+        - common.user_dir
+        - task.data
+        - task.kenlm_path
+        - task.text_data
+        - model.generator_layers
+        - task.labels
+        - task.force_model_seed
+        - dataset.train_subset
+        - dataset.valid_subset
+        - dataset.batch_size
+        - dataset.num_workers
+        - distributed_training.distributed_world_size
+        - distributed_training.ddp_backend
+        - optimization.update_freq
+        - common.tensorboard_logdir
+        - hydra.run.dir
+  runtime:
+    version: 1.0.7
+    cwd: /mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+  verbose: false

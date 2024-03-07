@@ -1,0 +1,16 @@
+- task.data=/mntcephfs/lab_data/maduo/datasets/wenetspeech_no_silence/hubert_large_feat_dir_no_silence
+- task.text_data=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq/unpair_text
+- task.kenlm_path=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq/lm.phones.filtered.bin
+- dataset.train_subset=train_m
+- dataset.valid_subset=dev
+- dataset.batch_size=160
+- dataset.num_workers=6
+- common.user_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/wav2vec/unsupervised
+- model.code_penalty=2
+- model.gradient_penalty=1.5
+- model.smoothness_weight=0.5
+- distributed_training.distributed_world_size=1
+- distributed_training.distributed_port=-1
+- distributed_training.ddp_backend=legacy_ddp
+- optimization.update_freq=[1]
+- common.tensorboard_logdir=/mntnfs/lee_data1/maduo/exp//wav2vec-u2_gan_from_scratch/w2v_unsup_gan_xp_1gpu_1update_with_unpair_text_1M_md_setting

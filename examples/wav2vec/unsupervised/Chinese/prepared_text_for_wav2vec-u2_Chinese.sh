@@ -6,7 +6,8 @@ stop_stage=1000
 .  utils/parse_options.sh
 #. path_for_fairseq.sh
 #. path_for_fsq_speechtext.sh
-. path_for_fsq_sptt.sh
+#. path_for_fsq_sptt.sh ## hltsz_cluster
+. path_for_fairseq_speechtext.sh
 
 
 
@@ -467,4 +468,215 @@ if [ ${stage} -le 25 ] && [ ${stop_stage} -ge 25 ];then
    $kenlm_root/build_binary $dest_dir/lm.phones.filtered.04.arpa $dest_dir/lm.phones.filtered.04.bin
 
 fi
+
+
+
+## 2024-2-28 I want to add dev phone sequence, 
+if  [ ${stage} -le 30 ] && [ ${stop_stage} -ge 30 ];then
+   echo "add silence into phone sequence"
+
+   sil_prob=0.5 ## the of setting of wav2vec-u is 0.25, however, the of setting of wav2vec-u2.0 is 05
+   dest_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone
+   lang_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone/wenetspeech_dict
+   dev_text=/mntcephfs/lab_data/maduo/datasets/wenetspeech_no_silence/tsv_dir/dev.wrd
+   #datasets=train
+
+   python  codebase/fairseq_speechtext/examples/wav2vec/unsupervised/wav2vec-u2/text/phonemize_with_sil_mixture.py\
+       -s $sil_prob --surround \
+       --lexicon $lang_dir/uniq_lexicon_remove_tone.txt\
+       < $dev_text\
+       >$dest_dir/dev.phones.txt
+  echo "finish add silence into phone sequence !!!!"
+fi
+
+if [ ${stage} -le 31 ] && [ ${stop_stage} -ge 31 ];then
+   echo "prepare text devset"
+   echo "get final phone dictionary and compress train.txt into train.bin and train.idx for model training"
+   lang_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone/wenetspeech_dict
+   
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   dest_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone
+   output_dir=$dest_dir/unpair_text_with_dev
+   awk '{print $1 " " NR+1}' $lang_dir/uniq_nonsilence_phones_remove_tone.txt >$dest_dir/dict.txt
+   mkdir -p $output_dir
+   python $fairseq_dir/fairseq_cli/preprocess.py\
+           --dataset-impl mmap\
+           --trainpref $dest_dir/dev.phones.txt\
+           --workers 70\
+           --only-source \
+           --destdir $output_dir\
+           --srcdict $dest_dir/dict.txt
+
+   echo "<SIL> 0" >>  $dest_dir/dict.txt
+   mv $dest_dir/dict.txt $output_dir
+   mv $output_dir/dict.txt $output_dir/dict.phn.txt ## for wav2vec-u2
+fi
+
+if [ ${stage} -le 32 ] && [ ${stop_stage} -ge 32 ];then
+   echo "prepare GAN phone code dictionary"
+   lab_dir=/mntcephfs/lab_data/maduo/datasets/wenetspeech_middle_speech_aishell-2_unpair_text
+   n_cluster=59 ## wc -l  /mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone/unpair_text/dict.phn.txt 
+   for x in $(seq 0 $((n_cluster - 1 )));do
+     echo "$x 1"
+   done>>$lab_dir/dict.unsupphncode1.txt
+
+fi
+
+
+
+## 2024-2-28 I will filter out phones with lower frequency,Hope it converges faster
+# step1: get uniq lexicon  and remove tone from raw lexicon
+
+# step2: remove lower frequecy phone from lexicon and get new lexicon
+# step3 : add silence into unpair text
+
+if [ ${stage} -le 35 ] && [ ${stop_stage} -ge 35 ];then
+   echo "get unique lexicon from kaldi format lexicon"
+   echo "The way to do this is to keep only the first pronunciation of a word in lexicon.txt."
+   lang_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone/wenetspeech_dict
+   codebase/fairseq_speechtext/examples/wav2vec/unsupervised/wav2vec-u2/text/generate_unique_lexicon_remove_tone.py --lang-dir $lang_dir
+fi
+
+if [ ${stage} -le 36 ] && [ ${stop_stage} -ge 36 ];then
+   echo "get word phone sequence from unique_lexicon_remove_tone"
+   echo "then get high frequecy phone"
+   lang_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone/wenetspeech_dict
+   cut -f2- -d' ' $lang_dir/uniq_lexicon_remove_tone.txt > $lang_dir/uniq_lexicon_remove_tone_phones.txt
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   min_phones=1000 # wav2vec-u2 is setting to 1000
+   target_dir=$lang_dir
+   rm /mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone/wenetspeech_dict/phones/dict.txt
+   python $fairseq_dir/fairseq_cli/preprocess.py\
+       --dataset-impl mmap\
+       --trainpref $lang_dir/uniq_lexicon_remove_tone_phones.txt\
+       --only-source \
+       --destdir $target_dir/phones \
+       --thresholdsrc $min_phones --padding-factor 1 --dict-only
+
+fi
+
+if [ ${stage} -le 37 ] && [ ${stop_stage} -ge 37 ];then
+    echo "remove lower frequecy phone from lexicon and get new lexicon"
+    fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+    target_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone/wenetspeech_dict
+    python $fairseq_dir/examples/wav2vec/unsupervised/scripts/filter_lexicon.py \
+        -d $target_dir/phones/dict.txt < $target_dir/uniq_lexicon_remove_tone.txt > $target_dir/uniq_lexicon_remove_tone_filtered.lst
+fi
+
+if  [ ${stage} -le 38 ] && [ ${stop_stage} -ge 38 ];then
+    echo "splits the Chinese words into character and keep the English words"
+   
+    dest_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone_remove_lower_frequecy_phones
+    mkdir -p $dest_dir
+    datasets=train
+    sil_prob=0.5 ## the of setting of wav2vec-u is 0.25, however, the of setting of wav2vec-u2.0 is 05
+    input=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone/train.text
+    cat  $input >$dest_dir/train.text
+    lang_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone/wenetspeech_dict
+    for name in $datasets;do
+      # splits the Chinese words into character and keep the English words
+      python codebase/fairseq_speechtext/examples/wav2vec/unsupervised/Chinese/character_tokenizer.py \
+          $dest_dir/${name}.text $dest_dir/${name}.text_split
+     awk '{for(i=2;i<=NF;i=i+1) printf " "$i;print ""}' $dest_dir/$name.text_split > $dest_dir/$name.text_split_nouttid
+     head $dest_dir/$name.text_split_nouttid
+   done
+fi
+if  [ ${stage} -le 39 ] && [ ${stop_stage} -ge 39 ];then
+    
+    echo "add silence into phone sequence"
+    dest_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone_remove_lower_frequecy_phones
+    mkdir -p $dest_dir
+    datasets=train
+    sil_prob=0.5 ## the of setting of wav2vec-u is 0.25, however, the of setting of wav2vec-u2.0 is 05
+ 
+    lang_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone/wenetspeech_dict
+    for name in $datasets;do
+     python  codebase/fairseq_speechtext/examples/wav2vec/unsupervised/wav2vec-u2/text/phonemize_with_sil_mixture.py\
+       -s $sil_prob --surround \
+       --lexicon $lang_dir/uniq_lexicon_remove_tone_filtered.lst\
+       < $dest_dir/${name}.text_split_nouttid\
+       >$dest_dir/lm.phones.filtered.txt
+     echo "finish add silence into phone sequence !!!!"
+    done
+fi
+
+
+if  [ ${stage} -le 40 ] && [ ${stop_stage} -ge 40 ];then
+   echo "compress  phone sequence with silence into binary file"
+   target_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone/wenetspeech_dict
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   cp $target_dir/phones/dict.txt $target_dir/phones/dict.phn.txt
+   echo "<SIL> 0" >> $target_dir/phones/dict.phn.txt
+
+   dest_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone_remove_lower_frequecy_phones
+   output_dir=$dest_dir/unpair_text
+   mkdir -p $output_dir
+   python $fairseq_dir/fairseq_cli/preprocess.py\
+       --dataset-impl mmap\
+       --trainpref $dest_dir/lm.phones.filtered.txt\
+       --workers 70 \
+       --only-source \
+       --destdir $output_dir \
+       --srcdict $target_dir/phones/dict.phn.txt
+  echo "finish add silence into phone sequence !!!!"
+## logger:
+# 2024-02-28 14:49:32 | INFO | fairseq_cli.preprocess | [None] Dictionary: 60 types
+# 2024-02-28 14:49:50 | INFO | fairseq_cli.preprocess | [None] /mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone_remove_lower_frequecy_phones/lm.phones.filtered.txt: 991483 sents, 30767779 tokens, 0.0% replaced (by <unk>)
+# 2024-02-28 14:49:50 | INFO | fairseq_cli.preprocess | Wrote preprocessed data to /mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone_remove_lower_frequecy_phones/unpair_text
+fi
+
+### training phone level 4-gram for wav2vec-u2 gan training stage.
+if [ ${stage} -le 41 ] && [ ${stop_stage} -ge 41 ];then
+   echo "prepared Chinese phone 4-gram"
+   kenlm_root=/mntnfs/lee_data1/maduo/codebase/kenlm/build/bin
+   dest_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone_remove_lower_frequecy_phones
+   $kenlm_root/lmplz -o 4 < $dest_dir/lm.phones.filtered.txt\
+        --discount_fallback > $dest_dir/lm.phones.filtered.04.arpa
+   $kenlm_root/build_binary $dest_dir/lm.phones.filtered.04.arpa $dest_dir/lm.phones.filtered.04.bin
+
+fi
+
+## 2024-2-28 I want to add dev phone sequence,
+if  [ ${stage} -le 42 ] && [ ${stop_stage} -ge 42 ];then
+   echo "add silence into phone sequence"
+
+   sil_prob=0.5 ## the of setting of wav2vec-u is 0.25, however, the of setting of wav2vec-u2.0 is 05
+   dest_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone_remove_lower_frequecy_phones
+   lang_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone/wenetspeech_dict
+   dev_text=/mntcephfs/lab_data/maduo/datasets/wenetspeech_no_silence/tsv_dir/dev.wrd
+   #datasets=train
+
+   python  codebase/fairseq_speechtext/examples/wav2vec/unsupervised/wav2vec-u2/text/phonemize_with_sil_mixture.py\
+       -s $sil_prob --surround \
+       --lexicon $lang_dir/uniq_lexicon_remove_tone.txt\
+       < $dev_text\
+       >$dest_dir/dev.phones.txt
+  echo "finish add silence into phone sequence !!!!"
+fi
+
+if [ ${stage} -le 43 ] && [ ${stop_stage} -ge 43 ];then
+   echo "prepare text devset"
+   echo "get final phone dictionary and compress train.txt into train.bin and train.idx for model training"
+   lang_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone/wenetspeech_dict
+
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   dest_dir=/mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq_remove_tone_remove_lower_frequecy_phones
+   output_dir=$dest_dir/unpair_text_with_dev
+   mkdir -p $output_dir
+
+
+   python $fairseq_dir/fairseq_cli/preprocess.py\
+           --dataset-impl mmap\
+           --trainpref $dest_dir/dev.phones.txt\
+           --workers 70\
+           --only-source \
+           --destdir $output_dir\
+           --srcdict $lang_dir/phones/dict.phn.txt
+   mv $output_dir/train.idx $output_dir/dev.idx
+   mv $output_dir/train.bin $output_dir/dev.bin
+   cp -r $dest_dir/unpair_text/train.* $output_dir/
+   
+   echo "finish add silence into phone sequence !!!!" 
+fi
+
 

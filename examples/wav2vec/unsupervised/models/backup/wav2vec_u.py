@@ -3,7 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 import math
 import numpy as np
@@ -21,7 +21,8 @@ from fairseq.modules import (
     SamePad,
     TransposeLast,
 )
-
+import logging
+logger = logging.getLogger(__name__)
 
 class SegmentationType(Enum):
     NONE = auto()
@@ -82,7 +83,7 @@ class Wav2vec_UConfig(FairseqDataclass):
     temp: Tuple[float, float, float] = (2, 0.1, 0.99995)
     input_dim: int = 128
 
-    segmentation: SegmentationConfig = SegmentationConfig()
+    segmentation: SegmentationConfig = field(default=SegmentationConfig)
 
 
 class Segmenter(nn.Module):
@@ -268,6 +269,7 @@ class Discriminator(nn.Module):
         )
 
     def forward(self, x, padding_mask):
+        #logger.info(f"dis forward input: {x}")
         x = x.transpose(1, 2)  # BTC -> BCT
         x = self.net(x)
         x = x.transpose(1, 2)
@@ -366,8 +368,7 @@ class Generator(nn.Module):
         ).squeeze(-1)
         return normed_feature
 
-from torch.distributed.elastic.multiprocessing.errors import record
-@record
+
 @register_model("wav2vec_u", dataclass=Wav2vec_UConfig)
 class Wav2vec_U(BaseFairseqModel):
     def calc_gradient_penalty(self, real_data, fake_data):
@@ -549,10 +550,13 @@ class Wav2vec_U(BaseFairseqModel):
 
         if not self.no_softmax:
             if self.training and self.gumbel:
+                #logger.info(f"using gumbel_softmax in normalize() for generator output.!!!")
                 dense_x = F.gumbel_softmax(
                     dense_x.float(), tau=self.curr_temp, hard=self.hard_gumbel
                 ).type_as(dense_x)
             else:
+                ## we use the branch.
+                #logger.info(f"using softmax in normalize() for generator output.!!!")
                 dense_x = dense_x.softmax(-1)
 
         return dense_x, code_perplexity, prob_perplexity
@@ -566,13 +570,14 @@ class Wav2vec_U(BaseFairseqModel):
         segment=True,
         aux_target=None,
     ):
+        #logger.info(f"before segment feat: {features}, its shape: {features.shape} ")
         if segment:
             features, padding_mask = self.segmenter.pre_segment(features, padding_mask)
 
         orig_size = features.size(0) * features.size(1) - padding_mask.sum()
 
         gen_result = self.generator(features, random_label, padding_mask)
-
+        #logger.info(f"gen_result of generator: {gen_result}")
         orig_dense_x, token_x = gen_result["dense_x"], gen_result["token_x"]
         orig_dense_padding_mask = gen_result["dense_padding_mask"]
 
@@ -585,12 +590,14 @@ class Wav2vec_U(BaseFairseqModel):
             dense_padding_mask = orig_dense_padding_mask
 
         dense_logits = dense_x
+        #dense_logits = dense_logits.contiguous()
         prob_perplexity = None
         code_perplexity = None
 
         if not (self.no_softmax and dense_x_only):
             dense_x, code_perplexity, prob_perplexity = self.normalize(dense_logits)
 
+            #dense_x = dense_x.contiguous()
         if dense_x_only or self.discriminator is None:
             return {
                 "logits": dense_x,
@@ -598,9 +605,12 @@ class Wav2vec_U(BaseFairseqModel):
             }
 
         token_padding_mask = random_label == self.pad
-
+        #logger.info(f"discriminator input dense_x: : {dense_x}, token_x: {token_x}") ## if unpair text is not offered , token_x: None
         dense_y = self.discriminator(dense_x, dense_padding_mask)
         token_y = self.discriminator(token_x, token_padding_mask)
+        #dense_y = dense_y.contiguous()
+        #token_y = token_y.contiguous()
+
 
         sample_size = features.size(0)
 
@@ -647,7 +657,7 @@ class Wav2vec_U(BaseFairseqModel):
 
             if self.smoothness_weight > 0:
                 smoothness_loss = F.mse_loss(
-                    dense_logits[:, :-1], dense_logits[:, 1:], reduction="none"
+                    dense_logits[:, :-1].contiguous(), dense_logits[:, 1:].contiguous(), reduction="none"
                 )
                 smoothness_loss[dense_padding_mask[:, 1:]] = 0
                 smoothness_loss = (
@@ -659,9 +669,14 @@ class Wav2vec_U(BaseFairseqModel):
                 if self.target_downsample_rate > 1:
                     aux_target = aux_target[:, :: self.target_downsample_rate]
                 max_t_len = min(aux_target.shape[1], inter_x.shape[1])
+                #logger.info(f"max_t_len: {max_t_len}")
+                #logger.info(f"inter_x[:, :max_t_len].transpose(1, 2) shape: {inter_x[:, :max_t_len].transpose(1, 2).shape}, its content: {inter_x[:, :max_t_len].transpose(1, 2)}")
+                #logger.info(f"aux_target[:, :max_t_len] shape: {aux_target[:, :max_t_len].shape}, its content: {aux_target[:, :max_t_len]}")
+
+                # reference: https://github.com/pytorch/pytorch/issues/85005
                 mmi_loss = F.cross_entropy(
-                    inter_x[:, :max_t_len].transpose(1, 2).contiguous(),
-                    aux_target[:, :max_t_len],
+                    inter_x[:, :max_t_len].transpose(1, 2).contiguous(), # (B,C,T)
+                    aux_target[:, :max_t_len].contiguous(), #(B,T)
                     ignore_index=-1,
                     reduction="none",
                 )

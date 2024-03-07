@@ -306,7 +306,7 @@ class LLaMAHubertConfigv2(FairseqDataclass):
     freeze_hubert_layer_nums: int = (
         0  ## if >0, it will freeze first `freeze_hubert_layer_num` layer weigth
     )
-    split_model_mode: bool = True  ## if true, its means that I will insert llama layer into hubert medium layer.
+    ##split_model_mode: bool = True  ## if true, its means that I will insert llama layer into hubert medium layer.
 
 
 @register_model("LLaMAhubertv2", dataclass=LLaMAHubertConfigv2)

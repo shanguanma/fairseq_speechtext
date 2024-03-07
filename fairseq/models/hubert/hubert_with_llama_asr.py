@@ -145,6 +145,7 @@ class HubertAsrConfig(FairseqDataclass):
     )
     freeze_hubert_layer_nums: int = 0 ## if >0, it will freeze first `freeze_hubert_layer_num` layer weigth
     finetune_llama_model: str = field(default='freeze',metadata={"help":"freeze: freeze all llama layer, lora_mlp: only update  llama lora mlp layer in llama network."},)
+    split_model_mode: bool = True  ## if true, its means that I will insert llama layer into hubert medium layer.
 
 
 @dataclass

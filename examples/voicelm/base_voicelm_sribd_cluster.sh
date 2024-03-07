@@ -996,3 +996,39 @@ if [ ${stage} -le 30 ] && [ ${stop_stage} -ge 30 ];then
    #
    #
  fi
+# (TODO) 
+## this pretrain model is trained from xianghu.
+ ## using half of unpaired text to train wav2vec-u2 model and get librispeech monophncode
+if [ ${stage} -le 32 ] && [ ${stop_stage} -ge 32 ];then
+   echo "fine tune base voicelm model  using train-1h supervision data"
+   fairseq_dir=/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext
+   tsv_dir=/mntcephfs/lab_data/maduo/datasets/format/librispeech/
+   dir=/mntnfs/lee_data1/maduo/exp
+   config_dir=$fairseq_dir/examples/voicelm
+   model_name=pretrain_on_base_voicelm_4gpu_8update_960h_400k_update_on_unpaired_text_half
+   exp_finetune_dir=$dir/finetune/${model_name}_1h_asr_finetune
+   exp_dir=$dir/pretrain/${model_name}
+   mkdir -p $exp_finetune_dir
+   world_size=2
+   update_freq=4
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   python $fairseq_dir/fairseq_cli/hydra_train.py \
+       --config-dir $config_dir/config/finetune \
+            --config-name voicelm_base_1h \
+            task.data=$tsv_dir\
+            task.label_dir=$tsv_dir\
+            task.labels='["ltr"]' \
+            model.w2v_path=$exp_dir/checkpoint_298_400000.pt\
+            common.user_dir=$fairseq_dir/examples/voicelm\
+            dataset.train_subset=train-1h\
+            dataset.valid_subset=dev-other\
+            distributed_training.distributed_world_size=${world_size}\
+            distributed_training.distributed_port=-1\
+            distributed_training.ddp_backend=legacy_ddp\
+            optimization.update_freq=[${update_freq}]\
+            common.tensorboard_logdir=$exp_finetune_dir\
+            checkpoint.save_dir=$exp_finetune_dir\
+            hydra.run.dir=$fairseq_dir/examples/voicelm\
+            hydra.job.name=$exp_finetune_dir/finetune
+fi
+
