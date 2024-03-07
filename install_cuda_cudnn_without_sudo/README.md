@@ -20,6 +20,9 @@ chmod +x cuda_11.8.0_520.61.05_linux.run
     --no-opengl-libs \  --no-drm \  --no-man-page
 
 wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-linux-x86_64-8.9.1.23_cuda11-archive.tar.xz
+For Chinese user, you can use the below url:
+wget https://hf-mirror.com/csukuangfj/cudnn/blob/main/cudnn-linux-x86_64-8.9.1.23_cuda11-archive.tar.xz
+
 
 tar xvf cudnn-linux-x86_64-8.9.1.23_cuda11-archive.tar.xz --strip-components=1 -C /home/maduo/installed/cuda-11.8.0
 
@@ -73,6 +76,9 @@ chmod +x cuda_12.1.0_530.30.02_linux.run
 Install cuDNN for CUDA 12.1
 Now, install cuDNN for CUDA 12.1.
 wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-linux-x86_64-8.9.5.29_cuda12-archive.tar.xz
+For Chinese user, you can use the below url:
+wget https://hf-mirror.com/csukuangfj/cudnn/resolve/main/cudnn-linux-x86_64-8.9.5.29_cuda12-archive.tar.xz
+
 
 tar xvf cudnn-linux-x86_64-8.9.5.29_cuda12-archive.tar.xz --strip-components=1 -C /home/maduo/installed/cuda-12.1.0
 
