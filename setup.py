@@ -15,17 +15,16 @@ if sys.version_info < (3, 6):
     sys.exit("Sorry, Python >= 3.6 is required for fairseq.")
 
 
-def write_version_py():
-    with open(os.path.join("fairseq", "version.txt")) as f:
-        version = f.read().strip()
+#def write_version_py():
+#    with open(os.path.join("fairseq", "version.txt")) as f:
+#        version = f.read().strip()
 
     # write version info to fairseq/version.py
-    with open(os.path.join("fairseq", "version.py"), "w") as f:
-        f.write('__version__ = "{}"\n'.format(version))
-    return version
+#    with open(os.path.join("fairseq", "version.py"), "w") as f:
+#        f.write('__version__ = "{}"\n'.format(version))
+#    return version
 
 
-version = write_version_py()
 
 
 with open("README.md") as f:
@@ -163,7 +162,7 @@ if os.path.exists(os.path.join("fairseq", "model_parallel", "megatron", "mpu")):
 def do_setup(package_data):
     setup(
         name="fairseq",
-        version=version,
+        version="V1.0.0",
         description="Facebook AI Research Sequence-to-Sequence Toolkit",
         url="https://github.com/pytorch/fairseq",
         classifiers=[
