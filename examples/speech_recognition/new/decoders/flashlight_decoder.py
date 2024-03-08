@@ -44,7 +44,7 @@ except ImportError:
     warnings.warn(
         '''Flashlight Text python bindings are required to use this functionality. "
         "Please install from  "https://github.com/flashlight/text/#readme"
-        or you can `pip install flashlight-text  -i https://pypi.tuna.tsinghua.edu.cn/simple `
+        or you can `pip install flashlight-text==0.0.4  -i https://pypi.tuna.tsinghua.edu.cn/simple `
         if you want to enable optional KenLM support in Python with the decoder
         you can `pip install https://github.com/kpu/kenlm/archive/master.zip` 
         '''

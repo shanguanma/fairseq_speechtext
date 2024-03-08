@@ -77,13 +77,13 @@ pip install flash_attn-2.3.5+cu116torch1.13cxx11abiFALSE-cp38-cp38-linux_x86_64.
 ## in order to use fairseq decoder, you now can install it as follows:
 ## install flashlight text
 ## it offer beam_search decoder and dictioanry utils
-pip install flashlight-text  -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install flashlight-text==0.0.4  -i https://pypi.tuna.tsinghua.edu.cn/simple
 ## install kenlm
 ## ## offer interget n-gram for ASR decoding
 pip install https://github.com/kpu/kenlm/archive/master.zip  ## offer n-gram 
 ## instll flashlight sequence
 export USE_CUDA=1
-git clone https://github.com/flashlight/sequence && cd sequence 
+git clone https://github.com/shanguanma/flashlight_sequence.git && cd flashlight_sequence 
 pip install .
 ```
 

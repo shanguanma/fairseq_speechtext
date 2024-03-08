@@ -42,15 +42,15 @@ except:
     warnings.warn(
        '''Flashlight python bindings are required to use this functionality. 
         Please install from https://github.com/flashlight/text/#readme 
-        or you can `pip install flashlight-text  -i https://pypi.tuna.tsinghua.edu.cn/simple `
+        or you can `pip install flashlight-text==0.0.4  -i https://pypi.tuna.tsinghua.edu.cn/simple `
         if you want to enable optional KenLM support in Python with the decoder
         you can `pip install https://github.com/kpu/kenlm/archive/master.zip`
 
-        and https://github.com/flashlight/sequence#readme
+        and https://github.com/shanguanma/flashlight_sequence.git
         or if  want to use gpu to decode,  you can `export USE_CUDA=1
-        git clone https://github.com/flashlight/sequence && cd sequence 
+        git clone https://github.com/shanguanma/flashlight_sequence.git && cd flashlight_sequence
         pip install .`   
-        otherwise you can  `git clone https://github.com/flashlight/sequence && cd sequence && pip install .`
+        otherwise you can  `git clone https://github.com/shanguanma/flashlight_sequence.git && cd flashlight_sequence && pip install .`
        '''
     )
     LM = object
