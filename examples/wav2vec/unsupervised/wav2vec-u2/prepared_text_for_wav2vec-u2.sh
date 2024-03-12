@@ -872,3 +872,13 @@ if [ ${stage} -le 82 ] && [ ${stop_stage} -ge 82 ];then
    $kenlm_root/build_binary $dest_dir/kenlm.wrd.o40003_0.15M.arpa $dest_dir/kenlm.wrd.o40003_0.15M.bin
 
 fi
+
+
+if [ ${stage} -le 83 ] && [ ${stop_stage} -ge 83 ];then
+   echo "prepared dict for voicelm"
+   lab_dir=dataset/format/librispeech/librispeech_frame_monophncode_using_wav2vec-u2_model/
+   n_cluster=41
+   for x in $(seq 0 $((n_cluster - 1 )));do
+     echo "$x 1"
+   done>>$lab_dir/dict.phncode.txt
+fi

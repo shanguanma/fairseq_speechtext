@@ -5,7 +5,8 @@ stage=0
 stop_stage=1000
 .  utils/parse_options.sh
 #. path_for_fairseq_speechtext.sh ## pytorch 2.0 fairseq flashnight-text flashnight sequence 
-. path_for_fsq_speechtext.sh
+#. path_for_fsq_speechtext.sh
+. path_for_fsq_sptt.sh
 export HYDRA_FULL_ERROR=1
 export CUDA_LAUNCH_BLOCKING=1
 
@@ -83,17 +84,21 @@ fi
 ## without lm to decode
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
     echo "inference voicelm(only phn) model on dev-other, dev-clean, test-other, test-clean of librispeech"
-   fairseq_dir=/workspace2/maduo/fairseq_speechtext
+   fairseq_dir=/home/maduo/codebase/fairseq_speechtext
    #sv_dir=/workspace2/maduo/dataset/format/librispeech
-   tsv_dir=/workspace2/maduo/tests
+   #tsv_dir=/workspace2/maduo/tests
+   tsv_dir=/home/maduo/tests
    #tsv_dir=/workspace2/maduo/tests/tests
    #config_dir=/workspace2/maduo/source_md/wav2vec-u2
    config_dir=$fairseq_dir/examples/voicelm/
-   dir=/workspace2/maduo/exp
+   #dir=/workspace2/maduo/exp
+   dir=/home/maduo/exp
    model_name=pretrain_on_base_imls-ssl_4gpu_8update_960h_400k_update
    exp_finetune_dir=$dir/finetune/${model_name}_100h_asr_finetune
    results_path=$exp_finetune_dir/decode_on_100h_debug_for_demo_test
-   dict_path=/workspace2/maduo/dataset/format/librispeech/dict.ltr.txt
+   #dict_path=/workspace2/maduo/dataset/format/librispeech/dict.ltr.txt
+   model=$exp_finetune_dir/checkpoint_best_new.pt
+   dict_path=$exp_finetune_dir/dict.ltr.txt
    mkdir -p $results_path
    testsets="test-clean10"
    #testsets="test-clean1"
@@ -101,9 +106,10 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
    export PYTHONPATH=$fairseq_dir:$PYTHONPATH
    #cd $fairseq_dir
    for name in $testsets;do
-    CUDA_VISIBLE_DEVICES=4     python $fairseq_dir/examples/speech_recognition/new/infer_simple.py\
+    #CUDA_VISIBLE_DEVICES=4     python $fairseq_dir/examples/speech_recognition/new/infer_simple.py\
+    python $fairseq_dir/examples/speech_recognition/new/infer_simple.py\
           $tsv_dir --task audio_pretraining\
-          --nbest 1 --path $exp_finetune_dir/checkpoint_best_new.pt\
+          --nbest 1 --path $model\
           --gen-subset ${name}\
           --results-path ${results_path} \
           --w2l-decoder viterbi \

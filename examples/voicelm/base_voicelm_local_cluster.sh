@@ -5,10 +5,11 @@ stage=0
 stop_stage=1000
 .  utils/parse_options.sh
 #. path_for_fairseq_speechtext.sh ## pytorch 2.0 fairseq flashnight-text flashnight sequence , python=3.9
-. path_for_fsq_speechtext.sh # python=3.11 , it is not work in infer stage.
+#. path_for_fsq_speechtext.sh # python=3.11 , it is not work in infer stage.
+. path_for_fsq_sptt.sh ## this is work on hltsz cluster for training, 2024-1-30
 export HYDRA_FULL_ERROR=1
 export CUDA_LAUNCH_BLOCKING=1
-
+## 2024-1-29 rerun it, because i forget this checkpoint from old server to new server.
 ### voicelm paper: (VoiceLM(only phn))
 if [ ${stage} -le 20 ] && [ ${stop_stage} -ge 20 ];then
 
@@ -445,4 +446,50 @@ if [ ${stage} -le 50 ] && [ ${stop_stage} -ge 50 ];then
             hydra.job.name=$exp_dir/pretrain
 ### 4V100: training about 30.6 day
 ###           200steps: about 22 minites
+fi
+
+
+## 2024-1-29 rerun it, because i forget this checkpoint from old server to new server.
+if [ ${stage} -le 51 ] && [ ${stop_stage} -ge 51 ];then
+
+   echo "pretrain hubert on wav2vec-u2.0 15 layer pesudo label, label_rate=50"
+   echo "training on 400k steps for train-960 of librispeech unpair speech"
+   echo "called by voicelm(only phn)"
+   fairseq_dir=/home/maduo/codebase/fairseq_speechtext
+   data_dir=/home/maduo/dataset/format/librispeech/
+   tsv_dir=$data_dir/tsv_dir/
+   label_dir=$data_dir/librispeech_frame_monophncode_using_wav2vec-u2_model # ##postfix *.speechphncode *.textphncode files folder
+   #tsv_dir=$label_dir
+   config_dir=$fairseq_dir/examples/sthubert/
+   dir=/home/maduo/exp
+   model_name=pretrain_on_base_voicelm_only_phn_2gpu_16update_400k_w2vu2_librispeech_monophncode
+   exp_dir=$dir/pretrain/${model_name}
+   mkdir -p $exp_dir
+   world_size=2
+   update_freq=16
+   #CUDA_VISIBLE_DEVICES=0,5,6,7 python $fairseq_dir/fairseq_cli/hydra_train.py \
+   #torchrun --nproc_per_node=$world_size --master_port=12345 $fairseq_dir/fairseq_cli/hydra_train.py \
+   #CUDA_VISIBLE_DEVICES=0,1 torchrun --standalone  --nnodes=1  --nproc-per-node=$world_size --master_port=12348 $fairseq_dir/fairseq_cli/hydra_train.py \
+   python   $fairseq_dir/fairseq_cli/hydra_train.py \
+            --config-dir $config_dir/config/pretrain \
+            --config-name hubert_base_librispeech\
+            task.data=$tsv_dir\
+            task.label_dir=$label_dir\
+            task.labels='["phncode"]' \
+            model.label_rate=50\
+            common.user_dir=$fairseq_dir/examples/sthubert\
+            dataset.train_subset=train-960\
+            dataset.valid_subset=\'dev-other,dev-clean\'\
+            dataset.max_tokens=1400000\
+            distributed_training.distributed_world_size=${world_size}\
+            distributed_training.distributed_port=-1\
+            distributed_training.ddp_backend=legacy_ddp\
+            optimization.update_freq=[${update_freq}]\
+            common.tensorboard_logdir=$exp_dir\
+            checkpoint.save_dir=$exp_dir\
+            hydra.run.dir=$fairseq_dir/examples/sthubert\
+            hydra.job.name=$exp_dir/pretrain
+## two RTX3090 GPUs
+## 14mins about 200steps:
+## 20days about 400k steps
 fi

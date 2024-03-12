@@ -11,7 +11,7 @@ export HYDRA_FULL_ERROR=1
 export CUDA_LAUNCH_BLOCKING=1
 
 
-## this script is display how to train GAN for SPL paper
+## this script is display how to train GAN for SPL paper(https://arxiv.org/abs/2402.15725)
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
   fairseq_dir=/home/maduo/codebase/fairseq_speechtext
   des_dir=/home/maduo/dataset/format/librispeech
@@ -160,7 +160,63 @@ if [ ${stage} -le 3 ]&& [ ${stop_stage} -ge 3 ];then
 fi
 
 
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ];then
+  fairseq_dir=/home/maduo/codebase/fairseq_speechtext
+  des_dir=/home/maduo/dataset/format/librispeech
+  TASK_DATA=$des_dir/wav2vec_large_feat_dir_no_silence/ ## it stores wav2vec2 large model 15 layer representation of raw librispeech speech,
+                                                        ## it  removes  silence. it offers feature of speech.
+  #cp -r dataset/format/librispeech/librispeech_no_silence/mfcc_no_silence/mfcc_lab/* $TASK_DATA  ## it offers hubert mfcc pesudo label
 
+  # Unpaired text input
+  TEXT_DATA=$des_dir/librispeech_lm_norm_phn_seq/unpair_text_all ## it  offers unpair trainset(train.bin, train.idx), devset (dev-clean.bin.dev-clean.idx, dev-other.bin, dev-other.idx)
+  # it also offers phone dictionary, its type is as follow:
+  ##head  dataset/format/librispeech/librispeech_lm_norm_phn_seq/phonesss/dict.phn.txt
+  ## AH 336212
+  ## N 238016
+  ## S 209100
+  ## T 194878
+  ## L 188633
+  ## IH 182116
+  ## R 172703
+  ## K 154411
+  ## IY 138376
+  ## Z 128619
+  KENLM_PATH=$des_dir/librispeech_lm_norm_phn_seq/lm.phones.filtered.04.bin  # KenLM 4-gram phoneme language model (LM data = GAN data here)
+  config_dir=$fairseq_dir/examples/wav2vec/unsupervised
+
+  dir=/home/maduo/exp/
+  model_name=w2v_unsup_gan_xp_1gpu_1update_with_unpair_text_all
+  exp_dir=$dir/wav2vec-u2_gan_from_scratch/${model_name}
+  mkdir -p $exp_dir
+  export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+  world_size=1
+  update_freq=1
+  #CUDA_VISIBLE_DEVICES=7  python $fairseq_dir/fairseq_cli/hydra_train.py  --multirun \
+  python $fairseq_dir/fairseq_cli/hydra_train.py\
+       --config-dir $config_dir/config/gan \
+     --config-name w2vu2_local3_md_1 \
+     task.data=${TASK_DATA} \
+     task.text_data=${TEXT_DATA} \
+     task.kenlm_path=${KENLM_PATH} \
+     dataset.train_subset=train\
+     dataset.valid_subset=\'dev-other,dev-clean\'\
+     dataset.batch_size=160\
+     dataset.num_workers=6\
+     model.code_penalty=0.0\
+     model.gradient_penalty=1.5\
+     model.smoothness_weight=1.5\
+     model.mmi_weight=0.5\
+     common.seed=1\
+     common.user_dir=${fairseq_dir}/examples/wav2vec/unsupervised \
+     distributed_training.distributed_world_size=${world_size}\
+     distributed_training.distributed_port=-1\
+     distributed_training.ddp_backend=legacy_ddp\
+     optimization.update_freq=[${update_freq}]\
+     common.tensorboard_logdir=$exp_dir\
+     hydra.run.dir=$fairseq_dir/examples/wav2vec/unsupervised\
+     hydra.job.name=$exp_dir/w2v_unsup_gan_xp
+
+fi
 
 ## 2023.8.10.update, compared to stage20, I still keep reduce four specify symbols, because it will add four sysmbol into dictionary (e.g. dict.*.txt) and rewrite every utterance code id( it adds 4) in fairseq prepared dataset defult.
 ## No post-processing(rewrite every utterance code id( it adds 4))

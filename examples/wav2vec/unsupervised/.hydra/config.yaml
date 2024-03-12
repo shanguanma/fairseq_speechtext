@@ -7,10 +7,10 @@ common:
   log_file: null
   aim_repo: null
   aim_run_hash: null
-  tensorboard_logdir: /mntnfs/lee_data1/maduo/exp//wav2vec-u2_gan_from_scratch/w2v_unsup_gan_xp_1gpu_1update_with_unpair_text_1M_md_setting
+  tensorboard_logdir: /home/maduo/exp//wav2vec-u2_gan_from_scratch/w2v_unsup_gan_xp_1gpu_1update_with_unpair_text_all
   wandb_project: null
   azureml_logging: false
-  seed: 0
+  seed: 1
   cpu: false
   tpu: false
   bf16: false
@@ -28,7 +28,7 @@ common:
   amp_batch_retries: 2
   amp_init_scale: 128
   amp_scale_window: null
-  user_dir: /mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/wav2vec/unsupervised
+  user_dir: /home/maduo/codebase/fairseq_speechtext/examples/wav2vec/unsupervised
   empty_cache_freq: 0
   all_gather_list_size: 16384
   model_parallel_size: 1
@@ -96,8 +96,8 @@ dataset:
   required_seq_len_multiple: 1
   dataset_impl: null
   data_buffer_size: 10
-  train_subset: train_m
-  valid_subset: dev
+  train_subset: train
+  valid_subset: dev-other,dev-clean
   combine_valid_subsets: null
   ignore_unused_valid_subsets: false
   validate_interval: 1000
@@ -246,7 +246,7 @@ model:
   blank_weight: 0.0
   blank_mode: add
   no_softmax: false
-  smoothness_weight: 0.5
+  smoothness_weight: 1.5
   smoothing: 0.0
   smoothing_one_sided: false
   gumbel: false
@@ -254,7 +254,7 @@ model:
   gradient_penalty: 1.5
   probabilistic_grad_penalty_slicing: false
   target_downsample_rate: 2
-  code_penalty: 2
+  code_penalty: 0.0
   temp:
   - 2.0
   - 0.1
@@ -270,14 +270,14 @@ model:
     mean_pool: true
 task:
   _name: unpaired_audio_text
-  data: /mntcephfs/lab_data/maduo/datasets/wenetspeech_no_silence/hubert_large_feat_dir_no_silence
-  text_data: /mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq/unpair_text
+  data: /home/maduo/dataset/format/librispeech/wav2vec_large_feat_dir_no_silence/
+  text_data: /home/maduo/dataset/format/librispeech/librispeech_lm_norm_phn_seq/unpair_text_all
   labels: phn
   sort_by_length: false
   unfiltered: false
   max_length: null
   append_eos: false
-  kenlm_path: /mntcephfs/lab_data/maduo/datasets/format/Chinese/aishell-2_norm_phn_seq/lm.phones.filtered.bin
+  kenlm_path: /home/maduo/dataset/format/librispeech/librispeech_lm_norm_phn_seq/lm.phones.filtered.04.bin
   aux_target_postfix: km
 criterion:
   _name: model
@@ -286,6 +286,7 @@ criterion:
   - accuracy_token
   - temp
   - code_ppl
+  - mmi_acc
 optimizer:
   _name: composite
   groups:
@@ -315,6 +316,7 @@ optimizer:
         - 0.98
         adam_eps: 1.0e-06
         weight_decay: 0.0001
+        amsgrad: false
       lr_scheduler:
         _name: fixed
         warmup_updates: 0

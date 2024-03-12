@@ -88,6 +88,8 @@ def _infer_torch_distributed_launch_init(cfg: DistributedTrainingConfig):
     cfg.distributed_init_method = "env://"
     cfg.distributed_world_size = int(os.environ["WORLD_SIZE"])
     cfg.distributed_rank = int(os.environ["RANK"])
+    print(f"torch.cuda.device_count(): {torch.cuda.device_count()}")
+    print(f"cfg.distributed_rank: {cfg.distributed_rank}")
     cfg.device_id = cfg.distributed_rank % torch.cuda.device_count()
     # processes are created by torch.distributed.launch
     cfg.distributed_no_spawn = True
