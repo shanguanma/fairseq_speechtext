@@ -3,23 +3,38 @@ import argparse, os, shutil, subprocess
 from tqdm import tqdm
 
 
-
 def get_args():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--libri2mix_folder", help="Root folder to Libri2Mix dataset, e.g ../Libri2Mix")
-    parser.add_argument("--libri3mix_folder", help="Root folder to Libri3Mix dataset, e.g ../Libri3Mix")
-    parser.add_argument("--libri23mix_folder", help="Root folder to Libri23Mix dataset, e.g ../Libri23Mix")
+    parser.add_argument(
+        "--libri2mix_folder", help="Root folder to Libri2Mix dataset, e.g ../Libri2Mix"
+    )
+    parser.add_argument(
+        "--libri3mix_folder", help="Root folder to Libri3Mix dataset, e.g ../Libri3Mix"
+    )
+    parser.add_argument(
+        "--libri23mix_folder",
+        help="Root folder to Libri23Mix dataset, e.g ../Libri23Mix",
+    )
     parser.add_argument("--fs", type=int, help="Sampling rate", choices=[8000, 16000])
-    parser.add_argument("--mode", type=str, help="Max or min mode", choices=["max", "min"])
+    parser.add_argument(
+        "--mode", type=str, help="Max or min mode", choices=["max", "min"]
+    )
 
     args = parser.parse_args()
 
-    args.libri2mix_folder = os.path.join(args.libri2mix_folder, f"wav{args.fs//1000}k", args.mode)
-    args.libri3mix_folder = os.path.join(args.libri3mix_folder, f"wav{args.fs//1000}k", args.mode)
-    args.libri23mix_folder = os.path.join(args.libri23mix_folder, f"wav{args.fs//1000}k", args.mode)
+    args.libri2mix_folder = os.path.join(
+        args.libri2mix_folder, f"wav{args.fs//1000}k", args.mode
+    )
+    args.libri3mix_folder = os.path.join(
+        args.libri3mix_folder, f"wav{args.fs//1000}k", args.mode
+    )
+    args.libri23mix_folder = os.path.join(
+        args.libri23mix_folder, f"wav{args.fs//1000}k", args.mode
+    )
 
     return args
+
 
 def copy_all_files(from_folder, to_folder):
     if not os.path.exists(to_folder):
@@ -27,10 +42,11 @@ def copy_all_files(from_folder, to_folder):
 
     all_filenames = os.listdir(from_folder)
     all_filenames = [os.path.join(from_folder, elem) for elem in all_filenames]
-    
+
     print(f"Copying from {from_folder} to {to_folder}.")
     for filename in tqdm(all_filenames):
         shutil.copy(filename, to_folder)
+
 
 def link_all_files(from_folder, to_folder):
     if not os.path.exists(to_folder):
@@ -39,10 +55,13 @@ def link_all_files(from_folder, to_folder):
     print(f"Linking between {from_folder} and {to_folder}.")
 
     all_filenames = os.listdir(from_folder)
-    
+
     for filename in tqdm(all_filenames):
-        os.symlink(os.path.join(os.path.abspath(from_folder), filename), os.path.join(to_folder, filename))
-    
+        os.symlink(
+            os.path.join(os.path.abspath(from_folder), filename),
+            os.path.join(to_folder, filename),
+        )
+
 
 def main(args):
 
@@ -77,7 +96,7 @@ def main(args):
     #         output_path = os.path.join(args.libri23mix_folder, folder_name, split_name, "rttm")
     #         if not os.path.exists(output_path):
     #             os.makedirs(os.path.dirname(output_path))
-            
+
     #         cat_command = ["cat", libri2_rttm_path, libri3_rttm_path]
     #         with open(output_path, "w") as output_file:
     #             subprocess.run(cat_command, stdout=output_file, text=True)
@@ -92,13 +111,12 @@ def main(args):
     #         output_path = os.path.join(args.libri23mix_folder, folder_name, f"{split_name}.tsv")
     #         if not os.path.exists(os.path.dirname(output_path)):
     #             os.makedirs(os.path.dirname(output_path))
-            
+
     #         cat_command = ["cat", libri2_tsv_path, libri3_tsv_path]
     #         with open(output_path, "w") as output_file:
     #             subprocess.run(cat_command, stdout=output_file, text=True)
 
 
-
-if __name__=="__main__":
+if __name__ == "__main__":
     args = get_args()
     main(args)

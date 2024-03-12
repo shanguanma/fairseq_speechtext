@@ -13,15 +13,22 @@ import torch.nn as nn
 
 from fairseq.dataclass import ChoiceEnum
 
-from examples.speaker_diarization.ts_vad.models.modules.modules import Conv1D, Conv1DBlock
+from examples.speaker_diarization.ts_vad.models.modules.modules import (
+    Conv1D,
+    Conv1DBlock,
+)
 from examples.speaker_diarization.ts_vad.models.modules.batch_norm import BatchNorm1D
 from examples.speaker_diarization.ts_vad.tasks.ts_vad import TSVADTaskConfig
-from examples.speaker_diarization.ts_vad.models.spex_plus import SpexPlusConfig, SpexPlusModel
+from examples.speaker_diarization.ts_vad.models.spex_plus import (
+    SpexPlusConfig,
+    SpexPlusModel,
+)
 
 logger = logging.getLogger(__name__)
 
 
 INPUT_TYPE = ChoiceEnum(["mask", "tcn"])
+
 
 class ExtractionModule(SpexPlusModel):
     def __init__(
@@ -29,44 +36,69 @@ class ExtractionModule(SpexPlusModel):
         cfg: SpexPlusConfig,
         task_cfg: TSVADTaskConfig,
         spk_embed,
-        max_num_speaker = None,
+        max_num_speaker=None,
     ) -> None:
         super().__init__(cfg, task_cfg, spk_embed)
         if max_num_speaker is None:
             max_num_speaker = task_cfg.max_num_speaker
         # empty module
         self.speech_down = nn.Sequential(
-            nn.Conv1d(cfg.enc_out_size * max_num_speaker, cfg.enc_out_size, 5, stride=1, padding=2),
+            nn.Conv1d(
+                cfg.enc_out_size * max_num_speaker,
+                cfg.enc_out_size,
+                5,
+                stride=1,
+                padding=2,
+            ),
             BatchNorm1D(num_features=cfg.enc_out_size),
             nn.ReLU(),
         )
 
-        self.conv_blocks_combine = nn.ModuleList([
+        self.conv_blocks_combine = nn.ModuleList(
+            [
                 Conv1DBlock(
-                    in_channels=cfg.enc_out_size, 
-                    conv_channels=cfg.conv_out_channels, 
-                    kernel_size=cfg.conv_kernel_size, 
-                    norm=cfg.conv_block_norm, 
-                    dilation=1
-                ) for _ in range(cfg.total_conv_block_num)
+                    in_channels=cfg.enc_out_size,
+                    conv_channels=cfg.conv_out_channels,
+                    kernel_size=cfg.conv_kernel_size,
+                    norm=cfg.conv_block_norm,
+                    dilation=1,
+                )
+                for _ in range(cfg.total_conv_block_num)
             ]
         )
-        self.conv_blocks_combine_other = nn.Sequential(*[
+        self.conv_blocks_combine_other = nn.Sequential(
+            *[
                 self._build_blocks(
-                    num_blocks=cfg.conv_block_num, 
-                    in_channels=cfg.enc_out_size, 
-                    conv_channels=cfg.conv_out_channels, 
-                    kernel_size=cfg.conv_kernel_size, 
-                    norm=cfg.conv_block_norm
-                ) for _ in range(cfg.total_conv_block_num)
+                    num_blocks=cfg.conv_block_num,
+                    in_channels=cfg.enc_out_size,
+                    conv_channels=cfg.conv_out_channels,
+                    kernel_size=cfg.conv_kernel_size,
+                    norm=cfg.conv_block_norm,
+                )
+                for _ in range(cfg.total_conv_block_num)
             ]
         )
 
         # mask
-        del self.mask1, self.mask2, self.mask3 
-        self.mask_module1 = nn.ModuleList([Conv1D(cfg.enc_out_size, cfg.enc_in_channels, 1) for _ in range(max_num_speaker)])
-        self.mask_module2 = nn.ModuleList([Conv1D(cfg.enc_out_size, cfg.enc_in_channels, 1) for _ in range(max_num_speaker)])
-        self.mask_module3 = nn.ModuleList([Conv1D(cfg.enc_out_size, cfg.enc_in_channels, 1) for _ in range(max_num_speaker)])
+        del self.mask1, self.mask2, self.mask3
+        self.mask_module1 = nn.ModuleList(
+            [
+                Conv1D(cfg.enc_out_size, cfg.enc_in_channels, 1)
+                for _ in range(max_num_speaker)
+            ]
+        )
+        self.mask_module2 = nn.ModuleList(
+            [
+                Conv1D(cfg.enc_out_size, cfg.enc_in_channels, 1)
+                for _ in range(max_num_speaker)
+            ]
+        )
+        self.mask_module3 = nn.ModuleList(
+            [
+                Conv1D(cfg.enc_out_size, cfg.enc_in_channels, 1)
+                for _ in range(max_num_speaker)
+            ]
+        )
 
         # others
         self.inference = task_cfg.inference
@@ -97,9 +129,13 @@ class ExtractionModule(SpexPlusModel):
             ests3 = self.decoder_1d_3(s3, squeeze=True)[:, :max_len]
 
             if max_len != ests2.size(1):
-                ests2 = torch.nn.functional.pad(ests2, (0, max_len - ests2.size(1), 0, 0))
+                ests2 = torch.nn.functional.pad(
+                    ests2, (0, max_len - ests2.size(1), 0, 0)
+                )
             if max_len != ests.size(1):
-                ests3 = torch.nn.functional.pad(ests3, (0, max_len - ests3.size(1), 0, 0))
+                ests3 = torch.nn.functional.pad(
+                    ests3, (0, max_len - ests3.size(1), 0, 0)
+                )
 
             return [ests, ests2, ests3], [m1, m2, m3]
         else:
@@ -117,13 +153,15 @@ class ExtractionModule(SpexPlusModel):
         for i in range(self.max_num_speaker):
             tcns.append(self.separator(y, aux[:, i]))
 
-        tcns = torch.stack(tcns, dim=1) # B, 4, 256, T
+        tcns = torch.stack(tcns, dim=1)  # B, 4, 256, T
         B, _, _, T = tcns.size()
         tcns = tcns.reshape(B, -1, T)
-        tcns = self.speech_down(tcns) # B, 256, T
+        tcns = self.speech_down(tcns)  # B, 256, T
 
         after_diar_input = None
-        for i, (conv_block, conv_block_other) in enumerate(zip(self.conv_blocks_combine, self.conv_blocks_combine_other)):
+        for i, (conv_block, conv_block_other) in enumerate(
+            zip(self.conv_blocks_combine, self.conv_blocks_combine_other)
+        ):
             tcns = conv_block(tcns)
             tcns = conv_block_other(tcns)
             if i == after_tsvad_layer:
@@ -135,7 +173,9 @@ class ExtractionModule(SpexPlusModel):
         ests_speech_list = []
         mask_list = []
         for i in range(self.max_num_speaker):
-            ests_speech, mask = self.mask_module(tcns, audio_features, mix_speech.size(-1), i)
+            ests_speech, mask = self.mask_module(
+                tcns, audio_features, mix_speech.size(-1), i
+            )
             ests_speech_list.append(ests_speech)
             mask_list.append(mask)
 

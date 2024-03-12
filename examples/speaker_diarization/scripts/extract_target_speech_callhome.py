@@ -1,6 +1,7 @@
 import glob, tqdm, os, soundfile, copy, argparse
 from collections import defaultdict
 
+
 def remove_overlap(aa, bb):
     # Sort the intervals in both lists based on their start time
     a = aa.copy()
@@ -36,32 +37,36 @@ def remove_overlap(aa, bb):
     # Return the new list of intervals
     return result
 
+
 def get_args():
-    parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--rttm_path', required=True,
-                        help='the path for the rttm_files')
-    parser.add_argument('--orig_audio_path', required=True,
-                        help='the path for the orig audio')
-    parser.add_argument('--target_audio_path', required=True,
-                        help='the part for the output audio')
-    parser.add_argument('--sample_rate', default=8000, type=int,
-                        help='sample rate')
+    parser = argparse.ArgumentParser(description="")
+    parser.add_argument(
+        "--rttm_path", required=True, help="the path for the rttm_files"
+    )
+    parser.add_argument(
+        "--orig_audio_path", required=True, help="the path for the orig audio"
+    )
+    parser.add_argument(
+        "--target_audio_path", required=True, help="the part for the output audio"
+    )
+    parser.add_argument("--sample_rate", default=8000, type=int, help="sample rate")
     args = parser.parse_args()
 
     return args
+
 
 def main():
     args = get_args()
     lines = open(args.rttm_path).read().splitlines()
     room_set = set()
-    for line in (lines):
+    for line in lines:
         data = line.split()
         room_set.add(data[1])
 
     for room_id in tqdm.tqdm(room_set):
         intervals = defaultdict(list)
         new_intervals = defaultdict(list)
-        for line in (lines): 
+        for line in lines:
             data = line.split()
             if data[1] == room_id:
                 stime = float(data[3])
@@ -69,36 +74,39 @@ def main():
                 spkr = data[-3]
                 intervals[spkr].append([stime, etime])
 
-        # Remove the overlapped speeech    
+        # Remove the overlapped speeech
         for key in intervals:
             new_interval = intervals[key]
             for o_key in intervals:
-                if o_key != key:                
-                    new_interval = remove_overlap(copy.deepcopy(new_interval), copy.deepcopy(intervals[o_key]))
+                if o_key != key:
+                    new_interval = remove_overlap(
+                        copy.deepcopy(new_interval), copy.deepcopy(intervals[o_key])
+                    )
             new_intervals[key] = new_interval
 
-        wav_file = glob.glob(os.path.join(args.orig_audio_path, room_id) + '.wav')[0]
+        wav_file = glob.glob(os.path.join(args.orig_audio_path, room_id) + ".wav")[0]
         orig_audio, fs = soundfile.read(wav_file)
 
         if len(orig_audio.shape) > 1:
-            orig_audio = orig_audio[:,0]
+            orig_audio = orig_audio[:, 0]
 
         # # Cut and save the clean speech part
-        id_full = wav_file.split('/')[-1][:-4]
+        id_full = wav_file.split("/")[-1][:-4]
         for key in new_intervals:
             output_dir = os.path.join(args.target_audio_path, id_full)
-            os.makedirs(output_dir, exist_ok = True)
-            output_wav = os.path.join(output_dir, str(key) + '.wav')
-            new_audio = []    
+            os.makedirs(output_dir, exist_ok=True)
+            output_wav = os.path.join(output_dir, str(key) + ".wav")
+            new_audio = []
             for interval in new_intervals[key]:
                 s, e = interval
                 s *= args.sample_rate
                 e *= args.sample_rate
-                new_audio.extend(orig_audio[int(s):int(e)])
+                new_audio.extend(orig_audio[int(s) : int(e)])
 
             soundfile.write(output_wav, new_audio, args.sample_rate)
         # output_wav = os.path.join(output_dir, 'all.wav')
         # soundfile.write(output_wav, orig_audio, 16000)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

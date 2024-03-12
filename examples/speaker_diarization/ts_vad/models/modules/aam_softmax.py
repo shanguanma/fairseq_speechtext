@@ -1,6 +1,6 @@
-'''
+"""
 AAMsoftmax loss function copied from voxceleb_trainer: https://github.com/clovaai/voxceleb_trainer/blob/master/loss/aamsoftmax.py
-'''
+"""
 
 import torch, math
 import torch.nn as nn
@@ -11,11 +11,13 @@ from examples.speaker_diarization.ts_vad.models.modules.modules import spk_accur
 
 class AAMsoftmax(nn.Module):
     def __init__(self, n_class, m, s, spk_dim):
-        
+
         super(AAMsoftmax, self).__init__()
         self.m = m
         self.s = s
-        self.weight = torch.nn.Parameter(torch.FloatTensor(n_class, spk_dim), requires_grad=True)
+        self.weight = torch.nn.Parameter(
+            torch.FloatTensor(n_class, spk_dim), requires_grad=True
+        )
         self.ce = nn.CrossEntropyLoss()
         nn.init.xavier_normal_(self.weight, gain=1)
         self.cos_m = math.cos(self.m)
@@ -32,7 +34,7 @@ class AAMsoftmax(nn.Module):
         one_hot.scatter_(1, label.view(-1, 1), 1)
         output = (one_hot * phi) + ((1.0 - one_hot) * cosine)
         output = output * self.s
-        
+
         loss = self.ce(output, label)
         prec1 = spk_accuracy(output, label, topk=(1,))[0]
 

@@ -39,7 +39,7 @@ def change_zeros_to_ones(inputs, min_silence, threshold, frame_len):
                     res.extend([0] * num_0)
                 else:
                     res.extend([1] * num_0)
-                num_0 = 0		
+                num_0 = 0
             res.extend([1])
         else:
             num_0 += 1
@@ -48,6 +48,7 @@ def change_zeros_to_ones(inputs, min_silence, threshold, frame_len):
     else:
         res.extend([1] * num_0)
     return res
+
 
 # Combine the short speech segments
 def change_ones_to_zeros(inputs, min_speech, threshold, frame_len):
@@ -61,7 +62,7 @@ def change_ones_to_zeros(inputs, min_speech, threshold, frame_len):
                     res.extend([1] * num_1)
                 else:
                     res.extend([0] * num_1)
-                num_1 = 0		
+                num_1 = 0
             res.extend([0])
         else:
             num_1 += 1
@@ -70,6 +71,7 @@ def change_ones_to_zeros(inputs, min_speech, threshold, frame_len):
     else:
         res.extend([0] * num_1)
     return res
+
 
 def main(cfg: DictConfig):
 
@@ -183,7 +185,7 @@ def _main(cfg: DictConfig, output_file):
     eval_dir = f"{cfg.common_eval.results_path}/{cfg.dataset.gen_subset}"
     os.makedirs(eval_dir, exist_ok=True)
     der_write = open(f"{eval_dir}/der_result", "a")
-    rttm_path = eval_dir + '/res_rttm'
+    rttm_path = eval_dir + "/res_rttm"
     rttms = {}
     for threshold in [0.2, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.7, 0.8]:
         rttms[threshold] = open(f"{rttm_path}_{threshold}", "w")
@@ -201,15 +203,15 @@ def _main(cfg: DictConfig, output_file):
             sample,
         )
 
-        DER.append(result['DER'])
-        ACC.append(result['ACC'])
+        DER.append(result["DER"])
+        ACC.append(result["ACC"])
 
         for filename in res_dict:
             for time_step in res_dict[filename]:
                 res_dict_all[filename][time_step].extend(res_dict[filename][time_step])
 
-    print('Model DER: ', sum(DER) / len(DER))
-    print('Model ACC: ', sum(ACC) / len(ACC))
+    print("Model DER: ", sum(DER) / len(DER))
+    print("Model ACC: ", sum(ACC) / len(ACC))
 
     if task.cfg.embed_input:
         frame_len = task.cfg.embed_shift
@@ -222,8 +224,8 @@ def _main(cfg: DictConfig, output_file):
         rttm_name = task.cfg.dataset_name
 
     for filename in tqdm(res_dict_all):
-        speaker_id = filename.split('-')[-1]
-        name = filename[:- len(speaker_id) - 1]
+        speaker_id = filename.split("-")[-1]
+        name = filename[: -len(speaker_id) - 1]
         labels = res_dict_all[filename]
         labels = dict(sorted(labels.items()))
         ave_labels = []
@@ -231,31 +233,72 @@ def _main(cfg: DictConfig, output_file):
             ave_labels.append(np.mean(labels[key]))
         labels = signal.medfilt(ave_labels, task.cfg.med_filter)
         for threshold in rttms:
-            labels_threshold = change_zeros_to_ones(labels, task.cfg.min_silence, threshold, frame_len)
-            labels_threshold = change_ones_to_zeros(labels_threshold, task.cfg.min_speech, threshold, frame_len)
+            labels_threshold = change_zeros_to_ones(
+                labels, task.cfg.min_silence, threshold, frame_len
+            )
+            labels_threshold = change_ones_to_zeros(
+                labels_threshold, task.cfg.min_speech, threshold, frame_len
+            )
             start, duration = 0, 0
             for i, label in enumerate(labels_threshold):
                 if label == 1:
                     duration += frame_len
                 else:
                     if duration != 0:
-                        line = "SPEAKER " + str(name) + ' 1 %.3f'%(start) + ' %.3f ' %(duration) + '<NA> <NA> ' + str(speaker_id) + ' <NA> <NA>\n'
+                        line = (
+                            "SPEAKER "
+                            + str(name)
+                            + " 1 %.3f" % (start)
+                            + " %.3f " % (duration)
+                            + "<NA> <NA> "
+                            + str(speaker_id)
+                            + " <NA> <NA>\n"
+                        )
                         rttms[threshold].write(line)
                         duration = 0
                     start = i * frame_len
             if duration != 0:
-                line = "SPEAKER " + str(name) + ' 1 %.3f'%(start) + ' %.3f ' %(duration) + '<NA> <NA> ' + str(speaker_id) + ' <NA> <NA>\n'
+                line = (
+                    "SPEAKER "
+                    + str(name)
+                    + " 1 %.3f" % (start)
+                    + " %.3f " % (duration)
+                    + "<NA> <NA> "
+                    + str(speaker_id)
+                    + " <NA> <NA>\n"
+                )
                 rttms[threshold].write(line)
     for threshold in rttms:
         rttms[threshold].close()
 
     for threshold in rttms:
-        out = subprocess.check_output(['perl', f'{task.cfg.sctk_tool_path}/src/md-eval/md-eval.pl', f"-c {task.cfg.collar}", '-s %s'%(f"{rttm_path}_{threshold}"), f"-r {task.cfg.rttm_dir}/{rttm_name.lower()}.rttm"])
-        out = out.decode('utf-8')
-        DER, MS, FA, SC = float(out.split('/')[0]), float(out.split('/')[1]), float(out.split('/')[2]), float(out.split('/')[3])
-        print("Eval for threshold %2.2f: DER %2.2f%%, MS %2.2f%%, FA %2.2f%%, SC %2.2f%%\n"%(threshold, DER, MS, FA, SC))
-        print("Eval for threshold %2.2f: DER %2.2f%%, MS %2.2f%%, FA %2.2f%%, SC %2.2f%%\n"%(threshold, DER, MS, FA, SC), file=der_write)
+        out = subprocess.check_output(
+            [
+                "perl",
+                f"{task.cfg.sctk_tool_path}/src/md-eval/md-eval.pl",
+                f"-c {task.cfg.collar}",
+                "-s %s" % (f"{rttm_path}_{threshold}"),
+                f"-r {task.cfg.rttm_dir}/{rttm_name.lower()}.rttm",
+            ]
+        )
+        out = out.decode("utf-8")
+        DER, MS, FA, SC = (
+            float(out.split("/")[0]),
+            float(out.split("/")[1]),
+            float(out.split("/")[2]),
+            float(out.split("/")[3]),
+        )
+        print(
+            "Eval for threshold %2.2f: DER %2.2f%%, MS %2.2f%%, FA %2.2f%%, SC %2.2f%%\n"
+            % (threshold, DER, MS, FA, SC)
+        )
+        print(
+            "Eval for threshold %2.2f: DER %2.2f%%, MS %2.2f%%, FA %2.2f%%, SC %2.2f%%\n"
+            % (threshold, DER, MS, FA, SC),
+            file=der_write,
+        )
     der_write.close()
+
 
 def cli_main():
     parser = options.get_generation_parser()
@@ -267,11 +310,16 @@ def cli_main():
         default="wav2vec2",
         help="Model architecture. For constructing tasks that rely on "
         "model args (e.g. `AudioPretraining`)",
-    
     )
-    parser.add_argument("--sctk_tool_path", default="SCTK-2.4.12", help="specify sctk tool path")
-    parser.add_argument("--rttm_dir", default="SCTK-2.4.12", help="specify reference rttm folder")
-    args = options.parse_args_and_arch(parser) # this function will rewrite task/model relative parameter, so these parameter names must occur task/model cfg .
+    parser.add_argument(
+        "--sctk_tool_path", default="SCTK-2.4.12", help="specify sctk tool path"
+    )
+    parser.add_argument(
+        "--rttm_dir", default="SCTK-2.4.12", help="specify reference rttm folder"
+    )
+    args = options.parse_args_and_arch(
+        parser
+    )  # this function will rewrite task/model relative parameter, so these parameter names must occur task/model cfg .
     main(args)
 
 

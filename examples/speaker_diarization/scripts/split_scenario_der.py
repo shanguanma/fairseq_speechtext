@@ -1,6 +1,8 @@
 import subprocess
 
-rttm_path = "/workspace/junyi/codebase/joint-optimization/SCTK-2.4.12/libri23mix_max.rttm"
+rttm_path = (
+    "/workspace/junyi/codebase/joint-optimization/SCTK-2.4.12/libri23mix_max.rttm"
+)
 
 segments = {}
 max_len = {}
@@ -8,18 +10,20 @@ overlap_segs = {}
 non_overlap_segs = {}
 with open(rttm_path) as f:
     for line in f:
-        _, utt_id, _, s_time, offset, _, _, spk_id, _ = line.split('\t')
+        _, utt_id, _, s_time, offset, _, _, spk_id, _ = line.split("\t")
         s_time, offset = float(s_time), float(offset)
         if utt_id not in segments:
             segments[utt_id] = {}
             overlap_segs[utt_id] = []
             non_overlap_segs[utt_id] = []
             max_len[utt_id] = -1
-        
+
         if spk_id not in segments[utt_id]:
             segments[utt_id][spk_id] = []
-        
-        segments[utt_id][spk_id].append([int(round(s_time, 2) * 100), int(round(s_time + offset, 2) * 100)])
+
+        segments[utt_id][spk_id].append(
+            [int(round(s_time, 2) * 100), int(round(s_time + offset, 2) * 100)]
+        )
         if round(s_time + offset, 2) * 100 > max_len[utt_id]:
             max_len[utt_id] = int(round(s_time + offset, 2) * 100)
 
@@ -43,10 +47,26 @@ input_rttm_path = "/workspace/junyi/codebase/joint-optimization/exp_fairseq/join
 
 low_DERs = 100
 for thr in range(1, 10):
-    out = subprocess.check_output(['perl', 'SCTK-2.4.12/src/md-eval/md-eval.pl', f"-c 0.0", '-s %s'%(input_rttm_path + str(thr / 10)), f"-r {rttm_path}"])
-    out = out.decode('utf-8')
-    DER, MS, FA, SC = float(out.split('/')[0]), float(out.split('/')[1]), float(out.split('/')[2]), float(out.split('/')[3])
-    print("Eval for threshold %2.2f: DER %2.2f%%, MS %2.2f%%, FA %2.2f%%, SC %2.2f%%\n"%(thr / 10, DER, MS, FA, SC))
+    out = subprocess.check_output(
+        [
+            "perl",
+            "SCTK-2.4.12/src/md-eval/md-eval.pl",
+            f"-c 0.0",
+            "-s %s" % (input_rttm_path + str(thr / 10)),
+            f"-r {rttm_path}",
+        ]
+    )
+    out = out.decode("utf-8")
+    DER, MS, FA, SC = (
+        float(out.split("/")[0]),
+        float(out.split("/")[1]),
+        float(out.split("/")[2]),
+        float(out.split("/")[3]),
+    )
+    print(
+        "Eval for threshold %2.2f: DER %2.2f%%, MS %2.2f%%, FA %2.2f%%, SC %2.2f%%\n"
+        % (thr / 10, DER, MS, FA, SC)
+    )
 
     if DER <= low_DERs:
         low_DERs = DER
@@ -70,7 +90,7 @@ print(f"DER on all {low_DERs} with thr {low_thr}")
 
 #         if spk_id not in segments_in[utt_id]:
 #             segments_in[utt_id][spk_id] = []
-        
+
 #         segments_in[utt_id][spk_id].append([int(round(s_time, 2) * 100), int(round(s_time + offset, 2) * 100)])
 #         if round(s_time + offset, 2) * 100 > max_len_in[utt_id]:
 #             max_len_in[utt_id] = int(round(s_time + offset, 2) * 100)
@@ -199,4 +219,3 @@ print(f"DER on all {low_DERs} with thr {low_thr}")
 # # DER, MS, FA, SC = float(out.split('/')[0]), float(out.split('/')[1]), float(out.split('/')[2]), float(out.split('/')[3])
 # print("Eval for QQ second: " + str(total_qq / len(segments.keys())))
 # print("Eval for QQ second: " + str(sum(qq_ratio) / len(qq_ratio)))
-

@@ -52,7 +52,7 @@ class CoAttention_Simple(nn.Module):
         self.in_proj_k = Linear(out_channels, embed_dim)
         self.in_proj_v = Linear(out_channels, embed_dim)
         self.ln = LayerNorm(out_channels)
-        #self.out_proj = Linear(out_channels, out_channels)
+        # self.out_proj = Linear(out_channels, out_channels)
 
     def forward(self, x):
         # if input x is single-channel audio
@@ -60,13 +60,13 @@ class CoAttention_Simple(nn.Module):
             x = x.unsqueeze(1)
 
         B, C, T, D = x.size()
-        residual = x                 # B, C, T, D
-        query = self.in_proj_q(x)    # eq. (11), B, C, T, 256
-        key = self.in_proj_k(x)      # eq. (12)
-        value = self.in_proj_v(x)    # eq. (13)
+        residual = x  # B, C, T, D
+        query = self.in_proj_q(x)  # eq. (11), B, C, T, 256
+        key = self.in_proj_k(x)  # eq. (12)
+        value = self.in_proj_v(x)  # eq. (13)
 
-        query = query.permute(2, 0, 1, 3) # T, B, C, 256
-        query = query.reshape(T, B, -1) # T, B, C*256
+        query = query.permute(2, 0, 1, 3)  # T, B, C, 256
+        query = query.reshape(T, B, -1)  # T, B, C*256
 
         key = key.permute(2, 0, 1, 3).reshape(T, B, -1)
         value = value.permute(2, 0, 1, 3).reshape(T, B, -1)
@@ -74,11 +74,12 @@ class CoAttention_Simple(nn.Module):
         x, attn_weights = self.attention(
             query, key, value, mask_future_timesteps=False, use_scalar_bias=False
         )
-        x = x.transpose(0, 1).unsqueeze(1) # B, 1, T, D
+        x = x.transpose(0, 1).unsqueeze(1)  # B, 1, T, D
         x = x + residual
 
-        #return torch.mean(self.ln(x + self.out_proj(x)), dim=1)
+        # return torch.mean(self.ln(x + self.out_proj(x)), dim=1)
         return torch.mean(self.ln(x + residual), dim=1)
+
 
 class CoAttention(nn.Module):
     def __init__(
@@ -107,7 +108,6 @@ class CoAttention(nn.Module):
         self.ln = LayerNorm(out_channels)
         self.x_proj = Linear(out_channels, out_channels)
 
-
         self.attention_sc = DownsampledMultiHeadAttention(
             out_channels,
             embed_dim,
@@ -126,7 +126,6 @@ class CoAttention(nn.Module):
         self.E_proj = Linear(out_channels, out_channels)
         self.ln_E_out = LayerNorm(out_channels)
 
-
         self.out_proj = Linear(out_channels * 2, out_channels)
 
     def forward(self, x):
@@ -135,16 +134,16 @@ class CoAttention(nn.Module):
             x = x.unsqueeze(1)
 
         B, C, T, D = x.size()
-        E_in = x[:, 0, :, :]         # B, T, D
-        residual = x                 # B, C, T, D
+        E_in = x[:, 0, :, :]  # B, T, D
+        residual = x  # B, C, T, D
 
         # 1. get P_out from multi-chanenl audio
-        query = self.in_proj_q(x)    # eq. (11), B, C, T, 256
-        key = self.in_proj_k(x)      # eq. (12)
-        value = self.in_proj_v(x)    # eq. (13)
+        query = self.in_proj_q(x)  # eq. (11), B, C, T, 256
+        key = self.in_proj_k(x)  # eq. (12)
+        value = self.in_proj_v(x)  # eq. (13)
 
-        query = query.permute(2, 0, 1, 3) # T, B, C, 256
-        query = query.reshape(T, B, -1) # T, B, C*256
+        query = query.permute(2, 0, 1, 3)  # T, B, C, 256
+        query = query.reshape(T, B, -1)  # T, B, C*256
 
         key = key.permute(2, 0, 1, 3).reshape(T, B, -1)
         value = value.permute(2, 0, 1, 3).reshape(T, B, -1)
@@ -152,25 +151,36 @@ class CoAttention(nn.Module):
         x, attn_weights = self.attention_mc(
             query, key, value, mask_future_timesteps=False, use_scalar_bias=False
         )
-        x = x.transpose(0, 1).unsqueeze(1) # B, 1, T, D
+        x = x.transpose(0, 1).unsqueeze(1)  # B, 1, T, D
         x = x + residual
         # P_out = self.ln(x + residual)
-        #print("P_out.size():", P_out.size())
-
+        # print("P_out.size():", P_out.size())
 
         # 2. get E_out
-        E_1 = self.ln_sc(torch.bmm(attn_weights, E_in) + E_in) # B, T, D, NOTE: attn_weight (B, T, T) 
+        E_1 = self.ln_sc(
+            torch.bmm(attn_weights, E_in) + E_in
+        )  # B, T, D, NOTE: attn_weight (B, T, T)
         E_11, _ = self.attention_sc(
-            self.E_proj_q(E_1).transpose(0, 1), 
-            self.E_proj_k(E_1).transpose(0, 1), 
-            self.E_proj_v(E_1).transpose(0, 1), 
-            mask_future_timesteps=False, use_scalar_bias=False
+            self.E_proj_q(E_1).transpose(0, 1),
+            self.E_proj_k(E_1).transpose(0, 1),
+            self.E_proj_v(E_1).transpose(0, 1),
+            mask_future_timesteps=False,
+            use_scalar_bias=False,
         )
-        E_11 = self.ln_E(E_11.transpose(0, 1) + E_1) # B, T, D
+        E_11 = self.ln_E(E_11.transpose(0, 1) + E_1)  # B, T, D
         # E_out = self.ln_E_out(E_11 + self.E_proj(E_11))
-        #print("E_out.size():", E_out.size())
+        # print("E_out.size():", E_out.size())
 
-        return self.out_proj(torch.cat((self.ln_E_out(E_11 + self.E_proj(E_11)), torch.mean(self.ln(x + self.x_proj(x)), dim=1)), dim=-1)) # B, T, D+D' --> B, T, D
+        return self.out_proj(
+            torch.cat(
+                (
+                    self.ln_E_out(E_11 + self.E_proj(E_11)),
+                    torch.mean(self.ln(x + self.x_proj(x)), dim=1),
+                ),
+                dim=-1,
+            )
+        )  # B, T, D+D' --> B, T, D
+
 
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
@@ -336,7 +346,7 @@ class SingleHeadAttention(nn.Module):
             attn = attn.transpose(0, 1).contiguous().view(tgt_len, bsz, self.head_dim)
         else:
             attn = attn.transpose(0, 1).contiguous().view(tgt_len, bsz, self.embed_dim)
-        
+
         attn = self.out_proj(attn)
 
         return attn, attn_weights

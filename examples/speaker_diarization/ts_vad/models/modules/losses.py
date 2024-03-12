@@ -8,15 +8,17 @@ import fast_bss_eval
 
 EPS = torch.finfo(torch.get_default_dtype()).eps
 
+
 def log_power(source, cal_way="np"):
     if cal_way == "np":
-        ratio = np.sum(source ** 2, axis = -1)
+        ratio = np.sum(source**2, axis=-1)
         sdr = 10 * np.log10(ratio / source.shape[-1] * 16000 + 1e-8)
     else:
-        ratio = torch.sum(source ** 2, axis = -1)
+        ratio = torch.sum(source**2, axis=-1)
         sdr = 10 * torch.log10(ratio / source.shape[-1] * 16000 + 1e-8)
 
     return sdr
+
 
 class SDRLoss(torch.nn.Module):
     def __init__(
@@ -45,10 +47,11 @@ class SDRLoss(torch.nn.Module):
         """
 
         noise = ref - est
-        ratio = torch.sum(ref ** 2, axis=-1) / (torch.sum(noise ** 2, axis=-1) + self.eps)
+        ratio = torch.sum(ref**2, axis=-1) / (torch.sum(noise**2, axis=-1) + self.eps)
         sdr = 10 * torch.log10(ratio + self.eps)
 
         return -1 * sdr
+
 
 class SISNRLoss(torch.nn.Module):
     """SI-SNR (or named SI-SDR) loss
@@ -105,6 +108,7 @@ class SISNRLoss(torch.nn.Module):
 
         return si_snr
 
+
 class wSDRLoss(torch.nn.Module):
     """SI-SNR (or named SI-SDR) loss
 
@@ -126,8 +130,11 @@ class wSDRLoss(torch.nn.Module):
         super().__init__()
         self.eps = eps
 
-    def forward(self, ref: torch.Tensor, est: torch.Tensor, mixture: torch.Tensor) -> torch.Tensor:
-        def bsum(x): return torch.sum(x, dim=-1)
+    def forward(
+        self, ref: torch.Tensor, est: torch.Tensor, mixture: torch.Tensor
+    ) -> torch.Tensor:
+        def bsum(x):
+            return torch.sum(x, dim=-1)
 
         def mSDRLoss(orig, est):
             correlation = bsum(orig * est)
@@ -139,16 +146,16 @@ class wSDRLoss(torch.nn.Module):
 
         a = bsum(ref**2) / (bsum(ref**2) + bsum(noise**2) + EPS)
 
-        wSDR = a * mSDRLoss(ref, est) + (1 - a) * \
-            mSDRLoss(noise, noise_est)
+        wSDR = a * mSDRLoss(ref, est) + (1 - a) * mSDRLoss(noise, noise_est)
         return torch.mean(wSDR)
+
 
 def log_power(source, cal_way="np"):
     if cal_way == "np":
-        ratio = np.sum(source ** 2, axis = -1)
+        ratio = np.sum(source**2, axis=-1)
         sdr = 10 * np.log10(ratio / source.shape[-1] * 16000 + 1e-8)
     else:
-        ratio = torch.sum(source ** 2, axis = -1)
+        ratio = torch.sum(source**2, axis=-1)
         sdr = 10 * torch.log10(ratio / source.shape[-1] * 16000 + 1e-8)
 
     return sdr

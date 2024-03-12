@@ -60,7 +60,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
      distributed_training.ddp_backend=legacy_ddp\
      optimization.update_freq=[${update_freq}]\
      common.tensorboard_logdir=$exp_dir\
-     hydra.run.dir=$fairseq_dir/examples/wav2vec/unsupervised\
+     hydra.run.dir=$exp_dir\
      hydra.job.name=$exp_dir/w2v_unsup_gan_xp
 
   # grep -rn '"dev-other_uer":' logs/w2vu2_with_unpair_text_0.3M_train.log | awk -F ":" '{print $12 $13}' | awk -F "," '{print $2}' | sort
@@ -213,7 +213,7 @@ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ];then
      distributed_training.ddp_backend=legacy_ddp\
      optimization.update_freq=[${update_freq}]\
      common.tensorboard_logdir=$exp_dir\
-     hydra.run.dir=$fairseq_dir/examples/wav2vec/unsupervised\
+     hydra.run.dir=$exp_dir\
      hydra.job.name=$exp_dir/w2v_unsup_gan_xp
 
 fi

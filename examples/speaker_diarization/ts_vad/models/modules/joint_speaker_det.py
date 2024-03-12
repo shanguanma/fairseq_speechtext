@@ -1,5 +1,6 @@
 from torch import nn, Tensor
 
+
 class JointSpeakerDet(nn.Module):
 
     def __init__(self, cfg):
@@ -20,8 +21,8 @@ class JointSpeakerDet(nn.Module):
                 dropout=cfg.dropout,
                 batch_first=True,
                 activation="gelu",
-            ), 
-            num_layers=1
+            ),
+            num_layers=1,
         )
         return layer
 
