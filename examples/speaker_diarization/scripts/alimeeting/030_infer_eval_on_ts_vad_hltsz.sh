@@ -76,3 +76,67 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ];then
 
 
 fi
+
+if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
+   echo "infer alimeeting eval dataset via ts_vad model trained on alimeeting train_ali_far dataset with musan and rirs noise"
+
+        exp_name=baseline_with_musan_rirs
+        rs_len=4
+        segment_shift=1
+        gen_subset=Eval
+        speech_encoder_type=ecapa
+
+        code_path=/mnt/bn/junyi-nas2/codebase/joint-optimization
+        data_path=/mnt/bd/alimeeting3/alimeeting_eval
+
+        root_path=/home/maduo
+        data_path=/home/maduo/dataset/alimeeting/
+
+        exp_dir=${root_path}/exp/speaker_diarization/ts_vad
+        ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization
+        spk_path=${root_path}/model_hub/ts_vad/spk_embed/SpeakerEmbedding
+        results_path=${exp_dir}/${exp_name}/inf
+
+        rttm_dir=$root_path/model_hub/ts_vad
+        sctk_tool_path=$ts_vad_path/SCTK-2.4.12
+
+        python3 ${ts_vad_path}/ts_vad/generate.py ${data_path} \
+          --user-dir ${ts_vad_path}/ts_vad \
+          --results-path ${results_path} \
+          --path ${exp_dir}/${exp_name}/checkpoints/checkpoint_best.pt \
+          --task ts_vad_task \
+          --spk-path ${spk_path} \
+          --rs-len ${rs_len} \
+          --segment-shift ${segment_shift} \
+          --gen-subset ${gen_subset} \
+          --batch-size 64 \
+          --sample-rate 16000 \
+          --inference \
+          --speech-encoder-type ${speech_encoder_type}\
+          --rttm_dir ${rttm_dir}\
+          --sctk_tool_path ${sctk_tool_path}
+
+# result:
+# Model DER:  0.15053331683643045
+# Model ACC:  0.9496916344496984
+#100%|██████████| 25/25 [00:29<00:00,  1.19s/it]
+#Eval for threshold 0.20: DER 9.43%, MS 1.15%, FA 7.74%, SC 0.54%
+
+#Eval for threshold 0.30: DER 7.25%, MS 1.79%, FA 4.81%, SC 0.66%
+
+#Eval for threshold 0.35: DER 6.66%, MS 2.14%, FA 3.80%, SC 0.72%
+
+#Eval for threshold 0.40: DER 6.28%, MS 2.48%, FA 3.02%, SC 0.78%
+
+#Eval for threshold 0.45: DER 6.08%, MS 2.89%, FA 2.38%, SC 0.81%
+
+#Eval for threshold 0.50: DER 6.03%, MS 3.39%, FA 1.83%, SC 0.82% as release result
+
+#Eval for threshold 0.55: DER 6.16%, MS 3.98%, FA 1.40%, SC 0.78%
+
+#Eval for threshold 0.60: DER 6.40%, MS 4.62%, FA 1.06%, SC 0.71%
+
+#Eval for threshold 0.70: DER 7.45%, MS 6.28%, FA 0.70%, SC 0.47%
+
+#Eval for threshold 0.80: DER 9.48%, MS 8.71%, FA 0.47%, SC 0.30%
+fi
