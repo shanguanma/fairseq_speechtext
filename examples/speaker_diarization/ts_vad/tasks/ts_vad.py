@@ -174,6 +174,9 @@ class TSVADTaskConfig(FairseqDataclass):
         default=False,
         metadata={"help": "whether use res embed during inference"}
     )
+    sctk_tool_path: str = field(default="SCTK-2.4.12", metadata={"help": "specify sctk tool path"})
+    rttm_dir: str = field(default="SCTK-2.4.12", metadata={"help": "specify reference rttm folder"})
+
 
 @register_task("ts_vad_task", dataclass=TSVADTaskConfig)
 class TSVADTask(FairseqTask):

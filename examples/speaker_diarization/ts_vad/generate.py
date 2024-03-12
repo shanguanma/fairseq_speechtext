@@ -111,7 +111,6 @@ def _main(cfg: DictConfig, output_file):
         stream=output_file,
     )
     logger = logging.getLogger("fairseq_cli.generate")
-
     utils.import_user_module(cfg.common)
 
     if cfg.dataset.max_tokens is None and cfg.dataset.batch_size is None:
@@ -251,7 +250,7 @@ def _main(cfg: DictConfig, output_file):
         rttms[threshold].close()
 
     for threshold in rttms:
-        out = subprocess.check_output(['perl', 'codebase/fairseq_speechtext/examples/speaker_diarization/SCTK-2.4.12/src/md-eval/md-eval.pl', f"-c {task.cfg.collar}", '-s %s'%(f"{rttm_path}_{threshold}"), f"-r codebase/fairseq_speechtext/examples/speaker_diarization/SCTK-2.4.12/{rttm_name.lower()}.rttm"])
+        out = subprocess.check_output(['perl', f'{task.cfg.sctk_tool_path}/src/md-eval/md-eval.pl', f"-c {task.cfg.collar}", '-s %s'%(f"{rttm_path}_{threshold}"), f"-r {task.cfg.rttm_dir}/{rttm_name.lower()}.rttm"])
         out = out.decode('utf-8')
         DER, MS, FA, SC = float(out.split('/')[0]), float(out.split('/')[1]), float(out.split('/')[2]), float(out.split('/')[3])
         print("Eval for threshold %2.2f: DER %2.2f%%, MS %2.2f%%, FA %2.2f%%, SC %2.2f%%\n"%(threshold, DER, MS, FA, SC))
@@ -268,8 +267,11 @@ def cli_main():
         default="wav2vec2",
         help="Model architecture. For constructing tasks that rely on "
         "model args (e.g. `AudioPretraining`)",
+    
     )
-    args = options.parse_args_and_arch(parser)
+    parser.add_argument("--sctk_tool_path", default="SCTK-2.4.12", help="specify sctk tool path")
+    parser.add_argument("--rttm_dir", default="SCTK-2.4.12", help="specify reference rttm folder")
+    args = options.parse_args_and_arch(parser) # this function will rewrite task/model relative parameter, so these parameter names must occur task/model cfg .
     main(args)
 
 
