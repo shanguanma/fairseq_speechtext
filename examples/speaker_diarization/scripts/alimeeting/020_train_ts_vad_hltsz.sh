@@ -16,14 +16,14 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ];then
 	exp_name=baseline
 	other_args=
 	root_path=/home/maduo
-	data_path=/home/maduo/dataset/alimeeting/
+	data_path=/data/alimeeting/
 
 
 	exp_dir=${root_path}/exp/speaker_diarization/ts_vad
 	ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization/ts_vad
 	speech_encoder_path=${root_path}/model_hub/ts_vad/ecapa-tdnn.model # Speaker encoder path
 	spk_path=${root_path}/model_hub/ts_vad/spk_embed/SpeakerEmbedding
-        rir_path=${root_path}/dataset/RIRS_NOISES
+        rir_path=/data/rirs_noises/RIRS_NOISES
 	mkdir -p ${exp_dir}/${exp_name}
 
 	fairseq-hydra-train \
@@ -48,15 +48,15 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
         exp_name=baseline_with_musan_rirs
         other_args=
         root_path=/home/maduo
-        data_path=/home/maduo/dataset/alimeeting/
+        data_path=/data/alimeeting/
 
 
         exp_dir=${root_path}/exp/speaker_diarization/ts_vad
         ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization/ts_vad
         speech_encoder_path=${root_path}/model_hub/ts_vad/ecapa-tdnn.model # Speaker encoder path
         spk_path=${root_path}/model_hub/ts_vad/spk_embed/SpeakerEmbedding
-        rir_path=${root_path}/dataset/RIRS_NOISES
-	musan_path=${root_path}/dataset/musan
+        rir_path=/data/rirs_noises/RIRS_NOISES
+	musan_path=/data/musan
         mkdir -p ${exp_dir}/${exp_name}
 
         fairseq-hydra-train \

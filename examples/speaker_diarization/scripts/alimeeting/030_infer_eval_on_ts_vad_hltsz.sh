@@ -20,12 +20,9 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ];then
 	segment_shift=1
 	gen_subset=Eval
 	speech_encoder_type=ecapa
-
-	code_path=/mnt/bn/junyi-nas2/codebase/joint-optimization
-	data_path=/mnt/bd/alimeeting3/alimeeting_eval
-        
+ 
 	root_path=/home/maduo
-        data_path=/home/maduo/dataset/alimeeting/
+        data_path=/data/alimeeting/
 		
 	exp_dir=${root_path}/exp/speaker_diarization/ts_vad
         ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization
@@ -86,11 +83,8 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
         gen_subset=Eval
         speech_encoder_type=ecapa
 
-        code_path=/mnt/bn/junyi-nas2/codebase/joint-optimization
-        data_path=/mnt/bd/alimeeting3/alimeeting_eval
-
         root_path=/home/maduo
-        data_path=/home/maduo/dataset/alimeeting/
+        data_path=/data/alimeeting/
 
         exp_dir=${root_path}/exp/speaker_diarization/ts_vad
         ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization
