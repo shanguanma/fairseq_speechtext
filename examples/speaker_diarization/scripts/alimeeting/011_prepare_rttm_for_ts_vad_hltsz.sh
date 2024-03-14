@@ -17,6 +17,7 @@ if [ $stage -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     textgrid_dir=/data/alimeeting/Eval_Ali/Eval_Ali_far/textgrid_dir
     work_dir=/home/maduo/tests/alimeeting
     fairseq_dir=/home/maduo/codebase/fairseq_speechtext/
+    mkdir -p $work_dir
     find -L $audio_dir -name "*.wav" > $work_dir/wavlist
     sort  $work_dir/wavlist > $work_dir/tmp
     cp $work_dir/tmp $work_dir/wavlist
@@ -40,4 +41,5 @@ if [ $stage -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     done < $work_dir/uttid_textgrid.flist
     cat tests/alimeeting/*.rttm > tests/alimeeting/all.rttm1
     mv tests/alimeeting/all.rttm1 tests/alimeeting/alimeeting.rttm ## it is ground truth of alimeeting eval 
+    mv tests/alimeeting/alimeeting.rttm /home/maduo/model_hub/ts_vad/
 fi
