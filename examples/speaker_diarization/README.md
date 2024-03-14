@@ -7,6 +7,7 @@ You can use run
 ```
 bash scripts/alimeeting/010_prepare_data_for_ts_vad_hltsz.sh 
 ```
+```
 The dataset looks like:
         # alimeeting (Only far data, the first channel is used)
         # tree -L 3 /data/alimeeting/
@@ -36,7 +37,7 @@ model_hub/ts_vad/spk_embed/
 └── SpeakerEmbedding
     ├── Eval
     └── Train
-
+```
 - Download ecapa-tdnn.model from https://drive.google.com/drive/folders/1AFip2h9W7sCFbzzasL_fAkGUNZOzaTGK
 note: ecapa-tdnn is trained on voxceleb and finetune on alimeeting dataset.
 
