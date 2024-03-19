@@ -334,3 +334,52 @@ if [ ${stage} -le 22 ]&& [ ${stop_stage} -ge 22 ];then
    
 
 fi
+
+
+if [ ${stage} -le 25 ]&& [ ${stop_stage} -ge 25 ];then
+   echo "decode  dev-clean dev-other test-clean test-other using wav2vec-u2.0 model and compute PER "
+   fairseq_dir=/home/maduo/codebase/fairseq_speechtext
+   root_dir=/home/maduo/dataset/format/librispeech
+   tsv_dir=$root_dir/librispeech_no_silence ### it contains *.wrd and *.phn, because it doesn't matter whether the wav contains silence or not
+   feat_dir=$root_dir/wav2vec_large_feat_dir_no_silence
+   ## dict.phn.txt contain two columns ,first column is monophone(total is 41 mono phones, last monophone is <SIL>), second column is index(0-base),
+   #cp -r $root_dir/librispeech_lm_norm_phn_seq/phoness/dict.phn.txt $feat_dir
+   config_dir=$fairseq_dir/examples/wav2vec/
+   dir=/home/maduo/exp/
+   #model_name=w2v_unsup_gan_xp_4gpu_8update
+   #exp_dir=$dir/wav2vec-u2_gan_from_scratch/${model_name}
+   #wav2vec_u2_dir=/workspace2/maduo/model_hub/librispeech/wav2vec-u2.0-trained_model_using_librispeech_libirspeech_lm_text
+   wav2vec_u2_dir=/home/maduo/model_hub/librispeech/wav2vec-u2_gan_best_english_checkpoint/
+   dest_dir=$dir/wav2vec-u2/hyps_debug_for_apply_vad_final_phoneme_2024_3_18
+   mkdir -p $dest_dir
+   #testsets="dev-clean dev-other test-clean test-other train"
+   #testsets="dev-clean"
+   #testsets="train"
+   #testsets="dev-clean dev-other test-clean test-other"
+   testsets="dev-clean dev-other"
+   export PYTHONPATH=$fairseq_dir:$PYTHONPATH
+   for name in $testsets;do
+       #cp -r $tsv_dir/${name}.wrd $feat_dir
+       #cp -r $tsv_dir/${name}.phn $feat_dir
+       python $fairseq_dir/examples/wav2vec/unsupervised/w2vu_generate.py\
+               --config-dir $config_dir/unsupervised/config/generate \
+               --config-name viterbi_md \
+               fairseq.common.user_dir=${fairseq_dir}/examples/wav2vec/unsupervised \
+               fairseq.task.data=$feat_dir \
+               fairseq.common_eval.path=$wav2vec_u2_dir/checkpoint_24_41000.pt \
+               fairseq.common_eval.quiet=false \
+               fairseq.dataset.gen_subset=$name\
+               results_path=$dest_dir\
+               decode_stride=2\
+               beam_threshold=100.0\
+               beam=1500\
+               word_score=1.0\
+               sil_weight=0.0
+
+   done
+   ## PER%, log: grep -rn "WER:" logs/wav2vec-u2_from_scratch_stage8_generate_phoneme_and_PER.log
+   ## beam=1500, beam_threshold=100.0
+   ## dev-clean dev-other  test-clean test-other
+   ## 8.1928      11.01     8.35         11.18
+
+fi

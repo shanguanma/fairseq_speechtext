@@ -1,0 +1,76 @@
+# @package _group_
+# the config is modified from examples/wav2vec/config/finetuning/base_1h.yaml
+common:
+  fp16: true
+  log_format: json
+  log_interval: 200
+
+checkpoint:
+  save_interval: 50
+  save_interval_updates: 1000
+  keep_interval_updates: 1
+  no_epoch_checkpoints: true
+  best_checkpoint_metric: wer
+
+task:
+  _name: hubert_pretraining
+  data: ???
+  fine_tuning: true
+  label_dir: ???
+  normalize: false  # must be consistent with pre-training
+  labels: ["ltr"]
+  single_target: true
+
+dataset:
+  num_workers: 6
+  max_tokens: 3200000
+  skip_invalid_size_inputs_valid_test: true
+  validate_after_updates: 10000
+  validate_interval: 1000
+  valid_subset: dev_other
+  train_subset: train
+
+distributed_training:
+  ddp_backend: legacy_ddp
+  distributed_world_size: 2
+
+criterion:
+  _name: ctc
+  zero_infinity: true
+
+optimization:
+  max_update: 13000
+  lr: [0.00005]
+  sentence_avg: true
+  update_freq: [4]
+
+optimizer:
+  _name: adam
+  adam_betas: (0.9,0.98)
+  adam_eps: 1e-08
+
+lr_scheduler:
+  _name: tri_stage
+  phase_ratio: [0.1, 0.4, 0.5]
+  final_lr_scale: 0.05
+
+
+
+model:
+  _name: hubert_ctc
+  w2v_path: ???
+  apply_mask: true
+  mask_selection: static
+  mask_length: 10
+  mask_other: 0
+  mask_prob: 0.75
+  mask_channel_selection: static
+  mask_channel_length: 64
+  mask_channel_other: 0
+  mask_channel_prob: 0.5
+  layerdrop: 0.1
+  dropout: 0.0
+  activation_dropout: 0.1
+  attention_dropout: 0.0
+  feature_grad_mult: 0.0
+  freeze_finetune_updates: 10000

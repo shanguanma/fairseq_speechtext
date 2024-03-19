@@ -167,7 +167,6 @@ if [ ${stage} -le 8 ]&& [ ${stop_stage} -ge 8 ];then
    #model_name=w2v_unsup_gan_xp_4gpu_8update
    #exp_dir=$dir/wav2vec-u2_gan_from_scratch/${model_name}
    wav2vec_u2_dir=/workspace2/maduo/model_hub/librispeech/wav2vec-u2.0-trained_model_using_librispeech_libirspeech_lm_text
-   #wav2vec_u2_dir=/home/maduo/model_hub/librispeech/wav2vec-u2_gan_best_english_checkpoint/
    dest_dir=$dir/wav2vec-u2/hyps_debug_for_apply_vad_final_phoneme
    mkdir -p $dest_dir
    #testsets="dev-clean dev-other test-clean test-other train"
