@@ -21,8 +21,8 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ];then
 
 	exp_dir=${root_path}/exp/speaker_diarization/ts_vad
 	ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization/ts_vad
-	speech_encoder_path=${root_path}/model_hub/ts_vad/ecapa-tdnn.model # Speaker encoder path
-	spk_path=${root_path}/model_hub/ts_vad/spk_embed/SpeakerEmbedding
+	speech_encoder_path=${root_path}/model_hub/ts_vad/ecapa-tdnn.model # Speaker encoder path, this model is finetune on alimeeting dataset
+	spk_path=${root_path}/model_hub/ts_vad/spk_embed/alimeeting/SpeakerEmbedding
         rir_path=/data/rirs_noises/RIRS_NOISES
 	mkdir -p ${exp_dir}/${exp_name}
 

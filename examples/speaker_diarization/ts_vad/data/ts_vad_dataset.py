@@ -351,7 +351,8 @@ class TSVADDataset(FairseqDataset):
         elif self.dataset_name == "icmc":
             audio_path = os.path.join(self.audio_path, file + "/DX02C01.wav")
         else:
-            audio_path = os.path.join(self.audio_path, file + "/all.wav")
+            audio_path = os.path.join(self.audio_path, file + "/all.wav") ## This audio_path is single channel mixer audio, 
+                                                                          ## now it is used in alimeeting dataset,and is stored at target_audio directory.
 
         if self.dataset_name == "icmc" and self.support_mc:
             ref_speech_list = []

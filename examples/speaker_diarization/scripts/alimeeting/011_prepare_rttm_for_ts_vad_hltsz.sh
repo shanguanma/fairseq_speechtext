@@ -34,7 +34,7 @@ if [ $stage -le 0 ] && [ ${stop_stage} -ge 0 ]; then
         text_grid_path=`echo $line | awk '{print $2}'`
 	echo "text_grid: $text_grid"
 	echo "text_grid_path: ${text_grid_path}"
-        python $fairseq_dir/examples/speaker_diarization/scripts/make_textgrid_rttm.py\
+        python $fairseq_dir/examples/speaker_diarization/source_md/make_textgrid_rttm.py\
 		--input_textgrid_file $text_grid_path \
 		--uttid $text_grid \
 		--output_rttm_file $work_dir/${text_grid}.rttm

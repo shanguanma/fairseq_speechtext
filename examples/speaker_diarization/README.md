@@ -1,4 +1,6 @@
 # TS-VAD
+Here, TS-VAD method is modified by us, We support vary frontend speaker encoder (i.e. ecapa-tdnn, wavlm, cam++,etc)instead of i-vector of origin ts-vad method for speaker embedding part.
+The below alimeeting example, We will use ecapa-tdnn as speaker encoder for speaker embedding part, and we use transformer encoder layer instead of blstm layer of origin ts-vad method.
 
 ## Data Prepare
 - Download alimeeting Train_Ali_far.tar.gz and Eval_Ali_far.tar.gz from https://www.openslr.org/119/
@@ -55,3 +57,38 @@ note: ecapa-tdnn is trained on voxceleb and finetune on alimeeting dataset.
 - Training: scripts/alimeeting/020_train_ts_vad_hltsz.sh --stage 1 --stop-stage 1
 ## Running inferene model on eval dataset
 - Inference: bash scripts/alimeeting/030_infer_eval_on_ts_vad_hltsz.sh --stage 1 --stop-stage 1
+
+
+eend:
+code is modified from https://github.com/Xflick/EEND_PyTorch/tree/master
+                      https://github.com/shanguanma/EEND/tree/master
+example on mini_librispeech
+it is need to install the below package:
+yamlargparse
+torch
+scipy
+h5py
+numpy
+
+fs_eend:
+code is modified from https://github.com/Audio-WestlakeU/FS-EEND/tree/main
+
+example on mini_librispeech
+trainer base on pytorch-lightning
+it is need to install the below package:
+pytorch-lightning==2.1.2
+torch==2.1.1
+pyyaml
+hyperpyyaml
+librosa
+soundfile
+scipy
+torchaudio
+torchmetrics
+h5py
+pyannote.metrics
+pyannote.core
+
+
+
+

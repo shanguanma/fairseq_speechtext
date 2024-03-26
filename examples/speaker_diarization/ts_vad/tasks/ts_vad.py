@@ -137,9 +137,9 @@ class TSVADTask(FairseqTask):
             )
 
         if self.cfg.dataset_name == "alimeeting":
-            spk_path = f"{self.cfg.spk_path}/{split}/ecapa_feature_dir"
-            json_path = f"{self.cfg.data}/{split}_Ali/{split}_Ali_far/{split}.json"
-            audio_path = f"{self.cfg.data}/{split}_Ali/{split}_Ali_far/target_audio"
+            spk_path = f"{self.cfg.spk_path}/{split}/ecapa_feature_dir" ## speaker embedding directory
+            json_path = f"{self.cfg.data}/{split}_Ali/{split}_Ali_far/{split}.json" ## offer mixer wavform name, 
+            audio_path = f"{self.cfg.data}/{split}_Ali/{split}_Ali_far/target_audio" ## offer number of speaker, offer mixer wavform name, offer target speaker wav, 
         elif self.cfg.dataset_name == "ami":
             spk_path = f"{self.cfg.spk_path}/{split}"
             json_path = f"{self.cfg.data}/{split}/{split}.json"
@@ -181,9 +181,9 @@ class TSVADTask(FairseqTask):
             json_path = f"{self.cfg.data}/{split}/{split}_{self.cfg.label_rate}.json"
             audio_path = f"{self.cfg.data}/{split}/wavs_16k"
         elif self.cfg.dataset_name == "libri_css_sim":
-            spk_path = f"{self.cfg.spk_path}/{split}/embed"
-            json_path = f"{self.cfg.data}/{split}/{split}_{self.cfg.label_rate}.json"
-            audio_path = f"{self.cfg.data}/{split}/wav"
+            spk_path = f"{self.cfg.spk_path}/{split}/embed" 
+            json_path = f"{self.cfg.data}/SimLibriCSS-{split}/{split}_{self.cfg.label_rate}.json" # mixer audio coresponding to label
+            audio_path = f"{self.cfg.data}/SimLibriCSS-{split}/wav" ## mixer audio
         elif self.cfg.dataset_name == "icmc":
             spk_path = f"{self.cfg.spk_path}/{split}_embed"
             json_path = f"{self.cfg.data}/{split}/{split}_{self.cfg.label_rate}.json"
