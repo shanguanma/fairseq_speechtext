@@ -8,6 +8,7 @@ import torch
 import numpy as np
 from eend.eend import kaldi_data
 from eend.eend import feature
+import logging
 
 
 def _count_frames(data_len, size, step):
@@ -71,7 +72,8 @@ class KaldiDiarizationDataset(torch.utils.data.Dataset):
                     subsampling=self.subsampling):
                 self.chunk_indices.append(
                         (rec, st * self.subsampling, ed * self.subsampling))
-        print(len(self.chunk_indices), " chunks")
+        #print(len(self.chunk_indices), " chunks")
+        logging.info(f"data set has {len(self.chunk_indices)} chunks!")
 
     def __len__(self):
         return len(self.chunk_indices)

@@ -4,6 +4,7 @@
 
 import numpy as np
 import math
+import logging
 
 import torch
 import torch.nn as nn
@@ -35,7 +36,8 @@ class NoamScheduler(_LRScheduler):
             for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):
                 param_group['lr'] = lr
             self.last_epoch = 0
-        print(self.d_model)
+        #print(self.d_model)
+        logging.info(f"model dimension : {self.d_model} in NoamScheduler Class!")
 
     def get_lr(self):
         last_epoch = max(1, self.last_epoch)

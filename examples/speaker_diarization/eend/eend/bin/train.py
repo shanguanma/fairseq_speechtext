@@ -83,7 +83,7 @@ def main():
 
 torch.set_num_threads(1)
 torch.set_num_interop_threads(1)
-
+torch.multiprocessing.set_sharing_strategy('file_system') # solved this problem (https://zhuanlan.zhihu.com/p/585186356)
 if __name__ == "__main__":
     main()
 
