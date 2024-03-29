@@ -9,9 +9,9 @@ from pprint import pprint
 from torch.utils.data import DataLoader
 from torchaudio.transforms import MelSpectrogram, AmplitudeToDB
 
+from  loss import batch_pit_n_speaker_loss, report_diarization_error, standard_loss
+from  utils import ContextBuilder, TorchScaler
 
-from fs_eend.loss import batch_pit_n_speaker_loss, report_diarization_error, standard_loss, pad_labels, pad_preds
-from  fs_eend.utils import ContextBuilder, TorchScaler
 
 import time
 
@@ -36,6 +36,10 @@ class SpeakerDiarization(pl.LightningModule):
         self.max_spks = self.hparams["data"]["max_speakers"]
         self.label_delay = self.hparams["data"]["label_delay"]
 
+        self.training_step_outputs = []
+        self.validation_step_outputs = []
+        self.test_step_outputs = []
+
     def scaler_init(self):
         return TorchScaler(
                 self.hparams["data"]["scaler"]["statistic"],
@@ -58,7 +62,7 @@ class SpeakerDiarization(pl.LightningModule):
         # perm labels
         labels = torch.nn.utils.rnn.pad_sequence(labels, padding_value=0, batch_first=True)
         B, T, max_spk = labels.shape
-        frame_index = torch.arange(1, T + 1).to(feats[0]).unsqueeze(0).unsqueeze(-1)
+        frame_index = torch.arange(1, T + 1, device=feats[0].device).unsqueeze(0).unsqueeze(-1)
         labels_index = (frame_index * labels)
         labels_index = labels_index.masked_fill_(labels_index == 0, torch.inf)
 
@@ -66,28 +70,20 @@ class SpeakerDiarization(pl.LightningModule):
         sort_index = torch.argsort(torch.min(labels_index, dim=1)[0], dim=1)
         labels = labels[torch.arange(B).unsqueeze(1), :, sort_index].transpose(-1, -2)
 
-        labels_silence = torch.ones([labels.shape[0], labels.shape[1]]).to(labels) - labels.max(-1)[0]
+        labels_silence = torch.ones([labels.shape[0], labels.shape[1]], device=labels.device) - labels.max(-1)[0]
         labels = torch.cat([labels_silence.unsqueeze(-1), labels], dim=-1)
 
-        labels_nonespk = torch.zeros([B, T, 1]).to(labels)
+        labels_nonespk = torch.zeros([B, T, 1], device=labels.device)
         labels = torch.cat([labels, labels_nonespk], dim=-1)
 
         labels = [l[:ilen, :nspk+2] for l, ilen, nspk in zip(labels, clip_lengths, n_spks)]
 
         # Transform feats to MelSpectrum
         preds, emb_loss, embs, attractors = self.detect(feats, labels, clip_lengths)
+        # print(preds.shape)
 
-        labels_spks = [l[:, 1:-1] for l in labels]
-        preds_spks = [p[:, 1:-1] for p in preds]
-
-        max_nspk = max(n_spks)
-        labels_spks_pad = pad_labels(labels_spks, max_nspk)
-        preds_spks_pad = pad_preds(preds_spks, max_nspk)
-
-        pit_loss1, perm_labels_spks = self.loss_func1(preds_spks_pad, labels_spks_pad, n_spks)
-        perm_labels = [torch.cat([l[:, 0].unsqueeze(-1), l_perm], dim=-1) for l, l_perm in zip(labels, perm_labels_spks)]
-        perm_labels = [torch.cat([l_perm, l[:, -1].unsqueeze(-1)], dim=-1) for l ,l_perm in zip(labels, perm_labels)]
-        pit_loss = self.loss_func2(preds, perm_labels, label_delay=self.label_delay)
+        # pit_loss1, perm_labels = self.loss_func1(preds, labels)
+        pit_loss = self.loss_func2(preds, labels, label_delay=self.label_delay)
 
         # Calculate the total loss
         tot_loss = pit_loss + emb_loss
@@ -96,6 +92,8 @@ class SpeakerDiarization(pl.LightningModule):
         self.log("train/emb_loss", emb_loss)
         self.log("train/tot_loss", tot_loss)
 
+        self.training_step_outputs.append(tot_loss)
+        
         return tot_loss
 
     def validation_step(self, batch, batch_index):
@@ -109,7 +107,7 @@ class SpeakerDiarization(pl.LightningModule):
         # perm labels
         labels = torch.nn.utils.rnn.pad_sequence(labels, padding_value=0, batch_first=True)
         B, T, max_spk = labels.shape
-        frame_index = torch.arange(1, T + 1).to(feats[0]).unsqueeze(0).unsqueeze(-1)
+        frame_index = torch.arange(1, T + 1, device=feats[0].device).unsqueeze(0).unsqueeze(-1)
         labels_index = (frame_index * labels)
         labels_index = labels_index.masked_fill_(labels_index == 0, torch.inf)
 
@@ -117,64 +115,58 @@ class SpeakerDiarization(pl.LightningModule):
         sort_index = torch.argsort(torch.min(labels_index, dim=1)[0], dim=1)
         labels = labels[torch.arange(B).unsqueeze(1), :, sort_index].transpose(-1, -2)
 
-        labels_silence = torch.ones([labels.shape[0], labels.shape[1]]).to(labels) - labels.max(-1)[0]
+        labels_silence = torch.ones([labels.shape[0], labels.shape[1]], device=labels.device) - labels.max(-1)[0]
         labels = torch.cat([labels_silence.unsqueeze(-1), labels], dim=-1)
         
-        labels_nonespk = torch.zeros([B, T, 1]).to(labels)
+        labels_nonespk = torch.zeros([B, T, 1], device=labels.device)
         labels = torch.cat([labels, labels_nonespk], dim=-1)
 
         labels = [l[:ilen, :nspk+2] for l, ilen, nspk in zip(labels, clip_lengths, n_spks)]
 
         preds, emb_loss, embs, attractors = self.detect(feats, labels, clip_lengths)
-
-        labels_spks = [l[:, 1:-1] for l in labels]
-        preds_spks = [p[:, 1:-1] for p in preds]
-
-        max_nspk = max(n_spks)
-        labels_spks_pad = pad_labels(labels_spks, max_nspk)
-        preds_spks_pad = pad_preds(preds_spks, max_nspk)
-        pit_loss1, perm_labels_spks = self.loss_func1(preds_spks_pad, labels_spks_pad, n_spks)
-        perm_labels = [torch.cat([l[:, 0].unsqueeze(-1), l_perm], dim=-1) for l, l_perm in zip(labels, perm_labels_spks)]
-        perm_labels = [torch.cat([l_perm, l[:, -1].unsqueeze(-1)], dim=-1) for l ,l_perm in zip(labels, perm_labels)]
-        pit_loss = self.loss_func2(preds, perm_labels, label_delay=self.label_delay)
-
-        # Calculate the total loss
+        #pit_loss1, perm_labels = self.loss_func1(preds, labels)
+        pit_loss = self.loss_func2(preds, labels, label_delay=self.label_delay)
+        # print(f"batch_lost_n_speakers: {pit_loss1},  batch_pit_loss: {pit_loss3},  pit_loss: {pit_loss}")
         tot_loss = pit_loss + emb_loss
 
         # Metrics
         preds_realspk = [p[:, 1:-1] for p in preds]
-        labels_realspk = [l[:, 1:-1] for l in perm_labels]
+        labels_realspk = [l[:, 1:-1] for l in labels]
         stats = report_diarization_error(preds_realspk, labels_realspk, label_delay=self.label_delay)
 
         self.log("val/pit_loss", pit_loss)
         self.log("val/emb_loss", emb_loss)
         self.log("val/tot_loss", tot_loss)
 
-        stats["val_loss"] = [tot_loss.item()]
+        self.validation_step_outputs.append(stats)
+    
         return stats
     
-    def validation_epoch_end(self, val_step_outputs) -> None:
+    #def validation_epoch_end(self, val_step_outputs) -> None:
+    def on_validation_epoch_end(self):
+        self.validation_step_outputs
         stats_holder = defaultdict(list)
-        for stats in val_step_outputs:
+        #for stats in val_step_outputs:
+        for stats in self.validation_step_outputs:
             for k, v in stats.items():
                 stats_holder[k] += v
         # Calculate DER
         stats_avg = {k: sum(v)/len(v) for k, v in stats_holder.items()}
         stats_avg["DER"] = stats_avg["diarization_error"] / stats_avg["speaker_scored"]
         obj_metric = stats_avg['DER']
-        self.log("val/obj_metric", obj_metric)
-        self.log("val/DER", stats_avg['DER'])
-        self.log("val/speech_scored", stats_avg['speech_scored'])
-        self.log("val/speech_miss", stats_avg['speech_miss'])
-        self.log("val/speech_falarm", stats_avg['speech_falarm'])
-        self.log("val/speaker_scored", stats_avg['speaker_scored'])
-        self.log("val/speaker_miss", stats_avg['speaker_miss'])
-        self.log("val/speaker_falarm", stats_avg['speaker_falarm'])
-        self.log("val/speaker_error", stats_avg['speaker_error'])
-        self.log("val/diarization_error", stats_avg['diarization_error'])
-        self.log("val/frames", stats_avg['frames'])
-
-        # self.scheduler.step(stats_avg["val_loss"])
+        self.log("val/obj_metric", obj_metric, sync_dist=True)
+        self.log("val/DER", stats_avg['DER'], sync_dist=True)
+        self.log("val/speech_scored", stats_avg['speech_scored'], sync_dist=True)
+        self.log("val/speech_miss", stats_avg['speech_miss'], sync_dist=True)
+        self.log("val/speech_falarm", stats_avg['speech_falarm'], sync_dist=True)
+        self.log("val/speaker_scored", stats_avg['speaker_scored'], sync_dist=True)
+        self.log("val/speaker_miss", stats_avg['speaker_miss'], sync_dist=True)
+        self.log("val/speaker_falarm", stats_avg['speaker_falarm'], sync_dist=True)
+        self.log("val/speaker_error", stats_avg['speaker_error'], sync_dist=True)
+        self.log("val/diarization_error", stats_avg['diarization_error'], sync_dist=True)
+        self.log("val/frames", stats_avg['frames'], sync_dist=True)
+          
+        self.validation_step_outputs.clear()  # free memory
 
     def test_step(self, batch, batch_index):
         feats, labels, rec = batch
@@ -187,7 +179,7 @@ class SpeakerDiarization(pl.LightningModule):
         # perm labels
         labels = torch.nn.utils.rnn.pad_sequence(labels, padding_value=0, batch_first=True)
         B, T, max_spk = labels.shape
-        frame_index = torch.arange(1, T + 1).to(feats[0]).unsqueeze(0).unsqueeze(-1)
+        frame_index = torch.arange(1, T + 1, device=feats[0].device).unsqueeze(0).unsqueeze(-1)
         labels_index = (frame_index * labels)
         labels_index = labels_index.masked_fill_(labels_index == 0, torch.inf)
 
@@ -195,55 +187,47 @@ class SpeakerDiarization(pl.LightningModule):
         sort_index = torch.argsort(torch.min(labels_index, dim=1)[0], dim=1)
         labels = labels[torch.arange(B).unsqueeze(1), :, sort_index].transpose(-1, -2)
 
-        labels_silence = torch.ones([labels.shape[0], labels.shape[1]]).to(labels) - labels.max(-1)[0]
+        labels_silence = torch.ones([labels.shape[0], labels.shape[1]], device=labels.device) - labels.max(-1)[0]
         labels = torch.cat([labels_silence.unsqueeze(-1), labels], dim=-1)
 
-        labels_nonespk = torch.zeros([B, T, 1]).to(labels)
+        labels_nonespk = torch.zeros([B, T, 1], device=labels.device)
         labels = torch.cat([labels, labels_nonespk], dim=-1)
 
         labels = [l[:ilen, :nspk+2] for l, ilen, nspk in zip(labels, clip_lengths, n_spks)]
         
         preds, embs, attractors = self.model.test(feats, clip_lengths, self.max_spks + 2)
-        
-        labels_spks = [l[:, 1:-1] for l in labels]
-        preds_spks = [p[:, 1:nspk + 1] for p, nspk in zip(preds, n_spks)]
-
-        max_nspk = max(n_spks)
-        labels_spks_pad = pad_labels(labels_spks, max_nspk)
-        preds_spks_pad = pad_preds(preds_spks, max_nspk)
-        pit_loss1, perm_labels_spks = self.loss_func1(preds_spks_pad, labels_spks_pad, n_spks)
-        perm_labels = [torch.cat([l[:, 0].unsqueeze(-1), l_perm], dim=-1) for l, l_perm in zip(labels, perm_labels_spks)]
-        perm_labels = [torch.cat([l_perm, l[:, -1].unsqueeze(-1)], dim=-1) for l ,l_perm in zip(labels, perm_labels)]
-        # pit_loss = self.loss_func2(preds, perm_labels, label_delay=self.label_delay)
-
-        # Calculate the total loss
-        # tot_loss = pit_loss + emb_loss
+        # pit_loss, perm_labels = self.loss_func1(preds, labels)
+        # pit_loss = self.loss_func2(preds, labels)
+        # tot_loss = pit_loss + attr_loss + emb_loss
 
         # Metrics
         preds_realspk = [p[:, 1:nspk + 1] for p, nspk in zip(preds, n_spks)]
-        if preds_realspk[0].shape[1] < max_nspk:
-            preds_realspk = pad_preds(preds_realspk, max_nspk)
-        labels_realspk = [l[:, 1:-1] for l in perm_labels]
+        labels_realspk = [l[:, 1:-1] for l in labels]
         stats = report_diarization_error(preds_realspk, labels_realspk, label_delay=self.label_delay)
 
         label_delay = self.hparams["data"]["label_delay"]
         preds = [torch.cat([p[label_delay:, 1:], p[-1, 1:].unsqueeze(0).repeat(label_delay, 1)], dim=0)  for p in preds]
-        # num_spks = "2"
-        # version = "_ver61_ver_87"
-        # save_dir_parnt = f"/data/home/liangdi/dia_projects/pl_version/pl_eend_2.11/tsne_visual/data/onl_{num_spks}spk_version{version}"
+        num_spks = "2"
+        version = "_tfm_10w_ver_0"
+        # save_dir_parnt = f"/mnt/home/liangdi/projects/pl_version/pl_eend_nonautoreg/tsne_visual/data/onl_{num_spks}spk_version{version}"
         # for content in ["preds", "labels", "embs", "attractors"]:
         #     save_dir = os.path.join(save_dir_parnt, content)
         #     if not os.path.isdir(save_dir):
         #         os.makedirs(save_dir)
-        # np.save(f"/data/home/liangdi/dia_projects/pl_version/pl_eend_2.11/tsne_visual/data/onl_{num_spks}spk_version{version}/preds/{rec[0]}.npy", preds[0].detach().cpu().numpy())
-        # np.save(f"/data/home/liangdi/dia_projects/pl_version/pl_eend_2.11/tsne_visual/data/onl_{num_spks}spk_version{version}/labels/label_{rec[0]}.npy", labels_realspk[0].detach().cpu().numpy())
-        # np.save(f"/data/home/liangdi/dia_projects/pl_version/pl_eend_2.11/tsne_visual/data/onl_{num_spks}spk_version{version}/embs/emb_{rec[0]}.npy", embs[0].detach().cpu().numpy())
-        # np.save(f"/data/home/liangdi/dia_projects/pl_version/pl_eend_2.11/tsne_visual/data/onl_{num_spks}spk_version{version}/attractors/attractor_{rec[0]}.npy", attractors[0].detach().cpu().numpy())
+        # np.save(f"/mnt/home/liangdi/projects/pl_version/pl_eend_nonautoreg/tsne_visual/data/onl_{num_spks}spk_version{version}/preds/{rec[0]}.npy", preds[0].detach().cpu().numpy())
+        # np.save(f"/mnt/home/liangdi/projects/pl_version/pl_eend_nonautoreg/tsne_visual/data/onl_{num_spks}spk_version{version}/labels/label_{rec[0]}.npy", labels_realspk[0].detach().cpu().numpy())
+        # np.save(f"/mnt/home/liangdi/projects/pl_version/pl_eend_nonautoreg/tsne_visual/data/onl_{num_spks}spk_version{version}/embs/emb_{rec[0]}.npy", embs[0].detach().cpu().numpy())
+        # np.save(f"/mnt/home/liangdi/projects/pl_version/pl_eend_nonautoreg/tsne_visual/data/onl_{num_spks}spk_version{version}/attractors/attractor_{rec[0]}.npy", attractors[0].detach().cpu().numpy())
+        
+        self.test_step_outputs.append(stats)
+
         return stats
 
-    def test_epoch_end(self, test_step_outputs) -> None:
+    #def test_epoch_end(self, test_step_outputs) -> None:
+    def on_test_epoch_end(self):
         stats_holder = defaultdict(list)
-        for stats in test_step_outputs:
+        #for stats in test_step_outputs:
+        for stats in self.test_step_outputs:
             for k, v in stats.items():
                 stats_holder[k] += v
         # [print(x) for x in stats_holder["speaker_scored"] if not x ]
@@ -273,10 +257,11 @@ class SpeakerDiarization(pl.LightningModule):
         for key in results.keys():
             self.log(key, results[key], prog_bar=True, logger=False)
 
+        self.test_step_outputs.clear()  # free memory
 
     def configure_optimizers(self):
         if self.scheduler is not None:
-            return {"optimizer": self.opt, "lr_scheduler": {"scheduler": self.scheduler, "monitor": "val/tot_loss", "interval": "epoch"}}
+            return {"optimizer": self.opt, "lr_scheduler": {"scheduler": self.scheduler, "interval": "step"}}
         else:
             return {"optimizer": self.opt}
 
@@ -300,8 +285,8 @@ class SpeakerDiarization(pl.LightningModule):
     
     def test_dataloader(self):
         return DataLoader(
-            self.datasets["val"],
-            batch_size=self.hparams["training"]["batch_size"],
+            self.datasets["test"],
+            batch_size=1,
             shuffle=False,
             num_workers=self.hparams["training"]["n_workers"],
             collate_fn=self.collate_func

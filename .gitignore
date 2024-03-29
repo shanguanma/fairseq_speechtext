@@ -10,7 +10,12 @@ build/
 
 examples/*/.hydra
 examples/voicelm/voicelm2/.hydra
-
+examples/speaker_diarization/exp
+examples/speaker_diarization/data
+examples/speaker_diarization/logs
+examples/speaker_diarization/tmp
+examples/speaker_diarization/runid.txt
+examples/speaker_diarization/README.md
 
 # Cython-generated C++ source files
 fairseq/data/data_utils_fast.cpp

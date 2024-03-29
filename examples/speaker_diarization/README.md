@@ -42,9 +42,9 @@ model_hub/ts_vad/spk_embed/
 ```
 - Download ecapa-tdnn.model from https://drive.google.com/drive/folders/1AFip2h9W7sCFbzzasL_fAkGUNZOzaTGK
 note: ecapa-tdnn is trained on voxceleb and finetune on alimeeting dataset.
-
+```
 ## prepare eval rttm from eval textgrid_dir, it should be orale segement.
-`bash scripts/alimeeting/011_prepare_rttm_for_ts_vad_hltsz.sh`
+bash scripts/alimeeting/011_prepare_rttm_for_ts_vad_hltsz.sh
 
 
 ## runing training model with RIRS_NOISZE 
@@ -57,23 +57,53 @@ note: ecapa-tdnn is trained on voxceleb and finetune on alimeeting dataset.
 - Training: scripts/alimeeting/020_train_ts_vad_hltsz.sh --stage 1 --stop-stage 1
 ## Running inferene model on eval dataset
 - Inference: bash scripts/alimeeting/030_infer_eval_on_ts_vad_hltsz.sh --stage 1 --stop-stage 1
+```
 
-
-eend:
+#EEND:
+Cation: The working directory is examples/speaker_diarization/, in other words, you run the below script , you need to enter  examples/speaker_diarization/.
+ 
+```
 code is modified from https://github.com/Xflick/EEND_PyTorch/tree/master
                       https://github.com/shanguanma/EEND/tree/master
 example on mini_librispeech
-it is need to install the below package:
+
+you run this script follow number order of name:
+1. prepare kaldi format of simulation data based on mini_librispeech
+bash scripts/mini_librispeech/010_prepare_mini_librispeech_kaldi_format.sh
+
+2. train eend model on the above simulation data
+bash scripts/mini_librispeech/020_train_eend_model.sh
+
+3. infer eend model on dev data of the above simulation data
+bash bash scripts/mini_librispeech/030_infer_eend_model.sh
+
+
+It is need to install the below package:
 yamlargparse
 torch
 scipy
 h5py
 numpy
+```
 
-fs_eend:
+#FS_EEND(streaming method):
+Cation: The working directory is examples/speaker_diarization/, in other words, you run the below script , you need to enter  examples/speaker_diarization/.
+
+```
 code is modified from https://github.com/Audio-WestlakeU/FS-EEND/tree/main
 
 example on mini_librispeech
+you run this script follow number order of name:
+1. prepare kaldi format of simulation data based on mini_librispeech 
+bash scripts/mini_librispeech/010_prepare_mini_librispeech_kaldi_format.sh
+
+2. train fs_eend model on the above simulation data
+bash scripts/mini_librispeech/021_train_fs_eend_model.sh 
+
+3. infer fs_eend model on dev data of the above simulation data
+bash bash scripts/mini_librispeech/031_infer_fs_eend_model.sh 
+
+
 trainer base on pytorch-lightning
 it is need to install the below package:
 pytorch-lightning==2.1.2
@@ -89,6 +119,6 @@ h5py
 pyannote.metrics
 pyannote.core
 
-
+```
 
 

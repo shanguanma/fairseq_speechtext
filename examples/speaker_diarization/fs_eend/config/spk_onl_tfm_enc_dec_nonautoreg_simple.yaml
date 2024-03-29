@@ -1,10 +1,11 @@
 log:
-  model_name: spk_onl_tfm_enc_dec_10w
+  model_name: 
   log_dir: !ref ./logs/<log[model_name]>
   save_top_k: -1
+  ## the below parameters are used to average checkpoint as final checkpoint, which is used to inference testset. 
   start_epoch: 90
   end_epoch: 99
-  save_avg_path: ./logs/<log[model_name]>/ _2spk_90_100_avg_model.ckpt
+    #save_avg_path: ./logs/<log[model_name]>/ _2spk_90_100_avg_model.ckpt
 
 training:
   batch_size: 32
@@ -38,8 +39,8 @@ model:
     dec_n_layers: 2
   
 data:
-  num_speakers:
-  max_speakers: 5 
+  num_speakers: 2
+  max_speakers: 2 
   context_recp: 7
   label_delay: 0  # number of frames delayed from original labels for uni-directional rnn to see in the future
   feat_type: logmel23 # ['', 'log', 'logmel', 'logmel23', 'logmel23_mn', 'logmel23_mvn', 'logmel23_swn']
@@ -63,7 +64,7 @@ data:
 
   train_data_dir: data/simu/data/train_clean_5_ns2_beta2_500   # swb_sre_tr_ns1n2n3n4_beta2n2n5n9_100000 # swb_sre_tr_ns2_beta2_100000  # swb_sre_tr_ns1n2n3n4_beta2n2n2n2_20000
   val_data_dir: data/simu/data/dev_clean_2_ns2_beta2_500      # swb_sre_cv_ns1n2n3n4_beta2n2n5n9_500     # swb_sre_cv_ns2_beta2_500  # swb_sre_cv_ns1n2n3n4_beta2n2n2n2_500
-
+  test_data_dir: data/simu/data/dev_clean_2_ns2_beta2_500
 task:
   max_speakers: 
   spk_attractor:

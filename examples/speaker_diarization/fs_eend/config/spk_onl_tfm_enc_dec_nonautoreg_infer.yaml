@@ -20,7 +20,7 @@ training:
   warm_steps: 20000 # 20000 # 100000
   early_stop_epoch: 100
   init_ckpt:  # ckpt path for model initiliazation
-  dist_strategy: # ddp        # [ddp, dp]
+    #dist_strategy: # ddp        # [ddp, dp]
   val_interval: 1             # validation after ? epoch(s) of training
   seed: 777
 

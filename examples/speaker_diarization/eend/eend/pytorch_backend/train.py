@@ -17,21 +17,24 @@ from eend.eend.pytorch_backend.diarization_dataset import KaldiDiarizationDatase
 from eend.eend.pytorch_backend.loss import batch_pit_loss, report_diarization_error
 
 
-def train(args):
+def train(rank, world_size,args):
     """ Training model with pytorch backend.
     This function is called from eend/bin/train.py with
     parsed command-line arguments.
     """
     # Logger settings====================================================
-    formatter = logging.Formatter("[ %(levelname)s : %(asctime)s ] - %(message)s")
+    #formatter = logging.Formatter("[ %(levelname)s : %(asctime)s ] - %(message)s")
     #logging.basicConfig(level=logging.DEBUG, format="[ %(levelname)s : %(asctime)s ] - %(message)s")
-    logging.basicConfig(level=logging.INFO, format="[ %(levelname)s : %(asctime)s ] - %(message)s")
-    logger = logging.getLogger("Pytorch")
-    fh = logging.FileHandler(args.model_save_dir + "/train.log", mode='w')
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
+    #logging.basicConfig(level=logging.INFO, format="[ %(levelname)s : %(asctime)s ] - %(message)s")
+    logging.basicConfig(level=logging.INFO,format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s")
+
+    #logger = logging.getLogger("Pytorch")
+    #fh = logging.FileHandler(args.model_save_dir + "/train.log", mode='w')
+    #fh.setFormatter(formatter)
+    #logger.addHandler(fh)
     # ===================================================================
-    logger.info(str(args))
+    #logger.info(str(args))
+    logging.info(f"args: {str(args)}")
 
     np.random.seed(args.seed)
     os.environ['PYTORCH_SEED'] = str(args.seed)
@@ -81,14 +84,33 @@ def train(args):
     else:
         raise ValueError('Possible model_type is "Transformer"')
     
-    device = torch.device("cuda" if (torch.cuda.is_available() and args.gpu > 0) else "cpu")
-    if device.type == "cuda":
+    #device = torch.device("cuda" if (torch.cuda.is_available() and args.gpu > 0) else "cpu")
+    #if device.type == "cuda":
         #from torch.nn.parallel import DistributedDataParallel as DDP
         #model = DDP(model, device_ids=[0], find_unused_parameters=True)
-        model = nn.DataParallel(model, list(range(args.gpu)))
+    #     model = nn.DataParallel(model, list(range(args.gpu)))
+
+    if world_size > 1:
+        from eend.eend.pytorch_backend.dist import setup_dist
+        setup_dist(rank, world_size, agrs.master_port)
+    
+    device = torch.device("cpu")
+    if torch.cuda.is_available():
+        device = torch.device("cuda", rank)
+    logging.info(f"Device: {device}")
+
     model = model.to(device)
-    logger.info('Prepared model')
-    logger.info(model)
+    logging.info('Prepared model')
+    logging.info(model)
+    num_param = sum([p.numel() for p in model.parameters()])
+    logging.info(f"Number of model parameters: {num_param/1000/1000} MB")
+
+    #model = model.to(device)
+    if world_size > 1:
+        logging.info("Using DDP")
+        from torch.nn.parallel import DistributedDataParallel as DDP
+        model = DDP(model, device_ids=[rank], find_unused_parameters=True)
+
 
     # Setup optimizer
     if args.optimizer == 'adam':
@@ -109,7 +131,7 @@ def train(args):
 
     # Init/Resume
     if args.initmodel:
-        logger.info(f"Load model from {args.initmodel}")
+        logging.info(f"Load model from {args.initmodel}")
         model.load_state_dict(torch.load(args.initmodel))
 
     train_iter = DataLoader(
@@ -141,7 +163,7 @@ def train(args):
         num_total = 0
         #for step, (y, t) in tqdm(enumerate(train_iter), ncols=100, total=len(train_iter)):
         for step, (y,t) in enumerate(train_iter):
-            logger.info(f"device: {device}")
+            #logging.info(f"device: {device}")
             y = [yi.to(device) for yi in y]
             t = [ti.to(device) for ti in t]
 
@@ -172,6 +194,10 @@ def train(args):
         with torch.no_grad():
             stats_avg = {}
             cnt = 0
+            # issue: raise RuntimeError('received %d items of ancdata' % RuntimeError: received 0 items of ancdata
+            # reason: pytorch多线程共享tensor是通过打开文件的方式实现的，而打开文件的数量是有限制的。在使用torch.multiprocess时，
+            #         由于子进程中进行了文件读写操作，因此出现了RuntimeError: received 0 items of ancdata的错误
+            # solution: torch.multiprocessing.set_sharing_strategy('file_system')
             for y, t in dev_iter:
                 y = [yi.to(device) for yi in y]
                 t = [ti.to(device) for ti in t]
@@ -189,7 +215,7 @@ def train(args):
         model_filename = os.path.join(args.model_save_dir, f"transformer{epoch}.th")
         torch.save(model.state_dict(), model_filename)
 
-        logger.info(f"Epoch: {epoch:3d}, LR: {optimizer.param_groups[0]['lr']:.7f},\
+        logging.info(f"Epoch: {epoch:3d}, LR: {optimizer.param_groups[0]['lr']:.7f},\
             Training Loss: {loss_epoch:.5f}, Dev Stats: {stats_avg}")
 
-    logger.info('Finished!')
+    logging.info('Finished!')

@@ -19,8 +19,9 @@ if [ ${stage} -le 0 ]&&[ ${stop_stage} -ge 0 ];then
     train_conf=$root_dir/eend/conf/base/mini_librispeech_train.yaml
     train_dir=$root_dir/data/simu/data/train_clean_5_ns2_beta2_500
     dev_dir=$root_dir/data/simu/data/dev_clean_2_ns2_beta2_500
-    model_dir=$root_dir/exp/eend_base
-    python eend/eend/bin/train.py -c $train_conf $train_dir $dev_dir $model_dir
+    model_dir=$root_dir/exp/eend_base_100epoch
+    max_epochs=100
+    python eend/eend/bin/train.py -c $train_conf $train_dir $dev_dir $model_dir --max-epochs $max_epochs
 
 fi
 

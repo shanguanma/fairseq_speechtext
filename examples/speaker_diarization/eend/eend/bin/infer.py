@@ -47,6 +47,6 @@ print(str(args))
 if not os.path.exists(args.out_dir):
     os.makedirs(args.out_dir)
 
-from eend.pytorch_backend.infer import infer
+from eend.eend.pytorch_backend.infer import infer
 infer(args)
 
