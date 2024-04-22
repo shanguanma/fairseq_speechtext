@@ -1,0 +1,52 @@
+Databases:
+  AMI: 
+    - ../../data/ami/train/audios/{uri}.wav
+    - ../../data/ami/dev/audios/{uri}.wav
+    - ../../data/ami/test/audios/{uri}.wav
+  AISHELL-4:
+    - ../../data/aishell4/train/audios/{uri}.wav
+    - ../../data/aishell4/dev/audios/{uri}.wav
+  AliMeeting:
+    - /home/maduo/codebase/fairseq_speechtext/examples/speaker_diarization/data/manifests/alimeeting/train/audios/{uri}.wav
+    - /home/maduo/codebase/fairseq_speechtext/examples/speaker_diarization/data/manifests/alimeeting//eval/audios/{uri}.wav
+
+Protocols:
+  AMI:
+    SpeakerDiarization:
+      only_words:
+        train:
+            uri: AMI-diarization-setup/lists/train.meetings.txt
+            annotation: AMI-diarization-setup/only_words/rttms/train/{uri}.rttm
+            annotated: AMI-diarization-setup/uems/train/{uri}.uem
+        development:
+            uri: AMI-diarization-setup/lists/dev.meetings.txt
+            annotation: AMI-diarization-setup/only_words/rttms/dev/{uri}.rttm
+            annotated: AMI-diarization-setup/uems/dev/{uri}.uem
+        test:
+            uri: AMI-diarization-setup/lists/test.meetings.txt
+            annotation: AMI-diarization-setup/only_words/rttms/test/{uri}.rttm
+            annotated: AMI-diarization-setup/uems/test/{uri}.uem
+  AISHELL-4:
+    SpeakerDiarization:
+      only_words:
+        train:
+            uri: exp/pyannote/aishell4/lists/train.meetings.txt
+            annotation: exp/pyannote/aishell4/lists/{uri}.rttm
+            annotated: exp/pyannote/aishell4/lists/{uri}.uem
+        development:
+            uri: exp/pyannote/aishell4/lists/dev.meetings.txt
+            annotation: exp/pyannote/aishell4/lists/{uri}.rttm
+            annotated: exp/pyannote/aishell4/lists/{uri}.uem
+  AliMeeting:
+    SpeakerDiarization:
+      only_words:
+        train:
+            uri: exp/pyannote/alimeeting/lists/train.meetings.txt
+            annotation: exp/pyannote/alimeeting/lists/{uri}.rttm
+            annotated: exp/pyannote/alimeeting/lists/{uri}.uem
+              #audio: /home/maduo/codebase/fairseq_speechtext/examples/speaker_diarization/data/manifests/alimeeting/train/audios/{uri}.wav
+        development:
+            uri: exp/pyannote/alimeeting/lists/eval.meetings.txt
+            annotation: exp/pyannote/alimeeting/lists/{uri}.rttm
+            annotated: exp/pyannote/alimeeting/lists/{uri}.uem
+              #audio: /home/maduo/codebase/fairseq_speechtext/examples/speaker_diarization/data/manifests/alimeeting//eval/audios/{uri}.wav
