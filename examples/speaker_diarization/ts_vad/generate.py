@@ -317,6 +317,16 @@ def cli_main():
     parser.add_argument(
         "--rttm_dir", default="SCTK-2.4.12", help="specify reference rttm folder"
     )
+    parser.add_argument("--rttm_name",default=None,help="rttm name")
+    parser.add_argument("--speaker_embedding_name_dir",
+        default="ecapa_feature_dir", help= "specify speaker embedding directory name"
+    )
+    #parser.add_argument("--speaker_embed_dim_in_model",default=192,help="speaker embedding dimension")
+    #parser.add_argument("--speaker_embed_dim_in_task",default=192,help="speaker embedding dimension")
+    #speaker_embed_dim: int = field(
+    #    default=192, metadata={"help": "speaker embedding dimension."}
+    #)
+    parser.add_argument("--speaker_embed_dim",default=192,help="speaker embedding dimension")
     args = options.parse_args_and_arch(
         parser
     )  # this function will rewrite task/model relative parameter, so these parameter names must occur task/model cfg .

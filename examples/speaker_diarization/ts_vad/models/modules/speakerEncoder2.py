@@ -231,3 +231,14 @@ class ECAPA_TDNN(nn.Module):
         x = self.bn6(x)
 
         return x
+if __name__ == "__main__":
+    x = torch.zeros(10, 25*300)
+    
+    model = ECAPA_TDNN(C=1024)
+    model.eval()
+    out = model(x)
+    print(f"model: {str(model)}")
+    print(out.shape) # torch.Size([10, 192])
+
+    num_params = sum(param.numel() for param in model.parameters())
+    print("{} M".format(num_params / 1e6)) # 6.61M

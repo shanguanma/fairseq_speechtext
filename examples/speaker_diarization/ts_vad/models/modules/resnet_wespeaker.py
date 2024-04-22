@@ -29,7 +29,7 @@ Reference:
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import examples.speaker_diarization.ts_vad.models.modules.pooling_layers as pooling_layers
+import examples.speaker_diarization.ts_vad.models.modules.pooling_layers_wespeaker as pooling_layers
 
 
 class BasicBlock(nn.Module):
@@ -115,6 +115,7 @@ class ResNet(nn.Module):
         embed_dim=128,
         pooling_func="TSTP",
         two_emb_layer=True,
+        speech_encoder=False,
     ):
         super(ResNet, self).__init__()
         self.in_planes = m_channels
@@ -131,18 +132,18 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, m_channels * 2, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(block, m_channels * 4, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, m_channels * 8, num_blocks[3], stride=2)
-
-        self.pool = getattr(pooling_layers, pooling_func)(
-            in_dim=self.stats_dim * block.expansion
-        )
-        self.pool_out_dim = self.pool.get_out_dim()
-        self.seg_1 = nn.Linear(self.pool_out_dim, embed_dim)
-        if self.two_emb_layer:
-            self.seg_bn_1 = nn.BatchNorm1d(embed_dim, affine=False)
-            self.seg_2 = nn.Linear(embed_dim, embed_dim)
-        else:
-            self.seg_bn_1 = nn.Identity()
-            self.seg_2 = nn.Identity()
+        if not speech_encoder:
+            self.pool = getattr(pooling_layers, pooling_func)(
+                in_dim=self.stats_dim * block.expansion
+            )
+            self.pool_out_dim = self.pool.get_out_dim()
+            self.seg_1 = nn.Linear(self.pool_out_dim, embed_dim)
+            if self.two_emb_layer:
+                self.seg_bn_1 = nn.BatchNorm1d(embed_dim, affine=False)
+                self.seg_2 = nn.Linear(embed_dim, embed_dim)
+            else:
+                self.seg_bn_1 = nn.Identity()
+                self.seg_2 = nn.Identity()
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1] * (num_blocks - 1)
@@ -152,7 +153,7 @@ class ResNet(nn.Module):
             self.in_planes = planes * block.expansion
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward(self, x,get_time_out=False):
         x = x.permute(0, 2, 1)  # (B,T,F) => (B,F,T)
 
         x = x.unsqueeze_(1)
@@ -161,20 +162,28 @@ class ResNet(nn.Module):
         out = self.layer2(out)
         out = self.layer3(out)
         out = self.layer4(out)
-
-        stats = self.pool(out)
-
-        embed_a = self.seg_1(stats)
-        if self.two_emb_layer:
-            out = F.relu(embed_a)
-            out = self.seg_bn_1(out)
-            embed_b = self.seg_2(out)
-            return embed_a, embed_b
+        if get_time_out:
+            #out(B,C,F,T) it is from https://github.com/wenet-e2e/wespeaker/blob/master/wespeaker/models/pooling_layers.py#L79
+                                     # https://github.com/wenet-e2e/wespeaker/blob/master/wespeaker/models/pooling_layers.py#L122
+            out = out.reshape(out.shape[0], out.shape[1] * out.shape[2], out.shape[3])
+            assert len(out.shape) == 3 #(B,D,T)
+            #out = out.permute(0,2,1) # (B,D,T) -> (B,T,D)
+            return out           # D is feature dimension, T is time-dimension (frame-dimension)
+                                 # D is 2560 for ResNet34 and ResNet293
         else:
-            return torch.tensor(0.0), embed_a
+            stats = self.pool(out)
+
+            embed_a = self.seg_1(stats)
+            if self.two_emb_layer:
+                out = F.relu(embed_a)
+                out = self.seg_bn_1(out)
+                embed_b = self.seg_2(out)
+                return embed_a, embed_b
+            else:
+                return torch.tensor(0.0), embed_a
 
 
-def ResNet18(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
+def ResNet18(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True, speech_encoder=False):
     return ResNet(
         BasicBlock,
         [2, 2, 2, 2],
@@ -182,10 +191,11 @@ def ResNet18(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
         embed_dim=embed_dim,
         pooling_func=pooling_func,
         two_emb_layer=two_emb_layer,
+        speech_encoder=speech_encoder,
     )
 
 
-def ResNet34(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
+def ResNet34(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True,speech_encoder=False):
     return ResNet(
         BasicBlock,
         [3, 4, 6, 3],
@@ -193,10 +203,12 @@ def ResNet34(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
         embed_dim=embed_dim,
         pooling_func=pooling_func,
         two_emb_layer=two_emb_layer,
+        speech_encoder=speech_encoder,
+         
     )
 
 
-def ResNet50(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
+def ResNet50(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True,speech_encoder=False):
     return ResNet(
         Bottleneck,
         [3, 4, 6, 3],
@@ -204,10 +216,11 @@ def ResNet50(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
         embed_dim=embed_dim,
         pooling_func=pooling_func,
         two_emb_layer=two_emb_layer,
+        speech_encoder=speech_encoder,
     )
 
 
-def ResNet101(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
+def ResNet101(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True,speech_encoder=False):
     return ResNet(
         Bottleneck,
         [3, 4, 23, 3],
@@ -215,10 +228,11 @@ def ResNet101(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
         embed_dim=embed_dim,
         pooling_func=pooling_func,
         two_emb_layer=two_emb_layer,
+        speech_encoder=speech_encoder,
     )
 
 
-def ResNet152(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
+def ResNet152(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True,speech_encoder=False):
     return ResNet(
         Bottleneck,
         [3, 8, 36, 3],
@@ -226,10 +240,11 @@ def ResNet152(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
         embed_dim=embed_dim,
         pooling_func=pooling_func,
         two_emb_layer=two_emb_layer,
+        speech_encoder=speech_encoder,
     )
 
 
-def ResNet221(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
+def ResNet221(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True,speech_encoder=False):
     return ResNet(
         Bottleneck,
         [6, 16, 48, 3],
@@ -237,10 +252,11 @@ def ResNet221(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
         embed_dim=embed_dim,
         pooling_func=pooling_func,
         two_emb_layer=two_emb_layer,
+        speech_encoder=speech_encoder,
     )
 
 
-def ResNet293(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
+def ResNet293(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True,speech_encoder=False):
     return ResNet(
         Bottleneck,
         [10, 20, 64, 3],
@@ -248,14 +264,20 @@ def ResNet293(feat_dim, embed_dim, pooling_func="TSTP", two_emb_layer=True):
         embed_dim=embed_dim,
         pooling_func=pooling_func,
         two_emb_layer=two_emb_layer,
+        speech_encoder=speech_encoder,
     )
 
 
 if __name__ == "__main__":
-    x = torch.zeros(10, 200, 80)
-    model = ResNet34(feat_dim=80, embed_dim=256, pooling_func="MQMHASTP")
+    x = torch.zeros(10, 200, 80)# (B,T,F)
+    model = ResNet34(feat_dim=80, embed_dim=256, pooling_func="TSTP")
+    #model = ResNet293(feat_dim=80, embed_dim=256, pooling_func="TSTP")
     model.eval()
     out = model(x)
+    # [10, 256, 10, 25]
+    out_1 = model(x,get_time_out=True) # torch.Size([10, 2560, 25]) (B,F,T) 200/25=8  downsample is 8
+    print(f"out_1 shape: {out_1.shape}")
+    print(f"model: {model}")
     print(out[-1].size())
 
     num_params = sum(p.numel() for p in model.parameters())

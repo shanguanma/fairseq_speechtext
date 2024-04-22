@@ -15,7 +15,7 @@ from ts_vad.data.ts_vad_dataset import TSVADDataset
 
 logger = logging.getLogger(__name__)
 
-SPEECH_ENCODER_TYPE = ChoiceEnum(["wavlm", "ecapa", "fbank", "cam"])
+SPEECH_ENCODER_TYPE = ChoiceEnum(["wavlm", "ecapa", "fbank", "cam++","ecapa_wespeaker","resnet34_wespeaker"])
 SPEAKER_ENCODER_TYPE = ChoiceEnum(["own", "ecapa", "resnet"])
 
 
@@ -108,7 +108,12 @@ class TSVADTaskConfig(FairseqDataclass):
     rttm_dir: str = field(
         default="SCTK-2.4.12", metadata={"help": "specify reference rttm folder"}
     )
-
+    speaker_embedding_name_dir: str = field(
+        default="ecapa_feature_dir", metadata={"help": "specify speaker embedding directory name"}
+    )
+    speaker_embed_dim: int = field(
+        default=192, metadata={"help": "speaker embedding dimension."}
+    ) 
 
 @register_task("ts_vad_task", dataclass=TSVADTaskConfig)
 class TSVADTask(FairseqTask):
@@ -137,9 +142,15 @@ class TSVADTask(FairseqTask):
             )
 
         if self.cfg.dataset_name == "alimeeting":
-            spk_path = f"{self.cfg.spk_path}/{split}/ecapa_feature_dir" ## speaker embedding directory
-            json_path = f"{self.cfg.data}/{split}_Ali/{split}_Ali_far/{split}.json" ## offer mixer wavform name, 
-            audio_path = f"{self.cfg.data}/{split}_Ali/{split}_Ali_far/target_audio" ## offer number of speaker, offer mixer wavform name, offer target speaker wav, 
+            if split=="Test" or split=="Eval":
+                spk_path = f"{self.cfg.spk_path}/{split}/{self.cfg.speaker_embedding_name_dir}" ## speaker embedding directory
+                json_path = f"{self.cfg.data}/{split}_Ali/{split}_Ali_far/{split}.json" ## offer mixer wavform name, 
+                audio_path = f"{self.cfg.data}/{split}_Ali/{split}_Ali_far/target_audio" ## offer number of speaker, offer mixer wavform name, offer target speaker wav, 
+            elif split=="Train":
+                spk_path = f"{self.cfg.spk_path}/{split}/{self.cfg.speaker_embedding_name_dir}" ## speaker embedding directory
+                json_path = f"{self.cfg.data}/{split}_Ali_far/{split}.json" ## offer mixer wavform name,
+                audio_path = f"{self.cfg.data}/{split}_Ali_far/target_audio" ## offer number of speaker, offer mixer wavform name, offer target speaker wav,
+
         elif self.cfg.dataset_name == "ami":
             spk_path = f"{self.cfg.spk_path}/{split}"
             json_path = f"{self.cfg.data}/{split}/{split}.json"
@@ -192,7 +203,10 @@ class TSVADTask(FairseqTask):
             raise Exception(
                 f"The given dataset {self.cfg.dataset_name} is not supported."
             )
-
+        if self.cfg.speech_encoder_type == "cam++" or self.cfg.speech_encoder_type=="ecapa_wespeaker" or self.cfg.speech_encoder_type=="resnet34_wespeaker":
+            fbank_input=True
+        else:
+            fbank_input=False
         self.datasets[split] = TSVADDataset(
             json_path=json_path,
             audio_path=audio_path,
@@ -212,12 +226,13 @@ class TSVADTask(FairseqTask):
             embed_len=self.cfg.embed_len,
             embed_shift=self.cfg.embed_shift,
             embed_input=self.cfg.embed_input,
-            fbank_input=self.cfg.speech_encoder_type == "cam",
+            fbank_input=fbank_input,
             label_rate=self.cfg.label_rate,
             random_channel=self.cfg.random_channel,
             support_mc=self.cfg.support_mc,
             random_mask_speaker_prob=self.cfg.random_mask_speaker_prob,
             random_mask_speaker_step=self.cfg.random_mask_speaker_step,
+            speaker_embed_dim=self.cfg.speaker_embed_dim,
         )
 
     def inference_step(self, models, sample, prefix_tokens=None, constraints=None):

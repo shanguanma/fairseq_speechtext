@@ -204,7 +204,7 @@ class ECAPA_TDNN(nn.Module):
                 x = x.log()
                 x = x - torch.mean(x, dim=-1, keepdim=True)
 
-        return x
+        return x # (B,F,T)
 
     def set_bn_eval(self):
         self.bn1.eval()
@@ -214,3 +214,18 @@ class ECAPA_TDNN(nn.Module):
         self.layer1.set_bn_eval()
         self.layer2.set_bn_eval()
         self.layer3.set_bn_eval()
+
+if __name__ == "__main__":
+    
+    x = torch.zeros(10, 25*300)
+
+    model = ECAPA_TDNN(C=1024)
+    output = model.torchfbank(x)
+    print(output.shape)
+    model.eval()
+    out = model(x)
+    print(f"model: {str(model)}")
+    print(out.shape) # torch.Size([10, 192])
+
+    num_params = sum(param.numel() for param in model.parameters())
+    print("{} M".format(num_params / 1e6)) # 6.61M

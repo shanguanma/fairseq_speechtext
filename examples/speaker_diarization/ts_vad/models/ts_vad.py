@@ -25,7 +25,9 @@ from examples.speaker_diarization.ts_vad.models.modules.speakerEncoder import (
     ECAPA_TDNN,
     PreEmphasis,
 )
-from examples.speaker_diarization.ts_vad.models.modules.cam_pplus import CAMPPlus
+from examples.speaker_diarization.ts_vad.models.modules.ecapa_tdnn_wespeaker import ECAPA_TDNN_GLOB_c1024 
+from examples.speaker_diarization.ts_vad.models.modules.resnet_wespeaker import ResNet34 
+from examples.speaker_diarization.ts_vad.models.modules.cam_pplus_wespeaker import CAMPPlus
 from examples.speaker_diarization.ts_vad.models.modules.postional_encoding import (
     PositionalEncoding,
 )
@@ -83,6 +85,63 @@ class TSVADConfig(FairseqDataclass):
         default=False, metadata={"help": "whether to add projection for each speaker"}
     )
 
+# modify from https://github.com/k2-fsa/icefall/blob/master/egs/librispeech/ASR/zipformer/zipformer.py#L1352C1-L1372C19
+class SimpleUpsample(nn.Module):
+    """
+    A very simple form of upsampling that mostly just repeats the input, but
+    also adds a position-specific bias.
+    """
+
+    def __init__(self, num_channels: int, upsample: int):
+        super(SimpleUpsample, self).__init__()
+        self.upsample = upsample
+
+    def forward(self, src: torch.Tensor) -> torch.Tensor:
+        """
+        x: (batch_size,seq_len,num_channels)
+        Returns a tensor of shape
+           ( batch_size,(seq_len*upsample), num_channels)
+        """
+        upsample = self.upsample
+        (batch_size, seq_len,num_channels) = src.shape
+        src = src.unsqueeze(1).expand(batch_size, upsample,seq_len,num_channels)
+        src = src.reshape(batch_size, upsample*seq_len, num_channels)
+        return src
+
+class SpeechFeatUpsample(nn.Module):
+    def __init__(self,speaker_embed_dim: int, upsample: int):
+        super(SpeechFeatUpsample,self).__init__()
+        self.speaker_embed_dim=speaker_embed_dim
+        # here 2560 means it is feature dimension  before pool layer of resnet34_wespeaker model dimension
+        #nn.Conv1d(2560, cfg.speaker_embed_dim, 5, stride=stride, padding=2),
+        self.linear = nn.Linear(2560, speaker_embed_dim, bias=True)
+        self.up = SimpleUpsample(speaker_embed_dim, upsample )
+        self.batchnorm = BatchNorm1D(num_features=speaker_embed_dim)
+        self.act = nn.ReLU()
+
+    def forward(self, x: torch.Tensor)-> torch.Tensor:
+        x = x.permute(0,2,1) #(B,F,T) -> (B,T,F)
+        x = self.linear(x) # (B,T,F) -> (B,T,D)
+        x = self.up(x) # (B,T,D) -> (B,2T,D)
+        x = x.permute(0,2,1) # (B,2T,D)->(B,D,2T)
+        x = self.batchnorm(x)
+        x = self.act(x)
+        return x #(B,D,2T)
+
+class SpeechFeatUpsample2(nn.Module):
+      def __init__(self, speaker_embed_dim: int, upsample: int):
+          super(SpeechFeatUpsample2, self).__init__()
+          self.speaker_embed_dim = speaker_embed_dim
+          # here 2560 means it is feature dimension  before pool layer of resnet34_wespeaker model dimension
+          self.up = nn.ConvTranspose1d(2560, speaker_embed_dim, 5, stride=upsample, padding=2,output_padding=1)
+          self.batchnorm = BatchNorm1D(num_features=speaker_embed_dim)
+          self.act = nn.ReLU()
+      def forward(self, x: torch.Tensor)-> torch.Tensor:
+          x = self.up(x) # (B,F,T) -> (B,D,2T)
+          x = self.batchnorm(x)
+          x = self.act(x)
+          return x #(B,D,2T)
+
 
 @register_model("ts_vad", dataclass=TSVADConfig)
 class TSVADModel(BaseFairseqModel):
@@ -106,12 +165,27 @@ class TSVADModel(BaseFairseqModel):
         if task_cfg.label_rate != 25:
             assert (
                 task_cfg.speech_encoder_type == "ecapa"
-                or task_cfg.speech_encoder_type == "cam"
+                or task_cfg.speech_encoder_type == "cam++"
+                or task_cfg.speech_encoder_type == "ecapa_wespeaker"
+                or task_cfg.speech_encoder_type == "resnet34_wespeaker"
             ), "Only support ecapa and cam++ for label rate not 25"
 
         # Speech Encoder
         self.speech_encoder_type = task_cfg.speech_encoder_type
         sample_times = 16000 / task_cfg.sample_rate
+        #self.torchfbank = torch.nn.Sequential(
+        #        PreEmphasis(),
+        #        torchaudio.transforms.MelSpectrogram(
+        #            sample_rate=task_cfg.sample_rate,
+        #            n_fft=512,
+        #            win_length=400,
+        #            hop_length=160,
+        #            f_min=20,
+        #            f_max=7600,
+        #            window_fn=torch.hamming_window,
+        #            n_mels=80,
+        #        ),
+        #)
         if self.speech_encoder_type == "wavlm":
             checkpoint = torch.load(cfg.speech_encoder_path, map_location="cuda")
             wavlm_cfg = WavLMConfig(checkpoint["cfg"])
@@ -149,6 +223,30 @@ class TSVADModel(BaseFairseqModel):
                     BatchNorm1D(num_features=cfg.speaker_embed_dim),
                     nn.ReLU(),
                 )
+        elif self.speech_encoder_type == "ecapa_wespeaker":
+            #ECAPA_TDNN_GLOB_c1024(feat_dim=80,embed_dim=192,pooling_func='ASTP',speech_encoder=True).train()
+
+            self.speech_encoder = ECAPA_TDNN_GLOB_c1024(feat_dim=80,embed_dim=192,pooling_func='ASTP',speech_encoder=True)
+            self.speech_encoder.train()
+            if cfg.speech_encoder_path is not None:
+                self.load_speaker_encoder(
+            #        #cfg.speech_encoder_path, module_name="speech_encoder"
+                    cfg.speech_encoder_path, module_name="speech_encoder"
+                )
+            else:
+                logger.warn("Not load speech encoder!!")
+
+            if not task_cfg.embed_input:
+                stride = int(4 // sample_times) if task_cfg.label_rate == 25 else 1
+                ## the input shape of self.speech_down except is (B,F,T)
+                self.speech_down = nn.Sequential(
+                    # here 1536 means it is feature dimension  before pool layer of ecapa_wespeaker model dimension
+                    nn.Conv1d(1536, cfg.speaker_embed_dim, 5, stride=stride, padding=2),
+                    BatchNorm1D(num_features=cfg.speaker_embed_dim),
+                    nn.ReLU(),
+                )
+
+
         elif self.speech_encoder_type == "fbank":
             self.torchfbank = torch.nn.Sequential(
                 PreEmphasis(),
@@ -174,19 +272,39 @@ class TSVADModel(BaseFairseqModel):
                 BatchNorm1D(num_features=cfg.speaker_embed_dim),
                 nn.ReLU(),
             )
-        elif self.speech_encoder_type == "cam":
-            self.speech_encoder = CAMPPlus()
+        elif self.speech_encoder_type == "cam++": # its input is fbank , it is extract from data/ts_vad_dataset.py
+            self.speech_encoder = CAMPPlus(feat_dim=80,embedding_size=192)# embedding_size is from pretrain model embedding_size
             self.speech_encoder.train()
             self.load_speaker_encoder(
                 cfg.speech_encoder_path, module_name="speech_encoder"
             )
-
+            # input of cam++ model is fbank, means that 1s has 100 frames
+            # we set target label rate is 25, means that 1s has 25 frames 
+            # cam++ model downsample scale is 2, so frame rate is cam++ model output is 50, so I should set stride equal to 2.
             stride = int(2 // sample_times) if task_cfg.label_rate == 25 else 1
+            ## the input shape of self.speech_down except is (B,F,T) 
             self.speech_down = nn.Sequential(
+                # here 512 means it is feature dimension  before pool layer of cam++(it is also from wespeaker ) model.
                 nn.Conv1d(512, cfg.speaker_embed_dim, 5, stride=stride, padding=2),
                 BatchNorm1D(num_features=cfg.speaker_embed_dim),
                 nn.ReLU(),
             )
+
+        #resnet_wespeaker
+        elif self.speech_encoder_type == "resnet34_wespeaker":
+            self.speech_encoder = ResNet34(feat_dim=80, embed_dim=256, pooling_func="TSTP", two_emb_layer=False,speech_encoder=True)
+            self.speech_encoder.train()
+            self.load_speaker_encoder(
+                cfg.speech_encoder_path, module_name="speech_encoder"
+            )
+            # input of cam++ model is fbank, means that 1s has 100 frames
+            # we set target label rate is 25, means that 1s has 25 frames
+            # resnet34_wespeaker model downsample scale is 8, so frame rate is cam++ model output is 12.5, so I should set stride equal to 2.
+            #stride = int(2 // sample_times) if task_cfg.label_rate == 25 else 1
+            upsample = 2 if task_cfg.label_rate == 25 else 1
+            ## the input shape of self.speech_up except is (B,T,F)
+            #self.speech_up = SpeechFeatUpsample(speaker_embed_dim=cfg.speaker_embed_dim, upsample=upsample)
+            self.speech_up = SpeechFeatUpsample2(speaker_embed_dim=cfg.speaker_embed_dim, upsample=upsample)
 
         # Projection
         if cfg.speaker_embed_dim * 2 != cfg.transformer_embed_dim:
@@ -296,7 +414,7 @@ class TSVADModel(BaseFairseqModel):
         return state_dict
 
     # B: batchsize, T: number of frames (1 frame = 0.04s)
-    # Obtain the reference speech represnetation
+    # Obtain the reference speech represnetation(it should be mix speech representation)
     def rs_forward(self, x, max_len, fix_encoder=False):  # B, 25 * T
         B = x.size(0)
         T = x.size(1)
@@ -315,6 +433,12 @@ class TSVADModel(BaseFairseqModel):
                     x = self.speech_encoder(x, get_time_out=True)
             if not self.embed_input:
                 x = self.speech_down(x)
+        elif self.speech_encoder_type == "ecapa_wespeaker":
+            with torch.no_grad()if fix_encoder else contextlib.ExitStack():
+                x = self.speech_encoder(x, get_time_out=True)
+            x = self.speech_down(x)
+
+
         elif self.speech_encoder_type == "fbank":
             with torch.no_grad():
                 with torch.cuda.amp.autocast(enabled=False):
@@ -322,22 +446,27 @@ class TSVADModel(BaseFairseqModel):
                     x = x.log()
                     x = x - torch.mean(x, dim=-1, keepdim=True)
             x = self.speech_up(x)
-        elif self.speech_encoder_type == "cam":
+        elif self.speech_encoder_type == "cam++": # its input is fbank, it is extract from data/ts_vad_dataset.py
             with torch.no_grad() if fix_encoder else contextlib.ExitStack():
                 x = self.speech_encoder(x, get_time_out=True)
             x = self.speech_down(x)
+
+        elif self.speech_encoder_type == "resnet34_wespeaker": # its input is fbank,it is extract from data/ts_vad_dataset.py
+            with torch.no_grad() if fix_encoder else contextlib.ExitStack():
+                x = self.speech_encoder(x, get_time_out=True)
+            x = self.speech_up(x)
 
         assert (
             x.size(-1) - max_len <= 2 and x.size(-1) - max_len >= -1
         ), f"label and input diff: {x.size(-1) - max_len}"
         if x.size(-1) - max_len == -1:
             x = nn.functional.pad(x, (0, 1))
-        x = x[:, :, :max_len]
-        x = x.transpose(1, 2)
+        x = x[:, :, :max_len]# (B,D,T)
+        x = x.transpose(1, 2) #(B,T,D)
 
         return x
 
-    # Obtain the target speaker represnetation
+    # Obtain the target speaker represnetation(utterance level speaker embedding)
     def ts_forward(self, x):  # B, 4, 80, T * 100
         if self.use_spk_embed:
             return self.rs_dropout(x)
@@ -358,7 +487,7 @@ class TSVADModel(BaseFairseqModel):
     def cat_single_forward(self, rs_embeds, ts_embeds):
         # Extend ts_embeds for time alignemnt
         ts_embeds = ts_embeds.unsqueeze(2)  # B, 4, 1, 256
-        ts_embeds = ts_embeds.repeat(1, 1, rs_embeds.shape[1], 1)  # B, 4, T, 256
+        ts_embeds = ts_embeds.repeat(1, 1, rs_embeds.shape[1], 1)  # B, 4, T, 256  ## repeat T to cat mix frame-level information
         B, _, T, _ = ts_embeds.shape
 
         # Transformer for single speaker
@@ -548,6 +677,17 @@ class TSVADModel(BaseFairseqModel):
                 )
                 continue
             selfState[name].copy_(param)
+#    def load_speaker_encoder(self, model_path, module_name="speaker_encoder"):
+#        loadedState = torch.load(model_path, map_location="cuda")
+#        selfState = self.state_dict()
+#        for name, param in loadedState.items():
+#            origname = name
+#            name = f"{module_name}." + name
+#            if name not in selfState:
+#                logger.warn("%s is not in the model." % origname)
+#                continue
+#            selfState[name].copy_(param)
+
 
     def set_num_updates(self, num_updates):
         """Set the number of parameters updates."""

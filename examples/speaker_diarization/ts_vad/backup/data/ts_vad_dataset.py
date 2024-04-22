@@ -112,7 +112,6 @@ class TSVADDataset(FairseqDataset):
         support_mc: bool = False,
         random_mask_speaker_prob: float = 0.0,
         random_mask_speaker_step: int = 0,
-        speaker_embed_dim: int = 192, # same as speaker_embed_dim of model
     ):
         self.audio_path = audio_path
         self.spk_path = spk_path
@@ -127,7 +126,6 @@ class TSVADDataset(FairseqDataset):
         self.inference = inference
         self.random_mask_speaker_prob = random_mask_speaker_prob
         self.random_mask_speaker_step = random_mask_speaker_step
-        self.speaker_embed_dim = speaker_embed_dim
 
         lines = open(json_path).read().splitlines()
         filename_set = set()
@@ -467,6 +465,48 @@ class TSVADDataset(FairseqDataset):
         labels = torch.from_numpy(np.array(labels)).float()  # 4, T
         return ref_speech, labels, new_speaker_ids, rc
 
+    def load_ts_embed(self, file, speaker_ids):
+        target_speeches = []
+        exist_spk = []
+        #print(f"file:{file}, speaker_ids: {speaker_ids}")
+        for speaker_id in speaker_ids:
+            if speaker_id != -1 and speaker_id != -2:
+                audio_filename = speaker_id
+                exist_spk.append(self.data2spk[f"{file}/{audio_filename}"])
+
+        for speaker_id in speaker_ids:
+            if speaker_id == -1: # Obatin the labels for silence
+                if np.random.choice(2, p=[1 - self.zero_ratio, self.zero_ratio]) == 1 or not self.is_train:
+
+                    # (TODO) maduo add speaker embedding dimension parameter to replace hard code.
+                    feature = torch.zeros(256) # speaker embedding dimension of speaker model
+                else:
+                    random_spk = random.choice(list(self.spk2data))
+                    while random_spk in exist_spk:
+                        random_spk = random.choice(list(self.spk2data))
+                    exist_spk.append(random_spk)
+                    
+                    path = os.path.join(self.spk_path,
+                            f"{random.choice(self.spk2data[random_spk])}.pt",
+                        )
+                    feature = torch.load(path, map_location="cpu")
+            elif speaker_id == -2: # # Obatin the labels for extral
+                feature = torch.zeros(256) # speaker embedding dimension of speaker model
+            else: # # Obatin the labels for speaker
+                path = os.path.join(self.spk_path, file, str(audio_filename) + ".pt")
+                feature = torch.load(path, map_location="cpu")
+                #logger.info(f"path: {path}!")
+                #logger.info(f"feature size: {feature.size()}!")
+
+            if len(feature.size()) == 2:# (T,D)
+                if self.is_train:
+                    feature = feature[random.randint(0, feature.shape[0] - 1), :]
+                else:
+                    # feature = torch.mean(feature, dim = 0)
+                    feature = torch.mean(feature, dim=0)
+            target_speeches.append(feature)
+        target_speeches = torch.stack(target_speeches)
+        return target_speeches
 
     def load_alimeeting_ts_embed(self, file, speaker_ids):
         target_speeches = []
@@ -482,7 +522,7 @@ class TSVADDataset(FairseqDataset):
                 if np.random.choice(2, p=[1 - self.zero_ratio, self.zero_ratio]) == 1 or not self.is_train:
 
                     # (TODO) maduo add speaker embedding dimension parameter to replace hard code.
-                    feature = torch.zeros(self.speaker_embed_dim) # speaker embedding dimension of speaker model
+                    feature = torch.zeros(256) # speaker embedding dimension of speaker model
                 else:
                     random_spk = random.choice(list(self.spk2data))
                     while random_spk in exist_spk:
@@ -494,12 +534,12 @@ class TSVADDataset(FairseqDataset):
                         )
                     feature = torch.load(path, map_location="cpu")
             elif speaker_id == -2: # # Obatin the labels for extral
-                feature = torch.zeros(self.speaker_embed_dim) # speaker embedding dimension of speaker model
+                feature = torch.zeros(256) # speaker embedding dimension of speaker model
             else: # # Obatin the labels for speaker
-                audio_filename=speaker_id
                 path = os.path.join(self.spk_path, file, str(audio_filename) + ".pt")
                 feature = torch.load(path, map_location="cpu")
-
+                #logger.info(f"path: {path}!")
+                #logger.info(f"feature size: {feature.size()}!")
 
             if len(feature.size()) == 2:
                 if self.is_train:
@@ -512,98 +552,94 @@ class TSVADDataset(FairseqDataset):
         target_speeches = torch.stack(target_speeches)
         return target_speeches
 
-    def load_ts_embed(self, file, speaker_ids):
-        if self.dataset_name == "alimeeting":
-            target_speeches = self.load_alimeeting_ts_embed(file, speaker_ids)
-        return target_speeches
-#    def load_ts_embed(self, file, speaker_ids):
-#        target_speeches = []
-#        exist_spk = []
-#        for speaker_id in speaker_ids:
-#            if speaker_id != -1 and speaker_id != -2:
-#                if re.match(
-#                    "^SparseLibri(2|3|23)Mix$|^Libri(2|3|23)Mix$", self.dataset_name
-#                ):
-#                    exist_spk.append(self.data2spk[self.filename2aux[file][speaker_id]])
-#                else:
-#                    if self.dataset_name == "alimeeting" or self.dataset_name == "icmc":
-#                        audio_filename = speaker_id
-#                    elif (
-#                        self.dataset_name == "ami"
-#                        or self.dataset_name == "callhome_sim"
-#                        or self.dataset_name == "libri_css_sim"
-#                    ):
-#                        audio_filename = self.id2fullid[file][str(speaker_id)]
-#                    exist_spk.append(self.data2spk[f"{file}/{audio_filename}"])
-#
-#        for speaker_id in speaker_ids:
-#            if speaker_id == -1: # Obatin the labels for silence
-#                if (
-#                    np.random.choice(2, p=[1 - self.zero_ratio, self.zero_ratio]) == 1
-#                    or not self.is_train
-#                ):
-#                      
-#                    #feature = torch.zeros(192)
-#                    feature = torch.zeros(self.speaker_embed_dim) # speaker embedding dimension of speaker model
-#                else:
-#                    random_spk = random.choice(list(self.spk2data))
-#                    while random_spk in exist_spk:
-#                        random_spk = random.choice(list(self.spk2data))
-#                    exist_spk.append(random_spk)
-#                    if self.dataset_name == "icmc":
-#                        path = os.path.join(self.spk_path, f"{random_spk}.pt")
-#                    else:
-#                        path = os.path.join(
-#                            self.spk_path,
-#                            f"{random.choice(self.spk2data[random_spk])}.pt",
-#                        )
-#                    feature = torch.load(path, map_location="cpu")
-#            elif speaker_id == -2: # # Obatin the labels for extral
-#                #feature = torch.zeros(192)
-#                feature = torch.zeros(self.speaker_embed_dim) # speaker embedding dimension of speaker model
-#            else:
-#                if re.match(
-#                    "^SparseLibri(2|3|23)Mix$|^Libri(2|3|23)Mix$", self.dataset_name
-#                ):
-#                    path = os.path.join(
-#                        self.spk_path, self.filename2aux[file][speaker_id] + ".pt"
-#                    )
-#                elif self.dataset_name == "icmc":
-#                    if self.is_train:
-#                        path = os.path.join(
-#                            self.spk_path, self.data2spk[f"{file}/{speaker_id}"] + ".pt"
-#                        )
-#                    else:
-#                        path = os.path.join(
-#                            self.spk_path,
-#                            file,
-#                            self.data2spk[f"{file}/{speaker_id}"] + ".pt",
-#                        )
-#                else:
-#                    if self.dataset_name == "alimeeting":
-#                        audio_filename = speaker_id
-#                    elif (
-#                        self.dataset_name == "ami"
-#                        or self.dataset_name == "callhome_sim"
-#                        or self.dataset_name == "libri_css_sim"
-#                    ):
-#                        audio_filename = self.id2fullid[file][str(speaker_id)]
-#                    path = os.path.join(
-#                        self.spk_path, file, str(audio_filename) + ".pt"
-#                    )
-#                feature = torch.load(path, map_location="cpu")
-#                #logger.info(f"path: {path}!")
-#            #logger.info(f"feature size: {feature.size()}!")
-#            if len(feature.size()) == 2:
-#                if self.is_train:
-#                    feature = feature[random.randint(0, feature.shape[0] - 1), :]
-#                else:
-#                    # feature = torch.mean(feature, dim = 0)
-#                    feature = torch.mean(feature, dim=0)
-#            target_speeches.append(feature)
-#            #logger.info(f"target_speeches len: {len(target_speeches)}") #{target_speeches[0].shape}, {target_speeches[1].shape}, {target_speeches[2].shape}")
-#        target_speeches = torch.stack(target_speeches)
-#        return target_speeches
+        
+
+    #    def load_ts_embed(self, file, speaker_ids):
+    #        target_speeches = []
+    #        exist_spk = []
+    #        for speaker_id in speaker_ids:
+    #            if speaker_id != -1 and speaker_id != -2:
+    #                if re.match(
+    #                    "^SparseLibri(2|3|23)Mix$|^Libri(2|3|23)Mix$", self.dataset_name
+    #                ):
+    #                    exist_spk.append(self.data2spk[self.filename2aux[file][speaker_id]])
+    #                else:
+    #                    if self.dataset_name == "alimeeting" or self.dataset_name == "icmc":
+    #                        audio_filename = speaker_id
+    #                    elif (
+    #                        self.dataset_name == "ami"
+    #                        or self.dataset_name == "callhome_sim"
+    #                        or self.dataset_name == "libri_css_sim"
+    #                    ):
+    #                        audio_filename = self.id2fullid[file][str(speaker_id)]
+    #                    exist_spk.append(self.data2spk[f"{file}/{audio_filename}"])
+    #
+    #        for speaker_id in speaker_ids:
+    #            if speaker_id == -1: # Obatin the labels for silence
+    #                if (
+    #                    np.random.choice(2, p=[1 - self.zero_ratio, self.zero_ratio]) == 1
+    #                    or not self.is_train
+    #                ):
+                          
+    #                    feature = torch.zeros(192)
+    #                else:
+    #                    random_spk = random.choice(list(self.spk2data))
+    #                    while random_spk in exist_spk:
+    #                        random_spk = random.choice(list(self.spk2data))
+    #                    exist_spk.append(random_spk)
+    #                    if self.dataset_name == "icmc":
+    #                        path = os.path.join(self.spk_path, f"{random_spk}.pt")
+    #                    else:
+    #                        path = os.path.join(
+    #                            self.spk_path,
+    #                            f"{random.choice(self.spk2data[random_spk])}.pt",
+    #                        )
+    #                    feature = torch.load(path, map_location="cpu")
+    #            elif speaker_id == -2: # # Obatin the labels for extral
+    #                feature = torch.zeros(192)
+    #            else:
+    #                if re.match(
+    #                    "^SparseLibri(2|3|23)Mix$|^Libri(2|3|23)Mix$", self.dataset_name
+    #                ):
+    #                    path = os.path.join(
+    #                        self.spk_path, self.filename2aux[file][speaker_id] + ".pt"
+    #                    )
+    #                elif self.dataset_name == "icmc":
+    #                    if self.is_train:
+    #                        path = os.path.join(
+    #                            self.spk_path, self.data2spk[f"{file}/{speaker_id}"] + ".pt"
+    #                        )
+    #                    else:
+    #                        path = os.path.join(
+    #                            self.spk_path,
+    #                            file,
+    #                            self.data2spk[f"{file}/{speaker_id}"] + ".pt",
+    #                        )
+    #                else:
+    #                    if self.dataset_name == "alimeeting":
+    #                        audio_filename = speaker_id
+    #                    elif (
+    #                        self.dataset_name == "ami"
+    #                        or self.dataset_name == "callhome_sim"
+    #                        or self.dataset_name == "libri_css_sim"
+    #                    ):
+    #                        audio_filename = self.id2fullid[file][str(speaker_id)]
+    #                    path = os.path.join(
+    #                        self.spk_path, file, str(audio_filename) + ".pt"
+    #                    )
+    #                feature = torch.load(path, map_location="cpu")
+    #                logger.info(f"path: {path}!")
+    #            logger.info(f"feature size: {feature.size()}!")
+    #            if len(feature.size()) == 2:
+    #                if self.is_train:
+    #                    feature = feature[random.randint(0, feature.shape[0] - 1), :]
+    #                else:
+    #                    # feature = torch.mean(feature, dim = 0)
+    #                    feature = torch.mean(feature, dim=0)
+    #            target_speeches.append(feature)
+    #            logger.info(f"target_speeches len: {len(target_speeches)}") #{target_speeches[0].shape}, {target_speeches[1].shape}, {target_speeches[2].shape}")
+    #        target_speeches = torch.stack(target_speeches)
+    #        return target_speeches
 
     def load_ts(self, file, speaker_ids, rc=0):
         # assert self.dataset_name.startswith('Libri') or self.dataset_name.startswith('SparseLibri'), "only support librimix dataset"
