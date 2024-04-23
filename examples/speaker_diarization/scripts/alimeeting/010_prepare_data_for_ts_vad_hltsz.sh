@@ -20,12 +20,23 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
 
 fi
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
-   data_path=data/alimeeting
+   data_path=/data/alimeeting
    fairseq_dir=/home/maduo/codebase/fairseq_speechtext
     echo " Process dataset: Train dataset, get json files"
    python $fairseq_dir/examples/speaker_diarization/source_md/prepare_alimeeting_format_data_and_generate_target_audio.py \
     --data_path ${data_path} \
     --type Train  
+
+fi
+
+
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
+   data_path=/data/alimeeting
+   fairseq_dir=/home/maduo/codebase/fairseq_speechtext
+    echo " Process dataset: Train dataset, get json files"
+   python $fairseq_dir/examples/speaker_diarization/source_md/prepare_alimeeting_format_data_and_generate_target_audio.py \
+    --data_path ${data_path} \
+    --type Test
 
 fi
 

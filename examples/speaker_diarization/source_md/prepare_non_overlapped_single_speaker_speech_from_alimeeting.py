@@ -1,6 +1,6 @@
+#!/usr/bin/env python3
 import glob, tqdm, os, textgrid, soundfile, copy, json, argparse, numpy, torch, wave
 from collections import defaultdict
-
 
 class Segment(object):
     def __init__(self, uttid, spkr, stime, etime, text, name):
@@ -53,40 +53,29 @@ def remove_overlap(aa, bb):
     # Return the new list of intervals
     return result
 
-
 def get_args():
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("--data_path", help="the path for the alimeeting")
     parser.add_argument("--type", help="Eval or Train")
-    #parser.add_argument(
-    #    "--length_embedding",
-    #    type=float,
-    #    default=6,
-    #    help="length of embeddings, seconds",
-    #)
-    #parser.add_argument(
-    #    "--step_embedding", type=float, default=1, help="step of embeddings, seconds"
-    #)
-    parser.add_argument(
-        "--batch_size", type=int, default=96, help="step of embeddings, seconds"
-    )
 
     args = parser.parse_args()
-    args.path = os.path.join(
-        args.data_path, "%s_Ali" % (args.type), "%s_Ali_far" % (args.type)
-    )
-    args.path_wav = os.path.join(args.path, "audio_dir")
-    args.path_grid = os.path.join(args.path, "textgrid_dir")
-    args.target_wav = os.path.join(args.path, "target_audio")
-    args.target_embedding = os.path.join(args.path, "target_embedding")
-    args.out_text = os.path.join(args.path, "%s.json" % (args.type))
     return args
 
 
 def main():
     args = get_args()
+    
+    if args.type=="Train":
+        args.path=os.path.join(args.data_path,f"{args.type}_Ali_far")
+    else:
+        args.path=os.path.join(args.data_path,f"{args.type}_Ali",f"{args.type}_Ali_far")
+    args.path_wav = os.path.join(args.path, "audio_dir")
+    args.path_grid = os.path.join(args.path, "textgrid_dir")
+    args.target_wav = os.path.join(args.path, "non_overlap")
+
+
     text_grids = glob.glob(args.path_grid + "/*")
-    outs = open(args.out_text, "w")
+    #outs = open(args.out_text, "w")
     for text_grid in tqdm.tqdm(text_grids):
         tg = textgrid.TextGrid.fromFile(text_grid)
         segments = []
@@ -97,7 +86,8 @@ def main():
             for j in range(tg[i].__len__()):
                 if tg[i][j].mark:
                     if tg[i].name not in spk:
-                        spk[tg[i].name] = num_spk
+                        #spk[tg[i].name] = num_spk
+                        spk[tg[i].name] = tg[i].name.split("_")[-1] 
                         num_spk += 1
                     segments.append(
                         Segment(
@@ -122,7 +112,6 @@ def main():
             dic[str(segments[i].uttid) + "_" + str(segments[i].spkr)] = segments[
                 i
             ].name.split("_")[-1]
-
         # Remove the overlapped speeech
         for key in intervals:
             new_interval = intervals[key]
@@ -155,29 +144,7 @@ def main():
                 e *= 16000
                 new_audio.extend(orig_audio[int(s) : int(e)])
             soundfile.write(output_wav, new_audio, 16000)
-        output_wav = os.path.join(output_dir, "all.wav")
-        soundfile.write(output_wav, orig_audio, 16000)
-
-        # Save the labels
-        for key in intervals:
-            labels = [0] * int(length / 16000 * 25)  # 40ms, one label
-            for interval in intervals[key]:
-                s, e = interval
-                for i in range(int(s * 25), min(int(e * 25) + 1, len(labels))):
-                    labels[i] = 1
-
-            room_speaker_id = room_id + "_" + str(key)
-            speaker_id = dic[room_speaker_id]
-
-            res = {
-                "filename": id_full,
-                "speaker_key": key,
-                "speaker_id": speaker_id,
-                "labels": labels,
-            }
-            json.dump(res, outs)
-            outs.write("\n")
-
-
+        #output_wav = os.path.join(output_dir, "all.wav")
+        #soundfile.write(output_wav, orig_audio, 16000)
 if __name__ == "__main__":
     main()
