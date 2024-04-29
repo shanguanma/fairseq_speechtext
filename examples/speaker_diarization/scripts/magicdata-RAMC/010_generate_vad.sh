@@ -8,7 +8,11 @@ stop_stage=1000
 . path_for_nn_vad.sh
 #vad_type="oracle"
 
-
+## note: you need to download this vad method recipe:https://github.com/shanguanma/voice-activity-detection.git
+## the recipe offer 1. data prepared for vad model
+##                  2. how to train a vad model use the above data
+##                  3. predict vad file using the above trained vad model
+##                  4. the vad file is used at spectral cluster for diarization task
 if [ ${stage} -le -1 ] && [ ${stop_stage} -ge -1 ];then
    echo "prepare kaldi format for  magicdata-RAMC data"
    vad_code=/home/maduo/codebase/voice-activity-detection
