@@ -43,7 +43,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
    data=data/magicdata-RAMC/test/
    output_dir=$data/predict_vad
    mkdir -p $output_dir
-   for audio_path in `awk '{print $1}' $data/wav.scp`;do
+   for audio_path in `awk '{print $2}' $data/wav.scp`;do
       audio_name=$(basename $audio_path | sed s:.wav$::)
       python  $vad_code/main.py predict \
 	        --threshold 0.91 \
@@ -53,3 +53,79 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
    done
  fi
 
+
+ if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ];then
+   echo "generate vad json file using pretrain transformer vad model "
+   #echo "transformer vad model is from https://github.com/voithru/voice-activity-detection/blob/main/tests/checkpoints/vad/sample.checkpoint"
+   echo "I used my pretrain vad model to get testset vad segement of magicdata-RAMC"
+   vad_code=/home/maduo/codebase/voice-activity-detection
+   vad_model=/home/maduo/codebase/voice-activity-detection/results/tests/vad/magicdata-RAMC-sample/v001/checkpoints/vad-magicdata-RAMC-sample-v001-epoch-019-val-acc-0.92249.checkpoint
+   data=data/magicdata-RAMC/test/
+   #output_dir=$data/predict_vad
+   #mkdir -p $output_dir
+   vad_threshold="0.5 0.6 0.7 0.8 0.9 0.91 0.92"
+   for name in $vad_threshold;do
+    for audio_path in `awk '{print $2}' $data/wav.scp`;do
+      audio_name=$(basename $audio_path | sed s:.wav$::)
+      echo "audio_path : $audio_path"
+      output_dir=$data/predict_vad_${name}
+      mkdir -p $output_dir
+      python  $vad_code/main.py predict \
+            --threshold $name \
+            --output-path $output_dir/${audio_name}.json \
+            $audio_path\
+            $vad_model
+   done
+  done
+ fi
+
+ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ];then
+   echo "generate vad json file using pretrain transformer vad model "
+   #echo "transformer vad model is from https://github.com/voithru/voice-activity-detection/blob/main/tests/checkpoints/vad/sample.checkpoint"
+   echo "I used my pretrain vad model to get testset vad segement of magicdata-RAMC"
+   vad_code=/home/maduo/codebase/voice-activity-detection
+   vad_model=/home/maduo/codebase/voice-activity-detection/results/tests/vad/magicdata-RAMC-sample/v001/checkpoints/vad-magicdata-RAMC-sample-v001-epoch-019-val-acc-0.92249.checkpoint
+   data=data/magicdata-RAMC/test/
+   #output_dir=$data/predict_vad
+   #mkdir -p $output_dir
+   vad_threshold="0.1 0.2 0.3 0.4 0.45 0.46 0.47 0.51 0.52 0.53"
+   for name in $vad_threshold;do
+    for audio_path in `awk '{print $2}' $data/wav.scp`;do
+      audio_name=$(basename $audio_path | sed s:.wav$::)
+      echo "audio_path : $audio_path"
+      output_dir=$data/predict_vad_${name}
+      mkdir -p $output_dir
+      python  $vad_code/main.py predict \
+            --threshold $name \
+            --output-path $output_dir/${audio_name}.json \
+            $audio_path\
+            $vad_model
+   done
+  done
+ fi
+
+
+  if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ];then
+   echo "generate vad json file using pretrain transformer vad model "
+   #echo "transformer vad model is from https://github.com/voithru/voice-activity-detection/blob/main/tests/checkpoints/vad/sample.checkpoint"
+   echo "I used my pretrain vad model to get testset vad segement of magicdata-RAMC"
+   vad_code=/home/maduo/codebase/voice-activity-detection
+   vad_model=/home/maduo/codebase/voice-activity-detection/results/tests/vad/magicdata-RAMC-sample/v001/checkpoints/vad-magicdata-RAMC-sample-v001-epoch-019-val-acc-0.92249.checkpoint
+   data=data/magicdata-RAMC/test/
+   #output_dir=$data/predict_vad
+   #mkdir -p $output_dir
+   vad_threshold="0.2 0.22 0.24 0.25 0.27 0.28 0.29 0.30 0.31 0.32 0.34 0.36 0.38"
+   for name in $vad_threshold;do
+    for audio_path in `awk '{print $2}' $data/wav.scp`;do
+      audio_name=$(basename $audio_path | sed s:.wav$::)
+      echo "audio_path : $audio_path"
+      output_dir=$data/predict_vad_${name}
+      mkdir -p $output_dir
+      python  $vad_code/main.py predict \
+            --threshold $name \
+            --output-path $output_dir/${audio_name}.json \
+            $audio_path\
+            $vad_model
+   done
+  done
+ fi
