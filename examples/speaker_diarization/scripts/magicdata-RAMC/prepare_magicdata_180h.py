@@ -3,21 +3,21 @@ import os
 import re
 
 def main():
-    txt_dir = "/data/MagicData-RAMC/MDT2021S003/TXT"
-    wav_dir = "/data/MagicData-RAMC/MDT2021S003/WAV"
-    output_dir= "/home/maduo/codebase/fairseq_speechtext/examples/speaker_diarization/data/magicdata-RAMC"
+    txt_dir = "/mntcephfs/lee_dataset/asr/MagicData-RAMC/MDT2021S003/TXT"
+    wav_dir = "/mntcephfs/lee_dataset/asr/MagicData-RAMC/MDT2021S003/WAV"
+    output_dir= "/mntnfs/lee_data1/maduo/codebase/fairseq_speechtext/examples/speaker_diarization/data/magicdata-RAMC_debug"
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs(f"{output_dir}/train", exist_ok=True)
     os.makedirs(f"{output_dir}/dev", exist_ok=True)
     os.makedirs(f"{output_dir}/test", exist_ok=True)
     txt_files = os.listdir(txt_dir)
-    
+
     if len(txt_files) != 351:
         raise Exception("Dataset is incomplete. Please check dataset.")
-    
+
     if len(os.listdir(wav_dir)) != 351:
         raise Exception("Dataset is incomplete. Please check dataset.")
-    
+
     patt = '(\d+)-(\d+)-(\d+)-(\d+)'
     for i in range(len(txt_files)-1):
         for x in range(i+1, len(txt_files)):
@@ -40,19 +40,22 @@ def main():
     seg_writter_train = open(f"{output_dir}/train/segment", "w+")
     scp_writter_train = open(f"{output_dir}/train/wav.scp", "w+")
     text_writter_train = open(f"{output_dir}/train/text", "w+")
-    rttm_writter_train = open(f"{output_dir}/train/rttm", "w+")
+    #rttm_writter_train = open(f"{output_dir}/train/rttm", "w+")
+    rttm_writter_train = open(f"{output_dir}/train/rttm_debug", "w+")
     utt2spk_writter_train = open(f"{output_dir}/train/utt2spk", "w+")
 
     seg_writter_dev = open(f"{output_dir}/dev/segment", "w+")
     scp_writter_dev = open(f"{output_dir}/dev/wav.scp", "w+")
     text_writter_dev = open(f"{output_dir}/dev/text", "w+")
-    rttm_writter_dev = open(f"{output_dir}/dev/rttm", "w+")
+    #rttm_writter_dev = open(f"{output_dir}/dev/rttm", "w+")
+    rttm_writter_dev = open(f"{output_dir}/dev/rttm_debug", "w+")
     utt2spk_writter_dev = open(f"{output_dir}/dev/utt2spk", "w+")
 
     seg_writter_test = open(f"{output_dir}/test/segment", "w+")
     scp_writter_test = open(f"{output_dir}/test/wav.scp", "w+")
     text_writter_test = open(f"{output_dir}/test/text", "w+")
-    rttm_writter_test = open(f"{output_dir}/test/rttm", "w+")
+    #rttm_writter_test = open(f"{output_dir}/test/rttm", "w+")
+    rttm_writter_test = open(f"{output_dir}/test/rttm_debug", "w+")
     utt2spk_writter_test = open(f"{output_dir}/test/utt2spk", "w+")
 
     for index, txt_file in enumerate(txt_files):
@@ -79,16 +82,16 @@ def main():
             during_time = str(round(float(end_time) - float(start_time), 2))
             person_id = splited_str[1]
             text = splited_str[3][:-1]
+            if person_id !="G00000000":
+                rttm_line = 'SPEAKER ' + name + ' 1 ' + start_time + ' ' + during_time + ' <NA> <NA> ' + person_id + ' <NA> <NA>\n'
 
-            rttm_line = 'SPEAKER ' + name + ' 1 ' + start_time + ' ' + during_time + ' <NA> <NA> ' + person_id + ' <NA> <NA>\n'
-            
             if index < 43:
                 rttm_writter_test.writelines(rttm_line)
             elif index < 332:
                 rttm_writter_train.writelines(rttm_line)
             else:
                 rttm_writter_dev.writelines(rttm_line)
-               
+
             if re.match('\[\*\]', text) is not None:
                 continue
 

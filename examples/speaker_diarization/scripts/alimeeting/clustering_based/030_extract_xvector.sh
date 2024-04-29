@@ -20,7 +20,7 @@ if [ $stage -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     do
       filename=$(echo "${audio}" | cut -f 1 -d '.')
       echo ${filename} > exp/list_${filename}.txt
-      
+
       $cuda_cmd $EXP_DIR/${part}/log/xvec/xvec_${filename}.log \
         python clustering_based/xvector/predict.py \
           --gpus true \

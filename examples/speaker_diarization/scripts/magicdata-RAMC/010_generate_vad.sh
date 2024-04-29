@@ -29,7 +29,7 @@ fi
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
    echo "train a vad model using magicdata-RAMC dataset "
    vad_code=/home/maduo/codebase/voice-activity-detection
-   
+
    CUDA_VISIBLE_DEVICES=0 python $vad_code/main.py train $vad_code/tests/configs/vad/train_config_magicdata-RAMC.yaml
 
 fi

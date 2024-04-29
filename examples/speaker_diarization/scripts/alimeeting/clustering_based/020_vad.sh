@@ -23,7 +23,7 @@ sctk_dir=SCTK-2.4.12/src/md-eval/
 ## step 3: get target dataset vad using the above segmentation model.
 export PATH=/usr/bin:$PATH # /usr/bin/soxi
 if [ $stage -le 0 ] && [ ${stop_stage} -ge 0 ]; then
-  
+
   if [ -f $model_dir/alimeeting_epoch0_step2600.ckpt ]; then
     echo "Found existing AliMeeting pyannote segmentation model, skipping training..."
   else
@@ -77,7 +77,7 @@ if [ $stage -le 0 ] && [ ${stop_stage} -ge 0 ]; then
 #Epoch 0: 100%|█| 2600/2600 [1:06:12<00:00,  0.65it/s, v_num=3409, DiarizationErrorRate=0.199, DiarizationErrorRate/Confusion=0.0346, DiarizationErrorRate/FalseAlarm=0.0
 #`Trainer.fit` stopped: `max_epochs=1` reached.
 #Epoch 0: 100%|█| 2600/2600 [1:06:12<00:00,  0.65it/s, v_num=3409, DiarizationErrorRate=0.199, DiarizationErrorRate/Confusion=0.0346, DiarizationErrorRate/FalseAlarm=0.0
-    
+
    #cp exp/pyannote/alimeeting/lightning_logs/version_0/checkpoints/epoch=0-step=2492.ckpt $model_dir/alimeeting_epoch0_step2492.ckpt
   fi
 fi
@@ -91,7 +91,7 @@ if [ $stage -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     do
       filename=$(echo "${audio}" | cut -f 1 -d '.')
       echo ${filename} > exp/list_${filename}.txt
-      
+
       $train_cmd $EXP_DIR/${part}/log/vad/vad_${filename}.log \
         python clustering_based/vad/pyannote_vad.py \
           --model $model_dir/alimeeting_epoch0_step2600.ckpt \
@@ -100,8 +100,8 @@ if [ $stage -le 1 ] && [ ${stop_stage} -ge 1 ]; then
           --out-dir $EXP_DIR/$part/vad \
           --onset ${onset} --offset ${offset} \
           --min-duration-on ${min_duration_on} \
-          --min-duration-off ${min_duration_off} & 
-      
+          --min-duration-off ${min_duration_off} &
+
     done
     wait
     )
@@ -120,13 +120,13 @@ if [ $stage -le 2 ] && [ ${stop_stage} -ge 2 ]; then
       awk -v SESSION=${session} \
         '{print "SPEAKER", SESSION, "1", $1, $2-$1, "<NA> <NA> sp <NA> <NA>"}' $x >> $EXP_DIR/hyp_${part}_vad.rttm
     done
-    #$sctk_dir/md-eval.pl -r $EXP_DIR/ref_${part}.rttm -s $EXP_DIR/hyp_${part}_vad.rttm -c 0.25 
+    #$sctk_dir/md-eval.pl -r $EXP_DIR/ref_${part}.rttm -s $EXP_DIR/hyp_${part}_vad.rttm -c 0.25
     echo "its score detail:"
     echo "DER, MS, FA, SC"
     # pip install git+https://github.com/desh2608/spyder.git@main
     #LC_ALL= spyder  $EXP_DIR/ref_${part}.rttm $EXP_DIR/hyp_${part}_vad.rttm -r single -p -c 0.25
     sctk_dir=SCTK-2.4.12/src/md-eval/
-    $sctk_dir/md-eval.pl -c 0.25 -r $EXP_DIR/ref_${part}.rttm -s $EXP_DIR/hyp_${part}_vad.rttm 
+    $sctk_dir/md-eval.pl -c 0.25 -r $EXP_DIR/ref_${part}.rttm -s $EXP_DIR/hyp_${part}_vad.rttm
   done
   #rm $EXP_DIR/ref.rttm $EXP_DIR/ref.rttm
 fi
