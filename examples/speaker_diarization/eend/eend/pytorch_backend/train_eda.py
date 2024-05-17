@@ -1,10 +1,10 @@
 # Copyright 2019 Hitachi, Ltd. (author: Yusuke Fujita)
-# Modified by: Yexin Yang
+# Modified by: Duo Ma 
 # Licensed under the MIT license.
 #
 import os
 import numpy as np
-from tqdm import tqdm
+#from tqdm import tqdm
 import logging
 
 import torch
@@ -12,9 +12,9 @@ from torch import optim
 from torch import nn
 from torch.utils.data import DataLoader
 
-from eend.eend.pytorch_backend.models import TransformerModel, NoamScheduler
+from eend.eend.pytorch_backend.models import TransformerEdaModel, NoamScheduler
 from eend.eend.pytorch_backend.diarization_dataset import KaldiDiarizationDataset, my_collate
-from eend.eend.pytorch_backend.loss import batch_pit_loss, report_diarization_error
+#from eend.eend.pytorch_backend.loss import batch_pit_loss, report_diarization_error
 
 
 def train(rank, world_size,args):
@@ -71,15 +71,17 @@ def train(rank, world_size,args):
     # Prepare model
     Y, T = next(iter(train_set))
 
-    if args.model_type == 'Transformer':
-        model = TransformerModel(
+    if args.model_type == 'TransformerEda':
+        model = TransformerEdaModel(
                 n_speakers=args.num_speakers,
                 in_size=Y.shape[1],
                 n_units=args.hidden_size,
                 n_heads=args.transformer_encoder_n_heads,
                 n_layers=args.transformer_encoder_n_layers,
                 dropout=args.transformer_encoder_dropout,
-                has_pos=False
+                has_pos=False,
+                diar_weight=args.diar_weight,
+                attractor_weight=args.attractor_weight,
                 )
     else:
         raise ValueError('Possible model_type is "Transformer"')
@@ -167,8 +169,8 @@ def train(rank, world_size,args):
             y = [yi.to(device) for yi in y]
             t = [ti.to(device) for ti in t]
 
-            output = model(y)
-            loss, label = batch_pit_loss(output, t)
+            loss, stats = model(y,t)
+            #loss, label = batch_pit_loss(output, t)
             # clear graph here
             loss.backward()
 
@@ -185,7 +187,6 @@ def train(rank, world_size,args):
                     for param in model.parameters():
                         if param.grad is not None and param.grad.nelement() > 0:
                             nn.utils.clip_grad_value_(model.parameters(), args.gradclip)
-                    #nn.utils.clip_grad_value_(model.parameters(), args.gradclip)
             loss_epoch += loss.item()
             num_total += 1
         loss_epoch /= num_total
@@ -201,14 +202,15 @@ def train(rank, world_size,args):
             for y, t in dev_iter:
                 y = [yi.to(device) for yi in y]
                 t = [ti.to(device) for ti in t]
-                output = model(y)
-                _, label = batch_pit_loss(output, t)
-                stats = report_diarization_error(output, label)
+                #output = model(y)
+                #_, label = batch_pit_loss(output, t)
+                #stats = report_diarization_error(output, label)
+                _,stats = model(y,t)
                 for k, v in stats.items():
                     stats_avg[k] = stats_avg.get(k, 0) + v
                 cnt += 1
             stats_avg = {k:v/cnt for k,v in stats_avg.items()}
-            stats_avg['DER'] = stats_avg['diarization_error'] / stats_avg['speaker_scored'] * 100
+            stats_avg['der'] = stats_avg['der']  * 100
             for k in stats_avg.keys():
                 stats_avg[k] = round(stats_avg[k], 2)
 

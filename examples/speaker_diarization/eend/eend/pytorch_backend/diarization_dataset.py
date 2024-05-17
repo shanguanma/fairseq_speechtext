@@ -61,7 +61,7 @@ class KaldiDiarizationDataset(torch.utils.data.Dataset):
         self.label_delay = label_delay
 
         self.data = kaldi_data.KaldiData(self.data_dir)
-
+        self.rate = rate
         # make chunk indices: filepath, start_frame, end_frame
         for rec in self.data.wavs:
             data_len = int(self.data.reco2dur[rec] * rate / frame_shift)
@@ -89,7 +89,7 @@ class KaldiDiarizationDataset(torch.utils.data.Dataset):
             self.frame_shift,
             self.n_speakers)
         # Y: (frame, num_ceps)
-        Y = feature.transform(Y, self.input_transform)
+        Y = feature.transform(Y, self.input_transform, self.rate)
         # Y_spliced: (frame, num_ceps * (context_size * 2 + 1))
         Y_spliced = feature.splice(Y, self.context_size)
         # Y_ss: (frame / subsampling, num_ceps * (context_size * 2 + 1))

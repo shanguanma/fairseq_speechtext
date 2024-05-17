@@ -42,7 +42,7 @@ def pit_loss(pred, label, label_delay=0):
             l[:len(l) - label_delay, ...]) for l in label_perms])
     min_loss = losses.min() * (len(label) - label_delay)
     min_index = losses.argmin().detach()
-    
+
     return min_loss, label_perms[min_index]
 
 
@@ -118,7 +118,7 @@ def report_diarization_error(ys, labels):
         for k, v in stats.items():
             stats_avg[k] = stats_avg.get(k, 0) + float(v)
         cnt += 1
-    
+
     stats_avg = {k:v/cnt for k,v in stats_avg.items()}
     return stats_avg
-        
+

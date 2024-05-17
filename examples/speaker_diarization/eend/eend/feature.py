@@ -24,7 +24,8 @@ def get_input_dim(
 def transform(
         Y,
         transform_type=None,
-        dtype=np.float32):
+        dtype=np.float32,
+        sample_rate: int=16000):
     """ Transform STFT feature
 
     Args:
@@ -44,21 +45,24 @@ def transform(
         Y = np.log(np.maximum(Y, 1e-10))
     elif transform_type == 'logmel':
         n_fft = 2 * (Y.shape[1] - 1)
-        sr = 16000
+        #sr = 16000
+        sr=sample_rate
         n_mels = 40
         mel_basis = librosa.filters.mel(sr, n_fft, n_mels)
         Y = np.dot(Y ** 2, mel_basis.T)
         Y = np.log10(np.maximum(Y, 1e-10))
     elif transform_type == 'logmel23':
         n_fft = 2 * (Y.shape[1] - 1)
-        sr = 8000
+        #sr = 8000
+        sr=sample_rate
         n_mels = 23
         mel_basis = librosa.filters.mel(sr, n_fft, n_mels)
         Y = np.dot(Y ** 2, mel_basis.T)
         Y = np.log10(np.maximum(Y, 1e-10))
     elif transform_type == 'logmel23_mn':
         n_fft = 2 * (Y.shape[1] - 1)
-        sr = 8000
+        #sr = 8000
+        sr=sample_rate
         n_mels = 23
         mel_basis = librosa.filters.mel(sr=sr, n_fft=n_fft, n_mels=n_mels)
         Y = np.dot(Y ** 2, mel_basis.T)
@@ -67,7 +71,8 @@ def transform(
         Y = Y - mean
     elif transform_type == 'logmel23_swn':
         n_fft = 2 * (Y.shape[1] - 1)
-        sr = 8000
+        #sr = 8000
+        sr=sample_rate
         n_mels = 23
         mel_basis = librosa.filters.mel(sr, n_fft, n_mels)
         Y = np.dot(Y ** 2, mel_basis.T)
@@ -84,7 +89,8 @@ def transform(
         Y = Y - mean
     elif transform_type == 'logmel23_mvn':
         n_fft = 2 * (Y.shape[1] - 1)
-        sr = 8000
+        #sr = 8000
+        sr=sample_rate
         n_mels = 23
         mel_basis = librosa.filters.mel(sr, n_fft, n_mels)
         Y = np.dot(Y ** 2, mel_basis.T)

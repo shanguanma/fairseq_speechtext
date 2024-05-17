@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 # Copyright 2019 Hitachi, Ltd. (author: Yusuke Fujita)
+# Modified by: Duo Ma 
 # Licensed under the MIT license.
 #
 import yamlargparse
@@ -61,7 +62,8 @@ def get_parser():
     parser.add_argument('--transformer-encoder-dropout', default=0.1, type=float)
     parser.add_argument('--gradient-accumulation-steps', default=1, type=int)
     parser.add_argument('--seed', default=777, type=int)
-    #args = parser.parse_args()
+    parser.add_argument('--diar_weight',default=1.0,type=float)
+    parser.add_argument('--attractor_weight',default=1.0,type=float)
     return parser
 
 def main():
@@ -71,7 +73,7 @@ def main():
     if not os.path.exists(args.model_save_dir):
         os.makedirs(args.model_save_dir)
 
-    from eend.eend.pytorch_backend.train import train
+    from eend.eend.pytorch_backend.train_eda import train
     import torch.multiprocessing as mp
     world_size = args.gpu
     assert world_size >= 1
@@ -86,7 +88,3 @@ torch.set_num_interop_threads(1)
 torch.multiprocessing.set_sharing_strategy('file_system') # solved this problem (https://zhuanlan.zhihu.com/p/585186356)
 if __name__ == "__main__":
     main()
-
-#from eend.eend.pytorch_backend.train import train
-#from eend.eend.pytorch_backend.train_md import train
-#train(args)
