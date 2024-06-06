@@ -21,8 +21,7 @@ chmod +x cuda_11.8.0_520.61.05_linux.run
 
 wget https://huggingface.co/csukuangfj/cudnn/resolve/main/cudnn-linux-x86_64-8.9.1.23_cuda11-archive.tar.xz
 For Chinese user, you can use the below url:
-wget https://hf-mirror.com/csukuangfj/cudnn/blob/main/cudnn-linux-x86_64-8.9.1.23_cuda11-archive.tar.xz
-
+wget https://hf-mirror.com/csukuangfj/cudnn/resolve/main/cudnn-linux-x86_64-8.9.1.23_cuda11-archive.tar.xz
 
 tar xvf cudnn-linux-x86_64-8.9.1.23_cuda11-archive.tar.xz --strip-components=1 -C /home/maduo/installed/cuda-11.8.0
 
