@@ -1115,7 +1115,7 @@ if [ ${stage} -le 16 ] && [ ${stop_stage} -ge 16 ];then
 
 fi
 
-#
+#(TODO) check
 if [ ${stage} -le 17 ] && [ ${stop_stage} -ge 17 ];then
    
    echo "Do model average ..."
@@ -1130,4 +1130,345 @@ if [ ${stage} -le 17 ] && [ ${stop_stage} -ge 17 ];then
             --num ${num_avg}
 
 
+fi
+
+
+if [ ${stage} -le 30 ] && [ ${stop_stage} -ge 30 ];then
+   echo "infer alimeeting eval dataset via ts_vad model trained on alimeeting train_ali_far dataset with musan and rirs noise"
+   echo "get overlap and nonoverlap DER"
+   regions="all overlap nonoverlap"
+   #regions="all"
+   for name in $regions;do
+        exp_name=baseline_cam++_speech_campplus_sv_zh-cn_16k-common_200k_speakers_with_musan_rirs
+        rs_len=4
+        segment_shift=1
+        gen_subset=Eval
+        speech_encoder_type="cam++"
+        speaker_embedding_name_dir="cam++_zh_cn_16k_common_feature_dir"
+        speaker_embed_dim=192
+	root_path=/home/maduo
+        data_path=/data/alimeeting/
+
+        exp_dir=${root_path}/exp/speaker_diarization/ts_vad
+        ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization
+        spk_path=${root_path}/model_hub/ts_vad/spk_embed/alimeeting/SpeakerEmbedding
+        results_path=${exp_dir}/${exp_name}/inf_detail/${gen_subset}_$name
+
+        rttm_dir=$root_path/model_hub/ts_vad
+        sctk_tool_path=$ts_vad_path/SCTK-2.4.12
+        rttm_name=alimeeting_eval ## offer groud truth label
+        python3 ${ts_vad_path}/ts_vad/generate_detail.py ${data_path} \
+          --user-dir ${ts_vad_path}/ts_vad \
+          --results-path ${results_path} \
+          --path ${exp_dir}/${exp_name}/checkpoints/checkpoint_best.pt \
+          --task ts_vad_task \
+          --spk-path ${spk_path} \
+          --rs-len ${rs_len} \
+          --segment-shift ${segment_shift} \
+          --gen-subset ${gen_subset} \
+          --batch-size 64 \
+          --sample-rate 16000 \
+          --inference \
+          --speech-encoder-type ${speech_encoder_type}\
+          --rttm_dir ${rttm_dir}\
+          --sctk_tool_path ${sctk_tool_path}\
+          --rttm_name $rttm_name\
+          --speaker_embedding_name_dir $speaker_embedding_name_dir\
+	  --speaker_embed_dim $speaker_embed_dim\
+	  --regions ${name}
+ done
+ ## more detail you can see $results_path
+ ## best result at threshold=0.5 on eval set:
+ #       overlap nonoverlap total
+ # DER%  13.92    2.11       4.91
+fi
+
+if [ ${stage} -le 31 ] && [ ${stop_stage} -ge 31 ];then
+   echo "infer alimeeting eval dataset via ts_vad model trained on alimeeting train_ali_far dataset with musan and rirs noise"
+   echo "get overlap and nonoverlap DER"
+   regions="all overlap nonoverlap"
+   #regions="all"
+   for name in $regions;do
+        exp_name=baseline_cam++_speech_campplus_sv_zh-cn_16k-common_200k_speakers_with_musan_rirs
+        rs_len=4
+        segment_shift=1
+        gen_subset=Test
+        speech_encoder_type="cam++"
+        speaker_embedding_name_dir="cam++_zh_cn_16k_common_feature_dir"
+        speaker_embed_dim=192
+        root_path=/home/maduo
+        data_path=/data/alimeeting/
+
+        exp_dir=${root_path}/exp/speaker_diarization/ts_vad
+        ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization
+        spk_path=${root_path}/model_hub/ts_vad/spk_embed/alimeeting/SpeakerEmbedding
+        results_path=${exp_dir}/${exp_name}/inf_detail/${gen_subset}_$name
+
+        rttm_dir=$root_path/model_hub/ts_vad
+        sctk_tool_path=$ts_vad_path/SCTK-2.4.12
+        rttm_name=alimeeting_test ## offer groud truth label
+        python3 ${ts_vad_path}/ts_vad/generate_detail.py ${data_path} \
+          --user-dir ${ts_vad_path}/ts_vad \
+          --results-path ${results_path} \
+          --path ${exp_dir}/${exp_name}/checkpoints/checkpoint_best.pt \
+          --task ts_vad_task \
+          --spk-path ${spk_path} \
+          --rs-len ${rs_len} \
+          --segment-shift ${segment_shift} \
+          --gen-subset ${gen_subset} \
+          --batch-size 64 \
+          --sample-rate 16000 \
+          --inference \
+          --speech-encoder-type ${speech_encoder_type}\
+          --rttm_dir ${rttm_dir}\
+          --sctk_tool_path ${sctk_tool_path}\
+          --rttm_name $rttm_name\
+          --speaker_embedding_name_dir $speaker_embedding_name_dir\
+          --speaker_embed_dim $speaker_embed_dim\
+          --regions ${name}
+ done
+ ## more detail you can see $results_path
+ ## best result at threshold=0.5 on test set:
+ #       overlap nonoverlap total
+ # DER%  17.25     2.10      5.52
+fi
+
+if [ ${stage} -le 32 ] && [ ${stop_stage} -ge 32 ];then
+   echo "infer alimeeting eval dataset via ts_vad model trained on alimeeting train_ali_far dataset with musan and rirs noise"
+   echo "get overlap and nonoverlap DER"
+   regions="all overlap nonoverlap"
+   #regions="all"
+   for name in $regions;do
+        exp_name=baseline_camppluse_zh_en_common_advanced_with_rirs
+        rs_len=4
+        segment_shift=1
+        gen_subset=Eval
+        speech_encoder_type="cam++"
+        speaker_embedding_name_dir="cam++_en_zh_feature_dir"
+        speaker_embed_dim=192
+        root_path=/home/maduo
+        data_path=/data/alimeeting/
+
+        exp_dir=${root_path}/exp/speaker_diarization/ts_vad
+        ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization
+        spk_path=${root_path}/model_hub/ts_vad/spk_embed/alimeeting/SpeakerEmbedding
+        results_path=${exp_dir}/${exp_name}/inf_detail/${gen_subset}_$name
+
+        rttm_dir=$root_path/model_hub/ts_vad
+        sctk_tool_path=$ts_vad_path/SCTK-2.4.12
+        rttm_name=alimeeting_eval ## offer groud truth label
+        python3 ${ts_vad_path}/ts_vad/generate_detail.py ${data_path} \
+          --user-dir ${ts_vad_path}/ts_vad \
+          --results-path ${results_path} \
+          --path ${exp_dir}/${exp_name}/checkpoints/checkpoint_best.pt \
+          --task ts_vad_task \
+          --spk-path ${spk_path} \
+          --rs-len ${rs_len} \
+          --segment-shift ${segment_shift} \
+          --gen-subset ${gen_subset} \
+          --batch-size 64 \
+          --sample-rate 16000 \
+          --inference \
+          --speech-encoder-type ${speech_encoder_type}\
+          --rttm_dir ${rttm_dir}\
+          --sctk_tool_path ${sctk_tool_path}\
+	  --rttm_name $rttm_name\
+          --speaker_embedding_name_dir $speaker_embedding_name_dir\
+          --speaker_embed_dim $speaker_embed_dim\
+          --regions ${name}
+ done
+ ## more detail you can see $results_path
+ ## for fair compare with stage30-31,result at threshold=0.5 on eval(dev) set:
+ ## collar=0.25
+ #       overlap nonoverlap total
+ # DER%  16.07     2.46     5.68
+fi
+
+if [ ${stage} -le 33 ] && [ ${stop_stage} -ge 33 ];then
+   echo "infer alimeeting eval dataset via ts_vad model trained on alimeeting train_ali_far dataset with musan and rirs noise"
+   echo "get overlap and nonoverlap DER"
+   regions="all overlap nonoverlap"
+   #regions="all"
+   for name in $regions;do
+        exp_name=baseline_camppluse_zh_en_common_advanced_with_rirs
+        rs_len=4
+        segment_shift=1
+        gen_subset=Test
+        speech_encoder_type="cam++"
+        speaker_embedding_name_dir="cam++_en_zh_feature_dir"
+        speaker_embed_dim=192
+        root_path=/home/maduo
+        data_path=/data/alimeeting/
+
+        exp_dir=${root_path}/exp/speaker_diarization/ts_vad
+        ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization
+        spk_path=${root_path}/model_hub/ts_vad/spk_embed/alimeeting/SpeakerEmbedding
+        results_path=${exp_dir}/${exp_name}/inf_detail/${gen_subset}_$name
+
+        rttm_dir=$root_path/model_hub/ts_vad
+        sctk_tool_path=$ts_vad_path/SCTK-2.4.12
+        rttm_name=alimeeting_test ## offer groud truth label
+        python3 ${ts_vad_path}/ts_vad/generate_detail.py ${data_path} \
+          --user-dir ${ts_vad_path}/ts_vad \
+          --results-path ${results_path} \
+          --path ${exp_dir}/${exp_name}/checkpoints/checkpoint_best.pt \
+          --task ts_vad_task \
+          --spk-path ${spk_path} \
+          --rs-len ${rs_len} \
+          --segment-shift ${segment_shift} \
+          --gen-subset ${gen_subset} \
+          --batch-size 64 \
+          --sample-rate 16000 \
+          --inference \
+          --speech-encoder-type ${speech_encoder_type}\
+          --rttm_dir ${rttm_dir}\
+          --sctk_tool_path ${sctk_tool_path}\
+	  --rttm_name $rttm_name\
+          --speaker_embedding_name_dir $speaker_embedding_name_dir\
+          --speaker_embed_dim $speaker_embed_dim\
+          --regions ${name}
+ done
+ ## more detail you can see $results_path
+ ## for fair compare with stage30-31,result at threshold=0.5 on test set:
+ ## collar=0.25
+ #       overlap nonoverlap total
+ # DER%  17.11    2.24      5.60
+fi
+
+if [ ${stage} -le 34 ] && [ ${stop_stage} -ge 34 ];then
+   echo "infer alimeeting eval dataset via ts_vad model trained on alimeeting train_ali_far dataset with musan and rirs noise"
+   echo "get overlap and nonoverlap DER"
+   regions="all overlap nonoverlap"
+   #regions="all"
+   collar="0.0"
+   subset="Eval Test"
+   for name in $regions;do
+     for c in $collar;do
+      for sub in $subset;do	
+        exp_name=baseline_cam++_speech_campplus_sv_zh-cn_16k-common_200k_speakers_with_musan_rirs
+        rs_len=4
+        segment_shift=1
+        gen_subset=$sub
+        speech_encoder_type="cam++"
+        speaker_embedding_name_dir="cam++_zh_cn_16k_common_feature_dir"
+        speaker_embed_dim=192
+        root_path=/home/maduo
+        data_path=/data/alimeeting/
+        
+        exp_dir=${root_path}/exp/speaker_diarization/ts_vad
+        ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization
+        spk_path=${root_path}/model_hub/ts_vad/spk_embed/alimeeting/SpeakerEmbedding
+        results_path=${exp_dir}/${exp_name}/inf_detail/${gen_subset}_${name}_$c
+
+        rttm_dir=$root_path/model_hub/ts_vad
+        #sctk_tool_path=$ts_vad_path/SCTK-2.4.12
+	s=$sub
+        rttm_name=alimeeting_${s,,} ## offer groud truth label, ${s,,} means that Eval->eval or Test->test
+        python3 ${ts_vad_path}/ts_vad/generate_detail.py ${data_path} \
+          --user-dir ${ts_vad_path}/ts_vad \
+          --results-path ${results_path} \
+          --path ${exp_dir}/${exp_name}/checkpoints/checkpoint_best.pt \
+          --task ts_vad_task \
+          --spk-path ${spk_path} \
+          --rs-len ${rs_len} \
+          --segment-shift ${segment_shift} \
+          --gen-subset ${gen_subset} \
+          --batch-size 64 \
+          --sample-rate 16000 \
+          --inference \
+          --speech-encoder-type ${speech_encoder_type}\
+          --rttm_dir ${rttm_dir}\
+	  --rttm_name $rttm_name\
+          --speaker_embedding_name_dir $speaker_embedding_name_dir\
+          --speaker_embed_dim $speaker_embed_dim\
+          --regions ${name}\
+	  --collar $c
+    done
+  done
+ done
+ ## more detail you can see $results_path
+ ## for fair compare with stage30-31,result at threshold=0.5 on eval(dev) set:
+ ## collar=0.0
+ #       overlap nonoverlap total
+ # DER%  21.01     7.68     12.73
+
+ ## for fair compare with stage30-31,result at threshold=0.5 on test set:
+ ## collar=0.0
+ #       overlap nonoverlap total
+ # DER%  22.84    7.60      13.18
+fi
+
+
+if [ ${stage} -le 35 ] && [ ${stop_stage} -ge 35 ];then
+   echo "infer alimeeting eval dataset via ts_vad model trained on alimeeting train_ali_far dataset with musan and rirs noise"
+   echo "get overlap and nonoverlap DER"
+   regions="all overlap nonoverlap"
+   #regions="all"
+   collar="0.0 0.25"
+   subset="Eval Test"
+   for name in $regions;do
+     for c in $collar;do
+      for sub in $subset;do
+        exp_name=baseline_camppluse_zh_en_common_advanced_with_musan_rirs
+        rs_len=4
+        segment_shift=1
+        gen_subset=$sub
+        speech_encoder_type="cam++"
+        speaker_embedding_name_dir="cam++_en_zh_feature_dir"
+        speaker_embed_dim=192
+        root_path=/home/maduo
+        data_path=/data/alimeeting/
+
+        exp_dir=${root_path}/exp/speaker_diarization/ts_vad
+        ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization
+        spk_path=${root_path}/model_hub/ts_vad/spk_embed/alimeeting/SpeakerEmbedding
+        results_path=${exp_dir}/${exp_name}/inf_detail/${gen_subset}_${name}_$c
+
+        rttm_dir=$root_path/model_hub/ts_vad
+        #sctk_tool_path=$ts_vad_path/SCTK-2.4.12
+        s=$sub
+        rttm_name=alimeeting_${s,,} ## offer groud truth label, ${s,,} means that Eval->eval or Test->test
+        python3 ${ts_vad_path}/ts_vad/generate_detail.py ${data_path} \
+          --user-dir ${ts_vad_path}/ts_vad \
+          --results-path ${results_path} \
+          --path ${exp_dir}/${exp_name}/checkpoints/checkpoint_best.pt \
+          --task ts_vad_task \
+          --spk-path ${spk_path} \
+          --rs-len ${rs_len} \
+          --segment-shift ${segment_shift} \
+          --gen-subset ${gen_subset} \
+	  --batch-size 64 \
+          --sample-rate 16000 \
+          --inference \
+          --speech-encoder-type ${speech_encoder_type}\
+          --rttm_dir ${rttm_dir}\
+          --rttm_name $rttm_name\
+          --speaker_embedding_name_dir $speaker_embedding_name_dir\
+          --speaker_embed_dim $speaker_embed_dim\
+          --regions ${name}\
+          --collar $c
+    done
+  done
+ done
+ ## more detail you can see $results_path
+ ## for fair compare with stage30-31,result at threshold=0.5 on eval(dev) set:
+ ## collar=0.0
+ #       overlap nonoverlap total
+ # DER%  20.75     7.62    12.59
+
+ ## for fair compare with stage30-31,result at threshold=0.5 on test set:
+ ## collar=0.0
+ #       overlap nonoverlap total
+ # DER%  22.63    7.44      13.01
+
+ ## more detail you can see $results_path
+ ## for fair compare with stage30-31,result at threshold=0.5 on eval(dev) set:
+ ## collar=0.25
+ #       overlap nonoverlap total
+ # DER%  13.27     2.03      4.69
+
+ ## for fair compare with stage30-31,result at threshold=0.5 on test set:
+ ## collar=0.25
+ #       overlap nonoverlap total
+ # DER%  16.24    1.92      5.15
 fi

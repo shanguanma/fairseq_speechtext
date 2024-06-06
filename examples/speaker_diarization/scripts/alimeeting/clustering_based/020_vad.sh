@@ -21,7 +21,8 @@ sctk_dir=SCTK-2.4.12/src/md-eval/
 ## step 1: download pyannote segmentation model
 ## step 2: resegmentation on target dataset (i.e. alimeeting) , called as segmentation finetune
 ## step 3: get target dataset vad using the above segmentation model.
-export PATH=/usr/bin:$PATH # /usr/bin/soxi
+
+export PATH=/home/maduo/installed/sox-14.4.2/bin:$PATH # /usr/bin/soxi
 if [ $stage -le 0 ] && [ ${stop_stage} -ge 0 ]; then
 
   if [ -f $model_dir/alimeeting_epoch0_step2600.ckpt ]; then
@@ -31,7 +32,7 @@ if [ $stage -le 0 ] && [ ${stop_stage} -ge 0 ]; then
     cp $DATA_DIR/{train,eval}/rttm/* exp/pyannote/alimeeting/lists/
     for f in $DATA_DIR/{train,eval}/audios/*; do
       filename=$(basename $f .wav)
-      duration=$(/usr/bin/soxi -D $f)
+      duration=$(soxi -D $f)
       echo "$filename 1 0.00 $duration" > exp/pyannote/alimeeting/lists/${filename}.uem
     done
     ls -1 $DATA_DIR/train/audios/*.wav | xargs -n 1 basename | sed 's/\.[^.]*$//' > exp/pyannote/alimeeting/lists/train.meetings.txt

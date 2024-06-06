@@ -49,7 +49,8 @@ if [ $stage -le 0 ] && [ ${stop_stage} -ge 0 ]; then
 fi
 
 if [ $stage -le 1 ] && [ ${stop_stage} -ge 1 ]; then
-  for part in eval test; do
+  #for part in eval test; do
+  for part in eval; do
     echo "Evaluating $part"
     cat $DATA_DIR/$part/rttm/*.rttm > $EXP_DIR/ref_${part}_vbx_ovl.rttm
     cat $EXP_DIR/$part/vbx_ovl/*.rttm > $EXP_DIR/hyp_${part}_vbx_ovl.rttm
@@ -58,11 +59,12 @@ if [ $stage -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     echo "its score detail:"
     echo "DER, MS, FA, SC"
     # pip install git+https://github.com/desh2608/spyder.git@main
-    #LC_ALL= spyder  $EXP_DIR/ref_${part}_vbx_ovl.rttm $EXP_DIR/hyp_${part}_vbx_ovl.rttm -r single -p -c 0.25
+    LC_ALL= spyder  $EXP_DIR/ref_${part}_vbx_ovl.rttm $EXP_DIR/hyp_${part}_vbx_ovl.rttm -r nonoverlap -p -c 0.25 | grep Overall 
     sctk_dir=SCTK-2.4.12/src/md-eval/
-    $sctk_dir/md-eval.pl -c 0.25 -r $EXP_DIR/ref_${part}_vbx_ovl.rttm -s $EXP_DIR/hyp_${part}_vbx_ovl.rttm
-    
- done
+    #$sctk_dir/md-eval.pl -c 0.25 -r $EXP_DIR/ref_${part}_vbx_ovl.rttm -s $EXP_DIR/hyp_${part}_vbx_ovl.rttm
+    #$sctk_dir/md-eval.pl -c 0.25  -r $EXP_DIR/ref_${part}_vbx_ovl.rttm -s $EXP_DIR/hyp_${part}_vbx_ovl.rttm
+    #source_md/md-eval_sctk_2.4.0_kaldi.pl -c 0.25  -r $EXP_DIR/ref_${part}_vbx_ovl.rttm -s $EXP_DIR/hyp_${part}_vbx_ovl.rttm
+done
 fi
 #Evaluating eval
 #its score detail:
