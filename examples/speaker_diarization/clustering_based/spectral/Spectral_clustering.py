@@ -2,9 +2,9 @@ import numpy as np
 import scipy
 from sklearn.cluster import SpectralClustering
 
-## note: 2024-4-15, sklearn package don't support overlap aware spectral clustering, 
+## note: 2024-4-15, sklearn package don't support overlap aware spectral clustering,
 ## I will moddify the code (https://github.com/desh2608/scikit-learn/blob/overlap/sklearn/cluster/_spectral.py) and add into my fork sklearn v1.4.2
-## 
+##
 
 # NME low-level operations
 # These functions are taken from the Kaldi scripts.
@@ -80,7 +80,7 @@ Parameters:
    max_num_clusters: maximum allowed number of clusters to generate
    pmax: maximum count for matrix binarization (should be at least 2)
    pbest: best count for matrix binarization (if 0, determined automatically)
-Returns: cluster assignments for every speaker embedding   
+Returns: cluster assignments for every speaker embedding
 """
 
 
@@ -120,7 +120,7 @@ Parameters:
    OLVec: 0/1 vector denoting which segments are overlap segments
    num_clusters: number of clusters to generate
    pbest: best count for matrix binarization
-Returns: cluster assignments for every speaker embedding   
+Returns: cluster assignments for every speaker embedding
 """
 
 
