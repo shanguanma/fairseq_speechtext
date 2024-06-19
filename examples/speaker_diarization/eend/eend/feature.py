@@ -281,6 +281,8 @@ def get_labeledSTFT(
         if start < end_frame and end_frame <= end:
             rel_end = end_frame - start
         if rel_start is not None or rel_end is not None:
+            #print(f"rel_start: {rel_start}, rel_end: {rel_end}, T shape: {T.shape}")
+            #print(f"speaker_index: {speaker_index}")
             T[rel_start:rel_end, speaker_index] = 1
             if use_speaker_id:
                 S[rel_start:rel_end, all_speaker_index] = 1

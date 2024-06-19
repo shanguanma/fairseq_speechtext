@@ -32,7 +32,8 @@ with open(args.out_rttm_file, 'w') as wf:
         for spkid, frames in enumerate(a.T):
             frames = np.pad(frames, (1, 1), 'constant')
             changes, = np.where(np.diff(frames, axis=0) != 0)
-            fmt = "SPEAKER {:s} 1 {:7.2f} {:7.2f} <NA> <NA> {:s} <NA>"
+            # There are two <NA> at the end instead of one. The standard rttm format has two <NA> at the end.
+            fmt = "SPEAKER {:s} 1 {:7.2f} {:7.2f} <NA> <NA> {:s} <NA> <NA>" 
             for s, e in zip(changes[::2], changes[1::2]):
                 print(fmt.format(
                       session,

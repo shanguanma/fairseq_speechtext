@@ -89,12 +89,21 @@ class KaldiDiarizationDataset(torch.utils.data.Dataset):
             self.frame_shift,
             self.n_speakers)
         # Y: (frame, num_ceps)
-        Y = feature.transform(Y, self.input_transform, self.rate)
+        Y = feature.transform(Y, transform_type=self.input_transform, sample_rate=self.rate)
         # Y_spliced: (frame, num_ceps * (context_size * 2 + 1))
         Y_spliced = feature.splice(Y, self.context_size)
         # Y_ss: (frame / subsampling, num_ceps * (context_size * 2 + 1))
         Y_ss, T_ss = feature.subsample(Y_spliced, T, self.subsampling)
+ 
+        # why add .copy ?  it can solve the below warning:
+        # UserWarning: The given NumPy array is not writable, 
+        # and PyTorch does not support non-writable tensors. 
+        # This means writing to this tensor will result in undefined behavior. 
+        # You may want to copy the array to protect its data or make it writable before converting it to a tensor. 
+        # This type of warning will be suppressed for the rest of this program. 
+        # (Triggered internally at ../torch/csrc/utils/tensor_numpy.cpp:206.)
+        # Y_ss = torch.from_numpy(Y_ss).float() 
 
-        Y_ss = torch.from_numpy(Y_ss).float()
-        T_ss = torch.from_numpy(T_ss).float()
+        Y_ss = torch.from_numpy(Y_ss.copy()).float()
+        T_ss = torch.from_numpy(T_ss.copy()).float()
         return Y_ss, T_ss

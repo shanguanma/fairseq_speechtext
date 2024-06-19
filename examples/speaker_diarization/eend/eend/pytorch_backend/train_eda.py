@@ -12,8 +12,10 @@ from torch import optim
 from torch import nn
 from torch.utils.data import DataLoader
 
-from eend.eend.pytorch_backend.models import TransformerEdaModel, NoamScheduler
+from eend.eend.pytorch_backend.models import TransformerEdaModel, NoamScheduler,EendEdaModel
 from eend.eend.pytorch_backend.diarization_dataset import KaldiDiarizationDataset, my_collate
+from eend.eend.pytorch_backend.checkpoints import save_state_dict_and_infos 
+from eend.eend.pytorch_backend.checkpoints import keep_best_models
 #from eend.eend.pytorch_backend.loss import batch_pit_loss, report_diarization_error
 
 
@@ -22,24 +24,20 @@ def train(rank, world_size,args):
     This function is called from eend/bin/train.py with
     parsed command-line arguments.
     """
-    # Logger settings====================================================
-    #formatter = logging.Formatter("[ %(levelname)s : %(asctime)s ] - %(message)s")
-    #logging.basicConfig(level=logging.DEBUG, format="[ %(levelname)s : %(asctime)s ] - %(message)s")
-    #logging.basicConfig(level=logging.INFO, format="[ %(levelname)s : %(asctime)s ] - %(message)s")
     logging.basicConfig(level=logging.INFO,format="%(asctime)s (%(module)s:%(lineno)d) %(levelname)s: %(message)s")
 
-    #logger = logging.getLogger("Pytorch")
-    #fh = logging.FileHandler(args.model_save_dir + "/train.log", mode='w')
-    #fh.setFormatter(formatter)
-    #logger.addHandler(fh)
-    # ===================================================================
-    #logger.info(str(args))
     logging.info(f"args: {str(args)}")
 
-    np.random.seed(args.seed)
+    
     os.environ['PYTORCH_SEED'] = str(args.seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+    # For reproducibility
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)  # if you are using multi-GPU.
+    np.random.seed(args.seed)  # Numpy module.
+    torch.manual_seed(args.seed)
 
     train_set = KaldiDiarizationDataset(
         data_dir=args.train_data_dir,
@@ -83,14 +81,22 @@ def train(rank, world_size,args):
                 diar_weight=args.diar_weight,
                 attractor_weight=args.attractor_weight,
                 )
-    else:
-        raise ValueError('Possible model_type is "Transformer"')
+    elif args.model_type == 'ConformerEda':
+        model = EendEdaModel(
+                n_speakers=args.num_speakers,
+                in_size=Y.shape[1],
+                n_units=args.hidden_size,
+                n_heads=args.transformer_encoder_n_heads,
+                n_layers=args.transformer_encoder_n_layers,
+                dropout=args.transformer_encoder_dropout, 
+                diar_weight=args.diar_weight,
+                attractor_weight=args.attractor_weight,
+                encoder_type="conformer",
+                eda_type="lstm"
+                ) 
+    else:  
+        raise ValueError('Possible model_type is "TransformerEda"')
 
-    #device = torch.device("cuda" if (torch.cuda.is_available() and args.gpu > 0) else "cpu")
-    #if device.type == "cuda":
-        #from torch.nn.parallel import DistributedDataParallel as DDP
-        #model = DDP(model, device_ids=[0], find_unused_parameters=True)
-    #     model = nn.DataParallel(model, list(range(args.gpu)))
 
     if world_size > 1:
         from eend.eend.pytorch_backend.dist import setup_dist
@@ -132,10 +138,13 @@ def train(rank, world_size,args):
                                   warmup_steps=args.noam_warmup_steps)
 
     # Init/Resume
+    start_epoch=0 
     if args.initmodel:
         logging.info(f"Load model from {args.initmodel}")
+        start_epoch=int(args.initmodel.split("/")[-1].split(".")[0].split("_")[-1]) # i.e.: /path/to/model_10.pt 
+        logging.info(f"model start train from {start_epoch} epoch")
         model.load_state_dict(torch.load(args.initmodel))
-
+        
     train_iter = DataLoader(
             train_set,
             batch_size=args.batchsize,
@@ -157,7 +166,7 @@ def train(rank, world_size,args):
     # Training
     # y: feats, t: label
     # grad accumulation is according to: https://discuss.pytorch.org/t/why-do-we-need-to-set-the-gradients-manually-to-zero-in-pytorch/4903/20
-    for epoch in range(1, args.max_epochs + 1):
+    for epoch in range(start_epoch + 1, args.max_epochs + 1):
         model.train()
         # zero grad here to accumualte gradient
         optimizer.zero_grad()
@@ -210,13 +219,21 @@ def train(rank, world_size,args):
                     stats_avg[k] = stats_avg.get(k, 0) + v
                 cnt += 1
             stats_avg = {k:v/cnt for k,v in stats_avg.items()}
-            stats_avg['der'] = stats_avg['der']  * 100
-            for k in stats_avg.keys():
-                stats_avg[k] = round(stats_avg[k], 2)
+            #stats_avg['der'] = stats_avg['der']  * 100
+            #for k in stats_avg.keys():
+            #    stats_avg[k] = round(stats_avg[k], 2)
 
-        model_filename = os.path.join(args.model_save_dir, f"transformer{epoch}.th")
-        torch.save(model.state_dict(), model_filename)
-
+        model_filename = os.path.join(args.model_save_dir, f"model_{epoch}.pt")
+        #torch.save(model.state_dict(), model_filename)
+        #stats = os.path.join(args.model_save_dir, f"model_{epoch}.yaml")
+        info ={}
+        info.update({"epoch":f"{epoch}","tag": "CV"})
+        for k, v in stats_avg.items():
+            if isinstance(v, torch.Tensor):
+                info[k] = v.item()
+            else:
+                info[k] = v
+        save_state_dict_and_infos(model, model_filename, info)
         logging.info(f"Epoch: {epoch:3d}, LR: {optimizer.param_groups[0]['lr']:.7f},\
             Training Loss: {loss_epoch:.5f}, Dev Stats: {stats_avg}")
 

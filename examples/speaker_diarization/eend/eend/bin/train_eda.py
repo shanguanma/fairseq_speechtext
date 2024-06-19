@@ -7,6 +7,9 @@
 import yamlargparse
 import os
 import torch
+import torch.multiprocessing as mp
+from eend.eend.pytorch_backend.train_eda import train
+
 def get_parser():
     parser = yamlargparse.ArgumentParser(description='EEND training')
     parser.add_argument('-c', '--config', help='config file path',
@@ -73,8 +76,6 @@ def main():
     if not os.path.exists(args.model_save_dir):
         os.makedirs(args.model_save_dir)
 
-    from eend.eend.pytorch_backend.train_eda import train
-    import torch.multiprocessing as mp
     world_size = args.gpu
     assert world_size >= 1
     if world_size > 1:
