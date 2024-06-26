@@ -6,28 +6,6 @@ import sys
 import argparse
 from pathlib import Path
 import torch
-#def checkpoint_paths(path: str, pattern=r"model_(\d+)\.pt", keep_match=False):
-#    """Retrieves all checkpoints found in `path` directory.
-#
-#    Checkpoints are identified by matching filename to the specified pattern. If
-#    the pattern contains groups, the result will be sorted by the first group in
-#    descending order.
-#    """
-#    pt_regexp = re.compile(pattern)
-#    #files = PathManager.ls(path)
-#    #files = [x for x in Path(path).iterdir() if x.is_file()]
-#    files = glob.glob('{}/model_*.pt'.format(path))
-#    entries = []
-#    for i, f in enumerate(files):
-#        m = pt_regexp.fullmatch(f)
-#        if m is not None:
-#            idx = float(m.group(1)) if len(m.groups()) > 0 else i
-#            entries.append((idx, m.group(0)))
-#    if keep_match:
-#        return [(os.path.join(path, x[1]), x[0]) for x in sorted(entries, reverse=True)]
-#    else:
-#        return [os.path.join(path, x[1]) for x in sorted(entries, reverse=True)]
-#
 
 def str2bool(v):
     """Used in argparse.ArgumentParser.add_argument to indicate

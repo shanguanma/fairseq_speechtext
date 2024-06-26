@@ -29,12 +29,35 @@ def _gen_frame_indices(
             yield (i + 1) * step, data_length
 
 
-def my_collate(batch):
-    data, target = list(zip(*batch))
-    return [data, target]
+def my_collate(sample):
+    r"""
+    This sample is from __getitem__ output of dataset. 
+    This function will output paded format data for dataloader.
+    
+    feats_length = torch.tensor([x['feat'].size(0) for x in sample],
+                                dtype=torch.int32) #(B,)
+    feats = [torch.tensor(x['feat']) for x in sample]
+    feats = torch.nn.utils.rnn.pad_sequence(feats, padding_value=-1, batch_first=True)#(B,T,C)
 
 
-class KaldiDiarizationDataset(torch.utils.data.Dataset):
+    masks = [torch.tensor(x['mask']) for x in sample]
+    masks = torch.nn.utils.rnn.pad_sequence(masks, padding_value=-1, batch_first=True)#(B,T,C)
+    label_lengths = torch.tensor([x['labels'].size(0) for x in sample],
+                                 dtype=torch.int32)
+    labels = [x['label'] for x in sample]
+    labels = torch.nn.utils.rnn.pad_sequence(labels,padding_value=-1,batch_first=True)#(B,max_num_segments_include_speaker) 
+    target ={'masks':masks,'labels': labels,'label_lengths':label_lengths}
+    return {'feat': feats,'feat_lenght':feats_length,'target': target} # forward input of model
+
+    """
+    ## I will disable paded batch, and Pad batch in forward as needed
+    feat,mask,label = list(zip(*sample))
+    return [feat,mask,label]
+
+     
+
+
+class KaldiDiarizationDatasetMask2former(torch.utils.data.Dataset):
     def __init__(
             self,
             data_dir,
@@ -90,7 +113,7 @@ class KaldiDiarizationDataset(torch.utils.data.Dataset):
             self.frame_shift,
             self.n_speakers)
         """
-        Y, T, _ = feature.get_labeledSTFT(
+        Y, T, _, labels = feature.get_labeledSTFT_and_mask(
             self.data,
             rec,
             st,
@@ -98,7 +121,11 @@ class KaldiDiarizationDataset(torch.utils.data.Dataset):
             self.frame_size,
             self.frame_shift,
             self.n_speakers)
-
+        
+        #if T is not None:
+        assert Y is not None, f"Y: {Y}"
+        assert T is not None, f" T: {T}"
+        assert labels is not None, f"labels: {labels}"
         # Y: (frame, num_ceps)
         #logging.info(f"in the __getitem__: feat Y shape: {Y.shape}")
         Y = feature.transform(Y, transform_type=self.input_transform, sample_rate=self.rate)
@@ -126,4 +153,8 @@ class KaldiDiarizationDataset(torch.utils.data.Dataset):
 
         Y_ss = torch.from_numpy(Y_ss.copy()).float()
         T_ss = torch.from_numpy(T_ss.copy()).float()
-        return Y_ss, T_ss
+        labels = torch.from_numpy(labels.copy()).long()
+        #targets={"labels": labels,"masks":T_ss}
+        #sample={"feat":Y_ss,"mask":T_ss, 'label': labels}
+        #return sample 
+        return Y_ss, T_ss, labels

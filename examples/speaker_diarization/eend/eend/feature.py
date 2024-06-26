@@ -2,7 +2,7 @@
 # Licensed under the MIT license.
 #
 # This module is for computing audio features
-
+import logging
 import numpy as np
 import librosa
 import scipy.signal
@@ -25,7 +25,9 @@ def transform(
         Y,
         transform_type=None,
         dtype=np.float32,
-        sample_rate: int=16000):
+        sample_rate: int=16000,
+        n_fft: int=1024, # it is same as stft setting, it is window size,the unit is sampling point
+        ):
     """ Transform STFT feature
 
     Args:
@@ -99,6 +101,19 @@ def transform(
         Y = Y - mean
         std = np.maximum(np.std(Y, axis=0), 1e-10)
         Y = Y / std
+    elif transform_type == 'logmel23_espnet':
+        # it is from https://github.com/espnet/espnet/blob/master/espnet/transform/spectrogram.py#L71
+        fmin = 0
+        fmax = sample_rate / 2
+        n_mels=23
+        eps=1e-10
+        n_fft = 2 * (Y.shape[1] - 1) # because it is based on https://librosa.org/doc/main/generated/librosa.stft.html
+        #if sample_rate==16000:
+        #    assert n_fft == 400 # 25ms windows size
+        #elif sample_rate==8000:
+        #    assert n_fft == 200 # 25ms windows size
+        mel_basis = librosa.filters.mel(sr=sample_rate, n_fft=n_fft, n_mels=n_mels, fmin=fmin, fmax=fmax)
+        Y = np.log10(np.maximum(eps, np.dot(Y, mel_basis.T)))
     else:
         raise ValueError('Unknown transform_type: %s' % transform_type)
     return Y.astype(dtype)
@@ -139,8 +154,11 @@ def splice(Y, context_size=0):
 
 def stft(
         data,
-        frame_size=1024,
-        frame_shift=256):
+        frame_size=400,#25ms window size for 16000Hz
+        frame_shift=160,# 10ms frame shift for 16000Hz
+        #frame_size=200,#25ms window size for 8000Hz
+        #frame_shift=80,# 10ms frame shift for 8000Hz
+    ):
     """ Compute STFT features
 
     Args:
@@ -152,6 +170,7 @@ def stft(
     Returns:
         stft: STFT frames
             (n_frames, n_bins)-shaped np.complex64 array
+            n_bins = 1+n_fft/2
     """
     # round up to nearest power of 2
     fft_size = 1 << (frame_size-1).bit_length()
@@ -178,8 +197,8 @@ def get_frame_labels(
         rec,
         start=0,
         end=None,
-        frame_size=1024,
-        frame_shift=256,
+        frame_size=400,
+        frame_shift=160,
         n_speakers=None):
     """ Get frame-aligned labels of given recording
     Args:
@@ -230,11 +249,20 @@ def get_labeledSTFT(
         kaldi_obj,
         rec, start, end, frame_size, frame_shift,
         n_speakers=None,
-        use_speaker_id=False):
+        use_speaker_id=False,
+    ):
     """ Extracts STFT and corresponding labels
 
     Extracts STFT and corresponding diarization labels for
     given recording id and start/end times
+
+    this function is used for stardand EEND or EEND-EDA diarization data format.
+    it will ouput three types of data,
+    1): speech feature i.e.: stft feature, shape: (frames, 1 + n_fft/2),
+        Then, in the subsequent diarization dataset, we generate mel spectrograms, splice, subsample, and other operations.
+    2): target feature, target feature, it is integer types, shape: (frames, num_speakers)
+        The frame containing the speaker is set to 1, and the frame without the speaker is set to 0
+    3): target speakers,(optional), it is not used at here.
 
     Args:
         kaldi_obj (KaldiData)
@@ -247,7 +275,7 @@ def get_labeledSTFT(
             if None, the value is given from data
     Returns:
         Y: STFT
-            (n_frames, n_bins)-shaped np.complex64 array,
+            (n_frames, n_bins)-shaped np.complex64 array, n_bins = 1+n_fft/2
         T: label
             (n_frmaes, n_speakers)-shaped np.int32 array.
     """
@@ -255,10 +283,13 @@ def get_labeledSTFT(
             rec, start * frame_shift, end * frame_shift)
     Y = stft(data, frame_size, frame_shift)
     filtered_segments = kaldi_obj.segments[rec]
+    #print(f"filtered_segments: {filtered_segments}")
+
     # filtered_segments = kaldi_obj.segments[kaldi_obj.segments['rec'] == rec]
     speakers = np.unique(
             [kaldi_obj.utt2spk[seg['utt']] for seg
-                in filtered_segments]).tolist()
+                in filtered_segments]).tolist() # i.e. ['32-21631', '7312-92432']
+    #print(f"speakers: {speakers}")
     if n_speakers is None:
         n_speakers = len(speakers)
     T = np.zeros((Y.shape[0], n_speakers), dtype=np.int32)
@@ -266,8 +297,15 @@ def get_labeledSTFT(
     if use_speaker_id:
         all_speakers = sorted(kaldi_obj.spk2utt.keys())
         S = np.zeros((Y.shape[0], len(all_speakers)), dtype=np.int32)
-
+    
     for seg in filtered_segments:
+        """
+        >>> speakers = ['32-21631', '7312-92432']
+        >>> speakers.index('32-21631')
+        0
+        >>> speakers.index('7312-92432') 
+        1
+        """
         speaker_index = speakers.index(kaldi_obj.utt2spk[seg['utt']])
         if use_speaker_id:
             all_speaker_index = all_speakers.index(kaldi_obj.utt2spk[seg['utt']])
@@ -281,13 +319,127 @@ def get_labeledSTFT(
         if start < end_frame and end_frame <= end:
             rel_end = end_frame - start
         if rel_start is not None or rel_end is not None:
-            #print(f"rel_start: {rel_start}, rel_end: {rel_end}, T shape: {T.shape}")
-            #print(f"speaker_index: {speaker_index}")
             T[rel_start:rel_end, speaker_index] = 1
+            print(f"rel_start: {rel_start}, rel_end: {rel_end}, T shape: {T.shape}, T: {T}")
+            print(f"speaker_index: {speaker_index}") # 0, or 1  for two speaker
+            print(f"Y shape: {Y.shape},") # 
             if use_speaker_id:
                 S[rel_start:rel_end, all_speaker_index] = 1
-
+                print(f"use_speaker_id, S shape: {S.shape}")
+    
     if use_speaker_id:
         return Y, T, S
     else:
-        return Y, T
+        return Y, T, None
+
+
+def get_labeledSTFT_and_mask(
+        kaldi_obj,
+        rec, start, end, frame_size, frame_shift,
+        n_speakers=None,
+        use_speaker_id=False,
+    ):
+    """ Extracts STFT and corresponding labels
+
+    Extracts STFT and corresponding diarization labels for
+    given recording id and start/end times
+
+    Compared with get_labeledSTFT(), this function is used for mask2former style diarization data format.
+
+    Args:
+        kaldi_obj (KaldiData)
+        rec (str): recording id
+        start (int): start frame index
+        end (int): end frame index
+        frame_size (int): number of samples in a frame
+        frame_shift (int): number of shift samples
+        n_speakers (int): number of speakers
+            if None, the value is given from data
+    Return:
+        1): speech feature i.e.: stft feature, shape: (frames, 1 + n_fft/2),
+        Then, in the subsequent diarization dataset, we generate mel spectrograms, splice, subsample, and other operations.
+        2): target feature, it is bool style, shape (frames, num_segments_of_speakers),
+            note: The frame containing the speaker is set to True, and the frame without the speaker is set to False
+            At stardand EEND diarization setting, target feature, it is integer types.
+            The frame containing the speaker is set to 1, and the frame without the speaker is set to 0
+            it is used to compute dice and diarization(mask) loss
+        3): target speaker label feature, it is one-dimension np.int32 array, shape (num_segments_of_speakers)
+            Its length is The number of speech segments of the speaker included in this mixed speech.
+            It is used to compute class loss.
+    """
+    logger = logging.getLogger(__name__)
+    data, rate = kaldi_obj.load_wav(
+            rec, start * frame_shift, end * frame_shift)
+    Y = stft(data, frame_size, frame_shift)
+    filtered_segments = kaldi_obj.segments[rec]
+    #logger.warn(f"filtered_segments: {filtered_segments}, its length is : {len(filtered_segments)}")
+
+    # filtered_segments = kaldi_obj.segments[kaldi_obj.segments['rec'] == rec]
+    speakers = np.unique(
+            [kaldi_obj.utt2spk[seg['utt']] for seg
+                in filtered_segments]).tolist() # i.e. ['32-21631', '7312-92432']
+    #print(f"speakers: {speakers}")
+    if n_speakers is None:
+        n_speakers = len(speakers)
+    #T = np.zeros((Y.shape[0], n_speakers), dtype=np.int32)
+
+    if use_speaker_id:
+        all_speakers = sorted(kaldi_obj.spk2utt.keys())
+        S = np.zeros((Y.shape[0], len(all_speakers)), dtype=np.int32)
+
+    labels = [] # it will store speaker_index every speaker segments in the mix speech segments
+    mask=[]
+    for seg in filtered_segments:
+        """
+        >>> speakers = ['32-21631', '7312-92432']
+        >>> speakers.index('32-21631')
+        0
+        >>> speakers.index('7312-92432')
+        1
+        """
+        speaker_index = speakers.index(kaldi_obj.utt2spk[seg['utt']])
+        if use_speaker_id:
+            all_speaker_index = all_speakers.index(kaldi_obj.utt2spk[seg['utt']])
+        start_frame = np.rint(
+                seg['st'] * rate / frame_shift).astype(int)
+        end_frame = np.rint(
+                seg['et'] * rate / frame_shift).astype(int)
+        rel_start = rel_end = None
+        if start <= start_frame and start_frame < end:
+            rel_start = start_frame - start
+        if start < end_frame and end_frame <= end:
+            rel_end = end_frame - start
+        if rel_start is not None or rel_end is not None:
+            #T[rel_start:rel_end, speaker_index] = 1
+            #print(f"rel_start: {rel_start}, rel_end: {rel_end}, T shape: {T.shape}, T: {T}")
+            #print(f"speaker_index: {speaker_index}") # 0, or 1  for two speaker
+            #print(f"Y shape: {Y.shape},") #
+           
+            sub_mask = np.zeros(Y.shape[0],dtype=np.int32)
+            sub_mask[rel_start:rel_end] = 1
+            mask.append(sub_mask)
+    
+            labels.append(speaker_index)
+            if use_speaker_id:
+                S[rel_start:rel_end, all_speaker_index] = 1
+                #print(f"use_speaker_id, S shape: {S.shape}")
+    labels = np.array(labels) # list to np.array
+    #logger.warn(f"labels: {labels}")
+    #logger.warn(f"mask: {mask}")
+    # mask=[], bool(mask)=False
+    if bool(mask):
+        #logger.warn(f"mask: {mask}")
+        #return Y, None,None, None
+        T = np.stack(mask, axis=0).T #(n_frmaes, num_segments_of_speakers)
+        #print(f"labels: {labels}")
+        T = T.astype(bool)
+    else:
+        T = np.zeros((Y.shape[0],labels.size),dtype=np.int32) 
+    #logger.warn(f"T: {T}")
+    #if mask:
+    #    mask = np.stack(mask,axis=0).T
+    #    mask = mask.astype(bool)
+    if use_speaker_id:
+        return Y, T, S, labels
+    else:
+        return Y, T, None,labels

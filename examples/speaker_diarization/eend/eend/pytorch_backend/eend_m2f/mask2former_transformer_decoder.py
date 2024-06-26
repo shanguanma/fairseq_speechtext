@@ -9,8 +9,9 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 from .position_encoding import PositionEmbeddingSine
+from .net_utils import c2_xavier_fill
 
-class MultiScaleMaskedTransformerDecoder(nn.Module):
+class OneScaleMaskedTransformerDecoder(nn.Module):
     def __init__(
         self,
         in_channels,
@@ -112,11 +113,14 @@ class MultiScaleMaskedTransformerDecoder(nn.Module):
                 c2_xavier_fill(self.input_proj[-1])
             else:
                 self.input_proj.append(nn.Sequential())
-
+       
+        self.num_classes = num_classes
         # output FFNs
         if self.mask_classification:
-            self.class_embed = nn.Linear(hidden_dim, num_classes + 1)
+            self.class_embed = nn.Linear(hidden_dim, self.num_classes + 1)
         self.mask_embed = MLP(hidden_dim, hidden_dim, mask_dim, 3)
+        
+        self._logger = logging.getLogger(__name__)
 
     @property    
     def dec_layer(self):
@@ -127,7 +131,6 @@ class MultiScaleMaskedTransformerDecoder(nn.Module):
         #return 'MultiScaleMaskedTransformerDecoder' # or
         # the below  is more elegant
         return self.__class__.__name__
-
 
     def forward(self, x, mask_features, mask = None):
         # x is a list of multi-scale feature
@@ -190,9 +193,11 @@ class MultiScaleMaskedTransformerDecoder(nn.Module):
 
         assert len(predictions_class) == self.num_layers + 1
 
+        #self._logger.warn(f'in the transformer decoder,its output, pred_masks shape: {predictions_mask[-1].shape},pred_logits shape: {predictions_class[-1].shape} ')
+        
         out = {
-            'pred_logits': predictions_class[-1],
-            'pred_masks': predictions_mask[-1],
+            'pred_logits': predictions_class[-1],#(batch_size,num_queries,num_class+1)
+            'pred_masks': predictions_mask[-1], #(batch_size, num_queries,T,1)
             'aux_outputs': self._set_aux_loss(
                 predictions_class if self.mask_classification else None, predictions_mask
             )
@@ -229,24 +234,6 @@ class MultiScaleMaskedTransformerDecoder(nn.Module):
         else:
             return [{"pred_masks": b} for b in outputs_seg_masks[:-1]]
 
-
-
-
-def c2_xavier_fill(module: nn.Module) -> None:
-    """
-    Initialize `module.weight` using the "XavierFill" implemented in Caffe2.
-    Also initializes `module.bias` to 0.
-
-    Args:
-        module (torch.nn.Module): module to initialize.
-
-        it is from https://github.com/facebookresearch/fvcore/blob/main/fvcore/nn/weight_init.py
-    """
-    # Caffe2 implementation of XavierFill in fact
-    # corresponds to kaiming_uniform_ in PyTorch
-    nn.init.kaiming_uniform_(module.weight, a=1)
-    if module.bias is not None:
-        nn.init.constant_(module.bias, 0)
 
 class SelfAttentionLayer(nn.Module):
 

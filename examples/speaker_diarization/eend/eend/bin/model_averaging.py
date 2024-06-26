@@ -15,7 +15,10 @@ def average_model(ifiles, ofile):
     omodel = OrderedDict()
 
     for ifile in ifiles:
-        tmpmodel = torch.load(ifile)
+        if torch.cuda.is_available():
+            tmpmodel = torch.load(ifile)
+        else:
+            tmpmodel = torch.load(ifile,map_location=torch.device('cpu'))
         for k, v in tmpmodel.items():
             omodel[k] = omodel.get(k, 0) + v
 

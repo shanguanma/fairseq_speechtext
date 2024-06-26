@@ -1,25 +1,15 @@
-# Modified from https://github.com/facebookresearch/detr/blob/master/models/detr.py
+# Copyright (c) Facebook, Inc. and its affiliates.
+# Modified by Duo Ma from https://github.com/facebookresearch/Mask2Former/blob/main/mask2former/modeling/criterion.py
 """
-FastInst criterion.
+MaskFormer criterion.
 """
-from typing import List
+import logging
+
 import torch
 import torch.nn.functional as F
-from .utils import get_world_size
 from torch import nn
-from torch import Tensor
 
-from .utils import is_dist_avail_and_initialized
-from .utils import nested_tensor_from_tensor_list
-
-def cat(tensors: List[torch.Tensor], dim: int = 0):
-    """
-    Efficient version of torch.cat that avoids a copy if there is only a single element in a list
-    """
-    assert isinstance(tensors, (list, tuple))
-    if len(tensors) == 1:
-        return tensors[0]
-    return torch.cat(tensors, dim)
+from .utils import get_world_size,is_dist_avail_and_initialized, nested_tensor_from_tensor_list
 
 def get_uncertain_point_coords_with_randomness(
     coarse_logits, uncertainty_func, num_points, oversample_ratio, importance_sample_ratio
@@ -102,11 +92,13 @@ def point_sample(input, point_coords, **kwargs):
     return output
 
 
+
+
 def dice_loss(
         inputs: torch.Tensor,
         targets: torch.Tensor,
         num_masks: float,
-):
+    ):
     """
     Compute the DICE loss, similar to generalized IOU for masks
     Args:
@@ -115,7 +107,6 @@ def dice_loss(
         targets: A float tensor with the same shape as inputs. Stores the binary
                  classification label for each element in inputs
                 (0 for the negative class and 1 for the positive class).
-        num_masks: number of masks
     """
     inputs = inputs.sigmoid()
     inputs = inputs.flatten(1)
@@ -125,16 +116,12 @@ def dice_loss(
     return loss.sum() / num_masks
 
 
-dice_loss_jit = torch.jit.script(
-    dice_loss
-)  # type: torch.jit.ScriptModule
-
 
 def sigmoid_ce_loss(
         inputs: torch.Tensor,
         targets: torch.Tensor,
         num_masks: float,
-):
+    ):
     """
     Args:
         inputs: A float tensor of arbitrary shape.
@@ -142,18 +129,12 @@ def sigmoid_ce_loss(
         targets: A float tensor with the same shape as inputs. Stores the binary
                  classification label for each element in inputs
                 (0 for the negative class and 1 for the positive class).
-        num_masks: number of masks
     Returns:
         Loss tensor
     """
     loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction="none")
 
     return loss.mean(1).sum() / num_masks
-
-
-sigmoid_ce_loss_jit = torch.jit.script(
-    sigmoid_ce_loss
-)  # type: torch.jit.ScriptModule
 
 
 def calculate_uncertainty(logits):
@@ -217,13 +198,12 @@ class SetCriterion(nn.Module):
         target_classes = torch.full(
             src_logits.shape[:2], self.num_classes, dtype=torch.int64, device=src_logits.device
         )
-
         target_classes[idx] = target_classes_o
 
         loss_ce = F.cross_entropy(src_logits.transpose(1, 2), target_classes, self.empty_weight)
         losses = {"loss_ce": loss_ce}
         return losses
-
+    
     def loss_masks(self, outputs, targets, indices, num_masks):
         """Compute the losses related to the masks: the focal loss and the dice loss.
         targets dicts must contain the key "masks" containing a tensor of dim [nb_target_boxes, h, w]
@@ -232,9 +212,10 @@ class SetCriterion(nn.Module):
 
         src_idx = self._get_src_permutation_idx(indices)
         tgt_idx = self._get_tgt_permutation_idx(indices)
-        src_masks = outputs['pred_masks']
+        src_masks = outputs["pred_masks"]
         src_masks = src_masks[src_idx]
         masks = [t["masks"] for t in targets]
+        # TODO use valid to mask invalid areas due to padding in loss
         target_masks, valid = nested_tensor_from_tensor_list(masks).decompose()
         target_masks = target_masks.to(src_masks)
         target_masks = target_masks[tgt_idx]
@@ -275,26 +256,6 @@ class SetCriterion(nn.Module):
         del target_masks
         return losses
 
-    def loss_proposals(self, output_proposals, targets, indices):
-        assert "proposal_cls_logits" in output_proposals
-
-        proposal_size = output_proposals["proposal_cls_logits"].shape[-2:]
-        proposal_cls_logits = output_proposals["proposal_cls_logits"].flatten(2).float()  # b, c, hw
-
-        target_classes = self.num_classes * torch.ones([proposal_cls_logits.shape[0],
-                                                        proposal_size[0] * proposal_size[1]],
-                                                       device=proposal_cls_logits.device)
-        target_classes = target_classes.to(torch.int64)
-
-        target_classes_o = torch.cat([t["labels"][J] for t, (_, J) in zip(targets, indices)])
-        idx = self._get_src_permutation_idx(indices)
-        target_classes[idx] = target_classes_o
-
-        loss_proposal = F.cross_entropy(proposal_cls_logits, target_classes, ignore_index=-1)
-        losses = {"loss_proposal": loss_proposal}
-
-        return losses
-
     def _get_src_permutation_idx(self, indices):
         # permute predictions following indices
         batch_idx = torch.cat([torch.full_like(src, i) for i, (src, _) in enumerate(indices)])
@@ -322,23 +283,12 @@ class SetCriterion(nn.Module):
              targets: list of dicts, such that len(targets) == batch_size.
                       The expected keys in each dict depends on the losses applied, see each loss' doc
         """
-        # Compute proposal loss
-        proposal_loss_dict = {}
-        if outputs.get("proposal_cls_logits") is not None:
-            output_proposals = {"proposal_cls_logits": outputs.pop("proposal_cls_logits")}
-            indices = self.matcher(output_proposals, targets)
-            proposal_loss_dict = self.loss_proposals(output_proposals, targets, indices)
-
-        # Compute the main output loss
         outputs_without_aux = {k: v for k, v in outputs.items() if k != "aux_outputs"}
 
         # Retrieve the matching between the outputs of the last layer and the targets
-        if outputs_without_aux.get("pred_matching_indices") is not None:
-            indices = outputs_without_aux["pred_matching_indices"]
-        else:
-            indices = self.matcher(outputs_without_aux, targets)
+        indices = self.matcher(outputs_without_aux, targets)
 
-        # Compute the average number of target boxes across all nodes, for normalization purposes
+        # Compute the average number of target boxes accross all nodes, for normalization purposes
         num_masks = sum(len(t["labels"]) for t in targets)
         num_masks = torch.as_tensor(
             [num_masks], dtype=torch.float, device=next(iter(outputs.values())).device
@@ -355,17 +305,13 @@ class SetCriterion(nn.Module):
         # In case of auxiliary losses, we repeat this process with the output of each intermediate layer.
         if "aux_outputs" in outputs:
             for i, aux_outputs in enumerate(outputs["aux_outputs"]):
-                if aux_outputs.get("pred_matching_indices") is not None:
-                    indices = aux_outputs["pred_matching_indices"]
-                else:
-                    indices = self.matcher(aux_outputs, targets)
+                indices = self.matcher(aux_outputs, targets)
                 for loss in self.losses:
                     l_dict = self.get_loss(loss, aux_outputs, targets, indices, num_masks)
                     l_dict = {k + f"_{i}": v for k, v in l_dict.items()}
                     losses.update(l_dict)
-
-        losses.update(proposal_loss_dict)
-
+        loss = sum(losses.values())
+        
         return losses
 
     def __repr__(self):

@@ -1,7 +1,7 @@
 # training options
 sampling_rate: 16000
-frame_size: 200
-frame_shift: 80
+frame_size: 400 # 25ms
+frame_shift: 160 # 10ms
 model_type: Transformer
 max_epochs: 10
 gradclip: 5

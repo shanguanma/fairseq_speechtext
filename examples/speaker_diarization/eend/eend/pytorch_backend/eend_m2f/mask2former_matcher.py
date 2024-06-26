@@ -3,6 +3,7 @@
 """
 Modules to compute the matching cost and solve the corresponding LSAP.
 """
+import logging
 import torch
 import torch.nn.functional as F
 from scipy.optimize import linear_sum_assignment
@@ -51,7 +52,9 @@ def batch_dice_loss(inputs: torch.Tensor, targets: torch.Tensor):
     loss = 1 - (numerator + 1) / (denominator + 1)
     return loss
 
-
+batch_dice_loss_jit = torch.jit.script(
+    batch_dice_loss
+)  # type: torch.jit.ScriptModule
 
 
 def batch_sigmoid_ce_loss(inputs: torch.Tensor, targets: torch.Tensor):
@@ -80,6 +83,9 @@ def batch_sigmoid_ce_loss(inputs: torch.Tensor, targets: torch.Tensor):
 
     return loss / hw
 
+batch_sigmoid_ce_loss_jit = torch.jit.script(
+    batch_sigmoid_ce_loss
+)  # type: torch.jit.ScriptModule
 
 
 
@@ -107,6 +113,7 @@ class HungarianMatcher(nn.Module):
         assert cost_class != 0 or cost_mask != 0 or cost_dice != 0, "all costs cant be 0"
 
         self.num_points = num_points
+        self._logger = logging.getLogger(__name__)
 
     @torch.no_grad()
     def memory_efficient_forward(self, outputs, targets):
@@ -119,16 +126,23 @@ class HungarianMatcher(nn.Module):
         for b in range(bs):
 
             out_prob = outputs["pred_logits"][b].softmax(-1)  # [num_queries, num_classes]
-            tgt_ids = targets[b]["labels"]
+            #self._logger.warn(f'in the matcher, out_prob shape: {out_prob.shape}')
+            tgt_ids = targets[b]["labels"] #(num_instances)
+            #self._logger.warn(f'in the matcher, tgt_ids shape: {tgt_ids.shape}')
 
             # Compute the classification cost. Contrary to the loss, we don't use the NLL,
             # but approximate it in 1 - proba[target class].
             # The 1 is a constant that doesn't change the matching, it can be ommitted.
-            cost_class = -out_prob[:, tgt_ids]
+            cost_class = -out_prob[:, tgt_ids] #(num_queries,num_instances)
+            #self._logger.warn(f'in the matcher, cost_class shape: {cost_class.shape}')
 
-            out_mask = outputs["pred_masks"][b]  # [num_queries, H_pred, W_pred]
+            out_mask = outputs["pred_masks"][b]  # [num_queries, H_pred, W_pre] i.e.: (num_queries, T, 1)
+            #self._logger.warn(f"in the matcher,outputs['pred_masks'][b] shape: {outputs['pred_masks'][b].shape}")
             # gt masks are already padded when preparing target
-            tgt_mask = targets[b]["masks"].to(out_mask)
+
+            #self._logger.warn(f"in the matcher,targets[b]['masks'] shape: {targets[b]['masks'].shape}")
+            tgt_mask = targets[b]["masks"].to(out_mask) # (num_queries, T, 1)
+            #self._logger.warn(f'in the matcher, targets[b]["masks"].to(out_mask) shape: {targets[b]["masks"].to(out_mask).shape}')
 
             out_mask = out_mask[:, None]
             tgt_mask = tgt_mask[:, None]
@@ -148,14 +162,16 @@ class HungarianMatcher(nn.Module):
             ).squeeze(1)
 
             with autocast(enabled=False):
-                out_mask = out_mask.float()
-                tgt_mask = tgt_mask.float()
+                out_mask = out_mask.float() #(num_queries,self.num_points )
+                tgt_mask = tgt_mask.float() #(num_instances, self.num_points)
+                #self._logger.warn(f"out_mask shape: {out_mask.shape}")
+                #self._logger.warn(f"tgt_mask shape: {tgt_mask.shape}")
                 # Compute the focal loss between masks
-                cost_mask = batch_sigmoid_ce_loss_jit(out_mask, tgt_mask)
-
+                cost_mask = batch_sigmoid_ce_loss_jit(out_mask, tgt_mask) #(num_queries,num_instances)
+                #self._logger.warn(f"cost_mask shape: {cost_mask.shape}")
                 # Compute the dice loss betwen masks
-                cost_dice = batch_dice_loss_jit(out_mask, tgt_mask)
-            
+                cost_dice = batch_dice_loss_jit(out_mask, tgt_mask) # (num_queries,num_instances)
+                #self._logger.warn(f"cost_dice shape: {cost_dice.shape}")
             # Final cost matrix
             C = (
                 self.cost_mask * cost_mask
