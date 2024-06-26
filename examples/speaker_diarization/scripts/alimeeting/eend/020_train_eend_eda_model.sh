@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# Set bash to 'debug' mode, it will exit on :
+# -e 'error', -u 'undefined variable', -o ... 'error in pipeline', -x 'print commands',
+set -e
+#set -u
+set -o pipefail
+
 stage=0
 stop_stage=1000
 nj=32
@@ -24,6 +30,7 @@ if [ ${stage} -le 1 ]&&[ ${stop_stage} -ge 1 ];then
     model_type="ConformerEda"
     sampling_rate=16000
     num_speakers=4
+    resume_ckpt=$model_dir/model_25.pt
     python eend/eend/bin/train_eda.py -c $train_conf \
             $train_dir \
             $dev_dir \
@@ -31,6 +38,7 @@ if [ ${stage} -le 1 ]&&[ ${stop_stage} -ge 1 ];then
             --max-epochs $max_epochs\
             --model-type $model_type\
             --sampling-rate $sampling_rate\
-            --num-speakers $num_speakers
+            --num-speakers $num_speakers\
+	    --initmodel $resume_ckpt
 
 fi
