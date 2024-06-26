@@ -312,12 +312,14 @@ class CAMPPlus(nn.Module):
     def __init__(
         self,
         feat_dim=80,
-        embedding_size=512,
+        #embedding_size=512,
+        embedding_size=192,
         growth_rate=32,
         bn_size=4,
         init_channels=128,
         config_str="batchnorm-relu",
         memory_efficient=True,
+        speech_encoder=False,
     ):
         super(CAMPPlus, self).__init__()
 
@@ -369,10 +371,13 @@ class CAMPPlus(nn.Module):
         self.xvector.add_module("out_nonlinear", get_nonlinear(config_str, channels))
 
         self.xvector.add_module("stats", StatsPool())
+        #if not speech_encoder:
+        #    self.xvector.add_module(
+        #        "dense", DenseLayer(channels * 2, embedding_size, config_str="batchnorm_")
+        #    )
         self.xvector.add_module(
             "dense", DenseLayer(channels * 2, embedding_size, config_str="batchnorm_")
         )
-
         for m in self.modules():
             if isinstance(m, (nn.Conv1d, nn.Linear)):
                 nn.init.kaiming_normal_(m.weight.data)
@@ -383,7 +388,7 @@ class CAMPPlus(nn.Module):
         x = x.permute(0, 2, 1)  # (B,T,F) => (B,F,T)
         x = self.head(x)
         if get_time_out:
-            print(f"self.xvector[:-2]: {self.xvector[:-2]}")
+            #print(f"self.xvector[:-2]: {self.xvector[:-2]}")
             x = self.xvector[:-2](x) # (B,F,T) 
         else:
             x = self.xvector(x)

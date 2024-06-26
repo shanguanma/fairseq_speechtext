@@ -15,7 +15,9 @@ from ts_vad.data.ts_vad_dataset import TSVADDataset
 
 logger = logging.getLogger(__name__)
 
-SPEECH_ENCODER_TYPE = ChoiceEnum(["wavlm", "ecapa", "fbank", "cam++","ecapa_wespeaker","resnet34_wespeaker"])
+SPEECH_ENCODER_TYPE = ChoiceEnum(
+    ["wavlm", "ecapa", "fbank", "cam++", "ecapa_wespeaker", "resnet34_wespeaker"]
+)
 SPEAKER_ENCODER_TYPE = ChoiceEnum(["own", "ecapa", "resnet"])
 
 
@@ -109,11 +111,27 @@ class TSVADTaskConfig(FairseqDataclass):
         default="SCTK-2.4.12", metadata={"help": "specify reference rttm folder"}
     )
     speaker_embedding_name_dir: str = field(
-        default="ecapa_feature_dir", metadata={"help": "specify speaker embedding directory name"}
+        default="ecapa_feature_dir",
+        metadata={"help": "specify speaker embedding directory name"},
     )
     speaker_embed_dim: int = field(
         default=192, metadata={"help": "speaker embedding dimension."}
-    ) 
+    )
+    regions: str = field(
+        default="all",
+        metadata={
+            "help": """it is from spyder package help --regions [all|single|overlap|nonoverlap]
+                                  Only evaluate on the selected region type.
+                                  Default is all.  - all: all regions.  -
+                                  single: only single-speaker regions (ignore
+                                  silence and multiple speaker).  - overlap:
+                                  only regions with multiple speakers in the
+                                  reference.  - nonoverlap: only regions
+                                  without multiple speakers in the reference.
+                                  [default: all]"""
+        },
+    )
+
 
 @register_task("ts_vad_task", dataclass=TSVADTaskConfig)
 class TSVADTask(FairseqTask):
@@ -142,14 +160,14 @@ class TSVADTask(FairseqTask):
             )
 
         if self.cfg.dataset_name == "alimeeting":
-            if split=="Test" or split=="Eval":
-                spk_path = f"{self.cfg.spk_path}/{split}/{self.cfg.speaker_embedding_name_dir}" ## speaker embedding directory
-                json_path = f"{self.cfg.data}/{split}_Ali/{split}_Ali_far/{split}.json" ## offer mixer wavform name, 
-                audio_path = f"{self.cfg.data}/{split}_Ali/{split}_Ali_far/target_audio" ## offer number of speaker, offer mixer wavform name, offer target speaker wav, 
-            elif split=="Train":
-                spk_path = f"{self.cfg.spk_path}/{split}/{self.cfg.speaker_embedding_name_dir}" ## speaker embedding directory
-                json_path = f"{self.cfg.data}/{split}_Ali_far/{split}.json" ## offer mixer wavform name,
-                audio_path = f"{self.cfg.data}/{split}_Ali_far/target_audio" ## offer number of speaker, offer mixer wavform name, offer target speaker wav,
+            if split == "Test" or split == "Eval":
+                spk_path = f"{self.cfg.spk_path}/{split}/{self.cfg.speaker_embedding_name_dir}"  ## speaker embedding directory
+                json_path = f"{self.cfg.data}/{split}_Ali/{split}_Ali_far/{split}.json"  ## offer mixer wavform name,
+                audio_path = f"{self.cfg.data}/{split}_Ali/{split}_Ali_far/target_audio"  ## offer number of speaker, offer mixer wavform name, offer target speaker wav,
+            elif split == "Train":
+                spk_path = f"{self.cfg.spk_path}/{split}/{self.cfg.speaker_embedding_name_dir}"  ## speaker embedding directory
+                json_path = f"{self.cfg.data}/{split}_Ali_far/{split}.json"  ## offer mixer wavform name,
+                audio_path = f"{self.cfg.data}/{split}_Ali_far/target_audio"  ## offer number of speaker, offer mixer wavform name, offer target speaker wav,
 
         elif self.cfg.dataset_name == "ami":
             spk_path = f"{self.cfg.spk_path}/{split}"
@@ -192,9 +210,9 @@ class TSVADTask(FairseqTask):
             json_path = f"{self.cfg.data}/{split}/{split}_{self.cfg.label_rate}.json"
             audio_path = f"{self.cfg.data}/{split}/wavs_16k"
         elif self.cfg.dataset_name == "libri_css_sim":
-            spk_path = f"{self.cfg.spk_path}/{split}/embed" 
-            json_path = f"{self.cfg.data}/SimLibriCSS-{split}/{split}_{self.cfg.label_rate}.json" # mixer audio coresponding to label
-            audio_path = f"{self.cfg.data}/SimLibriCSS-{split}/wav" ## mixer audio
+            spk_path = f"{self.cfg.spk_path}/{split}/embed"
+            json_path = f"{self.cfg.data}/SimLibriCSS-{split}/{split}_{self.cfg.label_rate}.json"  # mixer audio coresponding to label
+            audio_path = f"{self.cfg.data}/SimLibriCSS-{split}/wav"  ## mixer audio
         elif self.cfg.dataset_name == "icmc":
             spk_path = f"{self.cfg.spk_path}/{split}_embed"
             json_path = f"{self.cfg.data}/{split}/{split}_{self.cfg.label_rate}.json"
@@ -203,10 +221,14 @@ class TSVADTask(FairseqTask):
             raise Exception(
                 f"The given dataset {self.cfg.dataset_name} is not supported."
             )
-        if self.cfg.speech_encoder_type == "cam++" or self.cfg.speech_encoder_type=="ecapa_wespeaker" or self.cfg.speech_encoder_type=="resnet34_wespeaker":
-            fbank_input=True
+        if (
+            self.cfg.speech_encoder_type == "cam++"
+            or self.cfg.speech_encoder_type == "ecapa_wespeaker"
+            or self.cfg.speech_encoder_type == "resnet34_wespeaker"
+        ):
+            fbank_input = True
         else:
-            fbank_input=False
+            fbank_input = False
         self.datasets[split] = TSVADDataset(
             json_path=json_path,
             audio_path=audio_path,

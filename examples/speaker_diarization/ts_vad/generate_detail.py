@@ -272,30 +272,23 @@ def _main(cfg: DictConfig, output_file):
         rttms[threshold].close()
 
     for threshold in rttms:
-        ## because the below
         out = subprocess.check_output(
             [
-                "perl",
-                f"{task.cfg.sctk_tool_path}/src/md-eval/md-eval.pl",
+                "spyder",
                 f"-c {task.cfg.collar}",
-                "-s %s" % (f"{rttm_path}_{threshold}"),
-                f"-r {task.cfg.rttm_dir}/{rttm_name.lower()}.rttm",
+                "-r",f"{task.cfg.regions}",
+                "-p",
+                f"{task.cfg.rttm_dir}/{rttm_name.lower()}.rttm",
+                f"{rttm_path}_{threshold}",
             ]
-        )
+        )  # command: spyder -c {task.cfg.collar} -r {task.cfg.regions} ref_rttm hyp_rttm
         out = out.decode("utf-8")
-        DER, MS, FA, SC = (
-            float(out.split("/")[0]),
-            float(out.split("/")[1]),
-            float(out.split("/")[2]),
-            float(out.split("/")[3]),
+
+        print(
+                f"Eval for threshold {threshold} : {out} \n"
         )
         print(
-            "Eval for threshold %2.2f: DER %2.2f%%, MS %2.2f%%, FA %2.2f%%, SC %2.2f%%\n"
-            % (threshold, DER, MS, FA, SC)
-        )
-        print(
-            "Eval for threshold %2.2f: DER %2.2f%%, MS %2.2f%%, FA %2.2f%%, SC %2.2f%%\n"
-            % (threshold, DER, MS, FA, SC),
+                f"Eval for threshold {threshold} : {out}\n",
             file=der_write,
         )
     der_write.close()
@@ -313,21 +306,31 @@ def cli_main():
         "model args (e.g. `AudioPretraining`)",
     )
     parser.add_argument(
-        "--sctk_tool_path", default="SCTK-2.4.12", help="specify sctk tool path"
-    )
-    parser.add_argument(
         "--rttm_dir", default="SCTK-2.4.12", help="specify reference rttm folder"
     )
-    parser.add_argument("--rttm_name",default=None,help="rttm name")
-    parser.add_argument("--speaker_embedding_name_dir",
-        default="ecapa_feature_dir", help= "specify speaker embedding directory name"
+    parser.add_argument("--rttm_name", default=None, help="rttm name")
+    parser.add_argument(
+        "--speaker_embedding_name_dir",
+        default="ecapa_feature_dir",
+        help="specify speaker embedding directory name",
     )
-    #parser.add_argument("--speaker_embed_dim_in_model",default=192,help="speaker embedding dimension")
-    #parser.add_argument("--speaker_embed_dim_in_task",default=192,help="speaker embedding dimension")
-    #speaker_embed_dim: int = field(
-    #    default=192, metadata={"help": "speaker embedding dimension."}
-    #)
-    parser.add_argument("--speaker_embed_dim",default=192,help="speaker embedding dimension")
+    parser.add_argument(
+        "--speaker_embed_dim", default=192, help="speaker embedding dimension"
+    )
+    parser.add_argument(
+        "--regions",
+        default="all",
+        help="""it is from spyder package help --regions [all|single|overlap|nonoverlap]
+                                  Only evaluate on the selected region type.
+                                  Default is all.  - all: all regions.  -
+                                  single: only single-speaker regions (ignore
+                                  silence and multiple speaker).  - overlap:
+                                  only regions with multiple speakers in the
+                                  reference.  - nonoverlap: only regions
+                                  without multiple speakers in the reference.
+                                  [default: all]""",
+    )
+    parser.add_argument("--collar",default=0.25, type=float, help="Collar size for spyder")
     args = options.parse_args_and_arch(
         parser
     )  # this function will rewrite task/model relative parameter, so these parameter names must occur task/model cfg .

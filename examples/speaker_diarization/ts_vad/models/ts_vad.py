@@ -273,7 +273,9 @@ class TSVADModel(BaseFairseqModel):
                 nn.ReLU(),
             )
         elif self.speech_encoder_type == "cam++": # its input is fbank , it is extract from data/ts_vad_dataset.py
-            self.speech_encoder = CAMPPlus(feat_dim=80,embedding_size=192)# embedding_size is from pretrain model embedding_size
+            #self.speech_encoder = CAMPPlus(feat_dim=80,embedding_size=192)# embedding_size is from pretrain model embedding_size
+            #self.speech_encoder = CAMPPlus(feat_dim=80,embedding_size=192,speech_encoder=True)
+            self.speech_encoder = CAMPPlus(feat_dim=80,embedding_size=512)
             self.speech_encoder.train()
             self.load_speaker_encoder(
                 cfg.speech_encoder_path, module_name="speech_encoder"
