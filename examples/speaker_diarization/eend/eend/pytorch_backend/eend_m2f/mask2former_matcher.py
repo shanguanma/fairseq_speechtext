@@ -170,7 +170,10 @@ class HungarianMatcher(nn.Module):
                 cost_mask = batch_sigmoid_ce_loss_jit(out_mask, tgt_mask) #(num_queries,num_instances)
                 #self._logger.warn(f"cost_mask shape: {cost_mask.shape}")
                 # Compute the dice loss betwen masks
-                cost_dice = batch_dice_loss_jit(out_mask, tgt_mask) # (num_queries,num_instances)
+                # when subsample=1, it will not work, the error is as follows:
+                # RuntimeError: Global alloc not supported yet, so I use batch_dice_loss instead of batch_dice_loss_jit
+                #cost_dice = batch_dice_loss_jit(out_mask, tgt_mask) # (num_queries,num_instances)
+                cost_dice = batch_dice_loss(out_mask, tgt_mask) # (num_queries,num_instances)
                 #self._logger.warn(f"cost_dice shape: {cost_dice.shape}")
             # Final cost matrix
             C = (

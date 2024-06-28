@@ -280,7 +280,7 @@ def train(rank, world_size,args):
 
                 cnt += 1
             stats_avg = {k:f"{round(v/cnt,5)}" for k,v in stats_avg.items()}
-            logging.info(f"stats_avg: {stats_avg}")
+            #logging.info(f"stats_avg: {stats_avg}")
         model_filename = os.path.join(args.model_save_dir, f"model_{epoch}.pt")
         info ={}
         info.update({"epoch":f"{epoch}","tag": "CV"})

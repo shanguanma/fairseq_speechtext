@@ -112,7 +112,7 @@ def infer(args):
                 #Y_chunked.to(device)
                 #ys = model.infer([Y_chunked.to(device)],threshold_discard=args.threshold_discard)
                 ys = model.infer2([Y_chunked.to(device)],threshold_discard=args.threshold_discard)
-                out_chunks.append(ys[0].cpu().detach().numpy())
+                out_chunks.append(ys[0])
                 #if args.save_attention_weight == 1:
                 #    raise NotImplementedError()
         outfname = recid + '.h5'

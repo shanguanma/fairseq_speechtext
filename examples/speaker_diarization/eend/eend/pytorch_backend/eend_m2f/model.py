@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import logging
 from typing import List, Dict
+import numpy as np
 import torch
 import torch.nn as nn
 from torch import Tensor
@@ -210,7 +211,7 @@ class EendM2F(nn.Module):
         return ys_active # [(T,n_spk)], because I will assume batch size=1.
         
     def infer2(self,src: List[Tensor],threshold_discard=0.8,max_infer_num_speaker=2):
-         """
+        """
         处理EEND-M2F模型的输出，根据给定的阈值过滤并确定说话人活动。
 
         :param pred_logits: 模型的概率输出，形状为(batch_size, num_queries, num_class+1)
@@ -224,11 +225,20 @@ class EendM2F(nn.Module):
         outputs = self.forward_model(src)
         # outputs["pred_logits"] shape:#(batch_size, num_queries,num_class+1)
         # outputs['pred_masks'] shape:#(batch_size, num_queries,T,1)
-        #pred_mask = [torch.nn.functional.sigmoid(p.squeeze(-1)) for p in outputs['pred_masks']]
-        #pred_logits = [F.softmax(p) for p in outputs["pred_logits"]]
         
+        # case1: bad, der is about 98%
+        #pred_mask =F.sigmoid(outputs['pred_masks'].squeeze(-1))
+        #pred_logits =F.softmax(outputs["pred_logits"],dim=-1)
+        
+
+        # case2: good der is about 48.61% 
         pred_mask =F.sigmoid(outputs['pred_masks'].squeeze(-1))
-        pred_logits =F.softmax(outputs["pred_logits"],dim=-1)
+        pred_logits =outputs["pred_logits"]
+
+        # case3: good der is about 79.18%  
+        #pred_mask =outputs['pred_masks'].squeeze(-1)
+        #pred_logits =outputs["pred_logits"]
+
         # pred_logits 形状：(batch size, num_queries, num_class+1)
         # pred_mask 形状：(batch size, num_queries, sequence_length)
 
@@ -261,7 +271,7 @@ class EendM2F(nn.Module):
 
             outputs.append(frame_speaker_activity)
 
-        return outputs
+        return outputs # [(T,n_spk)], because I will assume batch size=1. here (T,n_spk) is numpy array.
         
 
     @torch.no_grad()
