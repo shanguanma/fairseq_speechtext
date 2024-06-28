@@ -26,3 +26,21 @@ if [ ${stage} -le 0 ]&&[ ${stop_stage} -ge 0 ];then
 fi
 
 
+if [ ${stage} -le 1 ]&&[ ${stop_stage} -ge 1 ];then
+
+    echo "Start eend_eda training"
+    root_dir=/home/maduo/codebase/fairseq_speechtext/examples/speaker_diarization
+    train_conf=$root_dir/eend/conf/base/mini_librispeech_train.yaml
+    train_dir=$root_dir/data/simu/data/train_clean_5_ns2_beta2_500
+    dev_dir=$root_dir/data/simu/data/dev_clean_2_ns2_beta2_500
+    model_dir=$root_dir/exp/eend_eda_base_100epoch
+    max_epochs=100
+    model_type="TransformerEda"
+    python eend/eend/bin/train_eda.py -c $train_conf \
+	    $train_dir \
+	    $dev_dir \
+	    $model_dir \
+	    --max-epochs $max_epochs\
+	    --model-type $model_type
+
+fi
