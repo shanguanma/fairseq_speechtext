@@ -12,7 +12,8 @@ from torch import optim
 from torch import nn
 from torch.utils.data import DataLoader
 
-from eend.eend.pytorch_backend.models import TransformerModel, NoamScheduler
+from eend.eend.pytorch_backend.models import TransformerModel
+from eend.eend.pytorch_backend.lr_scheduler import NoamScheduler
 from eend.eend.pytorch_backend.diarization_dataset import KaldiDiarizationDataset, my_collate
 from eend.eend.pytorch_backend.loss import batch_pit_loss, report_diarization_error
 

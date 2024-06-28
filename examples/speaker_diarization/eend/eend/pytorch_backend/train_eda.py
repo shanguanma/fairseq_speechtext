@@ -1,5 +1,5 @@
 # Copyright 2019 Hitachi, Ltd. (author: Yusuke Fujita)
-# Modified by: Duo Ma 
+# Modified by: Duo Ma
 # Licensed under the MIT license.
 #
 import os
@@ -12,9 +12,10 @@ from torch import optim
 from torch import nn
 from torch.utils.data import DataLoader
 
-from eend.eend.pytorch_backend.models import TransformerEdaModel, NoamScheduler,EendEdaModel
+from eend.eend.pytorch_backend.models import TransformerEdaModel,EendEdaModel
+from eend.eend.pytorch_backend.lr_scheduler import NoamScheduler
 from eend.eend.pytorch_backend.diarization_dataset import KaldiDiarizationDataset, my_collate
-from eend.eend.pytorch_backend.checkpoints import save_state_dict_and_infos 
+from eend.eend.pytorch_backend.checkpoints import save_state_dict_and_infos
 from eend.eend.pytorch_backend.checkpoints import keep_best_models
 #from eend.eend.pytorch_backend.loss import batch_pit_loss, report_diarization_error
 
@@ -28,7 +29,7 @@ def train(rank, world_size,args):
 
     logging.info(f"args: {str(args)}")
 
-    
+
     os.environ['PYTORCH_SEED'] = str(args.seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
@@ -88,13 +89,13 @@ def train(rank, world_size,args):
                 n_units=args.hidden_size,
                 n_heads=args.transformer_encoder_n_heads,
                 n_layers=args.transformer_encoder_n_layers,
-                dropout=args.transformer_encoder_dropout, 
+                dropout=args.transformer_encoder_dropout,
                 diar_weight=args.diar_weight,
                 attractor_weight=args.attractor_weight,
                 encoder_type="conformer",
                 eda_type="lstm"
-                ) 
-    else:  
+                )
+    else:
         raise ValueError('Possible model_type is "TransformerEda"')
 
 
@@ -138,13 +139,13 @@ def train(rank, world_size,args):
                                   warmup_steps=args.noam_warmup_steps)
 
     # Init/Resume
-    start_epoch=0 
+    start_epoch=0
     if args.initmodel:
         logging.info(f"Load model from {args.initmodel}")
-        start_epoch=int(args.initmodel.split("/")[-1].split(".")[0].split("_")[-1]) # i.e.: /path/to/model_10.pt 
+        start_epoch=int(args.initmodel.split("/")[-1].split(".")[0].split("_")[-1]) # i.e.: /path/to/model_10.pt
         logging.info(f"model start train from {start_epoch} epoch")
         model.load_state_dict(torch.load(args.initmodel))
-        
+
     train_iter = DataLoader(
             train_set,
             batch_size=args.batchsize,

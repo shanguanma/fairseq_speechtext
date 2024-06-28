@@ -22,35 +22,6 @@ from torchaudio.models import Conformer
 from eend.eend.pytorch_backend.encoder_decoder_attractor import LstmEncoderDedecoderAttractor
 
 
-class NoamScheduler(_LRScheduler):
-    """
-    See https://arxiv.org/pdf/1706.03762.pdf
-    lrate = d_model**(-0.5) * \
-            min(step_num**(-0.5), step_num*warmup_steps**(-1.5))
-    Args:
-        d_model: int
-            The number of expected features in the encoder inputs.
-        warmup_steps: int
-            The number of steps to linearly increase the learning rate.
-    """
-    def __init__(self, optimizer, d_model, warmup_steps, last_epoch=-1):
-        self.d_model = d_model
-        self.warmup_steps = warmup_steps
-        super(NoamScheduler, self).__init__(optimizer, last_epoch)
-
-        # the initial learning rate is set as step = 1
-        if self.last_epoch == -1:
-            for param_group, lr in zip(self.optimizer.param_groups, self.get_lr()):
-                param_group['lr'] = lr
-            self.last_epoch = 0
-        #print(self.d_model)
-        logging.info(f"model dimension : {self.d_model} in NoamScheduler Class!")
-
-    def get_lr(self):
-        last_epoch = max(1, self.last_epoch)
-        scale = self.d_model ** (-0.5) * min(last_epoch ** (-0.5), last_epoch * self.warmup_steps ** (-1.5))
-        return [base_lr * scale for base_lr in self.base_lrs]
-
 
 class TransformerModel(nn.Module):
     def __init__(self, n_speakers, in_size, n_heads, n_units, n_layers, dim_feedforward=2048, dropout=0.5, has_pos=False):
@@ -215,10 +186,10 @@ class TransformerEdaModel(nn.Module):
 
         ## why add batch_first=True, it can solve the below warning:
         # UserWarning: enable_nested_tensor is True,
-        # but self.use_nested_tensor is False because encoder_layer.self_attn.batch_first 
+        # but self.use_nested_tensor is False because encoder_layer.self_attn.batch_first
         # was not True(use batch_first for better inference performance)
-        # warnings.warn(f"enable_nested_tensor is True, but self.use_nested_tensor is False because {why_not_sparsity_fast_path}") 
-    
+        # warnings.warn(f"enable_nested_tensor is True, but self.use_nested_tensor is False because {why_not_sparsity_fast_path}")
+
         encoder_layers = TransformerEncoderLayer(n_units, n_heads, dim_feedforward, dropout,batch_first=True)
         self.transformer_encoder = TransformerEncoder(encoder_layers, n_layers)
 
@@ -266,23 +237,23 @@ class TransformerEdaModel(nn.Module):
         """Forward
 
         """
-        # forward embedding 
+        # forward embedding
         encoder_out_shuffled, emb, ilens = self.forward_embedding(src)
-        device = emb.device        
+        device = emb.device
         ## pad target label into batch style
         ts = nn.utils.rnn.pad_sequence(ts, padding_value=-1, batch_first=True)#(B,T,S)
         #logging.info(f"ts shape: {ts.shape}")
-        # ts: (B,T,S) 
+        # ts: (B,T,S)
         input_zeros = torch.zeros(emb.size(0),ts.size(2)+1, encoder_out_shuffled.size(2)).to(device) #(B,S+1,E)
         ilens_tensor = torch.LongTensor(ilens).to(device)
         #attractor(B,S+1,E) , attractor_probs is list, its length is equal to B, every element size is equal to S+1
         attractor, attractor_probs = self.eda(encoder_out_shuffled,ilens_tensor,input_zeros)
-        
+
         # Remove the final attractor which does not correspond to a speaker
         # Then multiply the attractors and encoder_out
         pred = torch.bmm(emb, attractor[:, :-1, :].permute(0, 2, 1)) # pred(B,T,S)
-        
-        
+
+
         ## compute loss
         loss_att = self.attractor_loss(attractor_probs, ts)
         loss_pit, perm_idx, perm_list, label_perm = self.pit_loss(
@@ -326,10 +297,10 @@ class TransformerEdaModel(nn.Module):
     def infer(self,src: List[Tensor],infer_num_speakers=None,max_n_speakers=15, attractor_threshold=0.5):
         """
         NOTE(Duo Ma)
-        Different from the training process, 
-        the number of speakers with zero input to the attractor in the inference process is determined 
-        based on the specified number or the threshold of the attractor. 
-        The number of speakers in the training process is determined 
+        Different from the training process,
+        the number of speakers with zero input to the attractor in the inference process is determined
+        based on the specified number or the threshold of the attractor.
+        The number of speakers in the training process is determined
         based on the number of speakers corresponding to the target label.
 
         modified from https://github.com/hitachi-speech/EEND/blob/master/eend/chainer_backend/models.py#L453
@@ -338,13 +309,13 @@ class TransformerEdaModel(nn.Module):
         Args:
             src: mixer speech feature input of network , shape List[Tensor]
             infer_num_speakers: if it is specified, it will select top num_speaker as real speaker ouput.
-                                Because attractor offer a max number of speakers, 
+                                Because attractor offer a max number of speakers,
                                 in reality, there may not be so many, so we need to use the real number of speakers to select.
             max_n_speaker: Set the maximum number of speakers that the attractor can support
-            attractor_threshold: if infer_num_speakers is not specified, we will use it to 
+            attractor_threshold: if infer_num_speakers is not specified, we will use it to
         """
         encoder_out_shuffled,emb, ilens = self.forward_embedding(src)
-        device = emb.device 
+        device = emb.device
         ## attractor part
         # ts: (B,T,S)
         input_zeros = torch.zeros(emb.size(0),max_n_speakers, encoder_out_shuffled.size(2)).to(device) #(B,max_n_speakers,E)
@@ -356,7 +327,7 @@ class TransformerEdaModel(nn.Module):
         # Remove the final attractor which does not correspond to a speaker
         # Then multiply the attractors and encoder_out
         pred = torch.bmm(emb, attractor[:, :-1, :].permute(0, 2, 1)) # (B,T,max_n_speakers)
-        
+
         ## apply sigmoid, get speaker probability
         #logit = torch.nn.functional.sigmoid(pred) # (B,T,max_n_speakers)
         logits = [torch.nn.functional.sigmoid(p)for p in pred] # for loop in B axis, [(t, max_n_speaker),...]
@@ -374,7 +345,7 @@ class TransformerEdaModel(nn.Module):
                 NotImplementedError(
                     'infer_num_speakers or attractor_threshold has to be given.')
         return ys_active # [(T,n_spk)], because I will assume batch size=1.
-        
+
 
     def attractor_loss(self, att_prob: torch.Tensor, label:torch.Tensor):
         """
@@ -382,8 +353,8 @@ class TransformerEdaModel(nn.Module):
         # label shape (B,T,S)
         """
         assert isinstance(label, Tensor), f"label: {label}"
-        
-        
+
+
         batch_size = label.size(0)
         device = label.device
         bce_loss = torch.nn.BCEWithLogitsLoss(reduction="none")
@@ -398,7 +369,7 @@ class TransformerEdaModel(nn.Module):
         loss = bce_loss(att_prob, att_label.to(device))
         loss = torch.mean(torch.mean(loss, dim=1))
         return loss
-    
+
     def pit_loss_single_permute(self, pred: torch.Tensor, label: torch.Tensor, length: List[int]):
         """
         # pred shape (B,T,S)
@@ -448,7 +419,7 @@ class TransformerEdaModel(nn.Module):
             mask[i, : length[i], :] = 1
         #mask = to_device(self, mask)
         return mask
-    
+
     def calc_diarization_error(self, pred: torch.Tensor, label: torch.Tensor, length: List[int]):
         # modified from https://github.com/espnet/espnet/blob/master/espnet2/diar/espnet_model.py
         (batch_size, max_len, num_output) = label.size()
@@ -510,7 +481,7 @@ class EendEdaModel(nn.Module):
         self.n_heads = n_heads
         self.n_units = n_units
         self.n_layers = n_layers
-        self.encoder_type=encoder_type 
+        self.encoder_type=encoder_type
         self.eda_type=eda_type
 
         self.linear = nn.Linear(in_size, n_units)
@@ -525,7 +496,7 @@ class EendEdaModel(nn.Module):
             encoder_layers = TransformerEncoderLayer(n_units, n_heads, dim_feedforward, dropout,batch_first=True)
             self.encoder = TransformerEncoder(encoder_layers, n_layers)
         elif self.encoder_type=="conformer":
-            ## it expect two inputs first it is shape (B, T, input_dim), 
+            ## it expect two inputs first it is shape (B, T, input_dim),
             # second it is shape (B,) and i-th element representing number of valid frames for i-th batch element in input.
             ## its output is same to its input, it does not downsample.
             self.encoder = Conformer(input_dim=n_units,num_heads=n_heads,ffn_dim=dim_feedforward,num_layers=n_layers,depthwise_conv_kernel_size=31)
@@ -540,14 +511,7 @@ class EendEdaModel(nn.Module):
 
         self.diar_weight=diar_weight
         self.attractor_weight=attractor_weight
-        #self.init_weights()
 
-    #def init_weights(self):
-    #    initrange = 0.1
-    #    self.encoder.bias.data.zero_()
-    #    self.encoder.weight.data.uniform_(-initrange, initrange)
-        #self.eda.bias.data.zero_()
-        #self.eda.weight.data.uniform_(-initrange, initrange)
     def forward_embedding(self, src: List[Tensor]):
         ilens = [x.shape[0] for x in src] # [utt1_T,utt2_T,...], len(ilens) = B
         src = nn.utils.rnn.pad_sequence(src, padding_value=-1, batch_first=True)#(B,T,C)
@@ -562,7 +526,7 @@ class EendEdaModel(nn.Module):
             # emb: (B,T,E)
             ilens_tensor = torch.LongTensor(ilens).to(device)
             emb,_ = self.encoder(src,ilens_tensor)
-        
+
 
         # Shuffle the chronological order of encoder_out, then calculate attractor
         encoder_out_shuffled = emb.clone()
@@ -803,7 +767,7 @@ class EendEdaModel(nn.Module):
             speaker_error,
         )
 
-    
+
 if __name__ == "__main__":
     import torch
     model = TransformerModel(5, 40, 4, 512, 2, 0.1)
