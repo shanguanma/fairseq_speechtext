@@ -182,7 +182,7 @@ def do_setup(package_data):
             "omegaconf<2.1",
             #"hydra-core>=1.3.2",
             #"omegaconf",
-            "numpy>=1.21.3",
+            "numpy==1.21.3",
             "regex",
             "sacrebleu>=1.4.12",
             # "torch>=1.13",

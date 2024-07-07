@@ -5,7 +5,7 @@ fairseq_speechtext project focus on dataset and model part of multi-modual pretr
 
 This repository follows the main principle of openness through clarity.
 
-fairseq_speechtext is 
+fairseq_speechtext is
 
 * Support complete recipe.
 * Single-file implementation without boilerplate.
@@ -19,7 +19,7 @@ Avoiding code duplication is not a goal. Readability and hackability are.
   * [PyTorch](http://pytorch.org/) version >= 1.10.0
   * Python version >= 3.7
   * For training new models, you'll also need an NVIDIA GPU and [NCCL](https://github.com/NVIDIA/nccl)
-  
+
 
 # creat python environment
   ```
@@ -51,13 +51,16 @@ pip install torch==1.13.1+cu116 torchaudio==0.13.1 --extra-index-url https://dow
 
 # compile c++ part and install dependent python package
 ```
+# if you use cluster, you need to apply a gpu, for example: srun -n 1 -c 6 --gres=gpu:1 -p p-V100 -A t00120220002 --pty bash
+conda acitvate fsq_speechtext
 cd /path/to/fsq_speechtext
-## Because head node don't contain cuda, the below command can only compile cpp  part into cpu device
 pip install -e ./
+and
+python setup.py build_ext --inplace
 ```
 
 # install flash-attn(optional)
- 
+
 ```
 for example:  cuda11.8 pytorch2.1
 #pip install flash-attn --no-build-isolation  ## support flash attention, but it will change before torch version.
@@ -80,10 +83,10 @@ pip install flash_attn-2.3.5+cu116torch1.13cxx11abiFALSE-cp38-cp38-linux_x86_64.
 pip install flashlight-text==0.0.4  -i https://pypi.tuna.tsinghua.edu.cn/simple
 ## install kenlm
 ## ## offer interget n-gram for ASR decoding
-pip install https://github.com/kpu/kenlm/archive/master.zip  ## offer n-gram 
+pip install https://github.com/kpu/kenlm/archive/master.zip  ## offer n-gram
 ## instll flashlight sequence
 export USE_CUDA=1
-git clone https://github.com/shanguanma/flashlight_sequence.git && cd flashlight_sequence 
+git clone https://github.com/shanguanma/flashlight_sequence.git && cd flashlight_sequence
 pip install .
 ```
 
@@ -104,7 +107,7 @@ pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cud
 
 # Note:
 * `*config`: means that specify setting parameters of model.
-* `recipe_shell_script`: means that it is the entry procedure for the proposed method, where you can see the complete recipe for the use of the configuration file, which should all be reproduced or learnt from here. 
+* `recipe_shell_script`: means that it is the entry procedure for the proposed method, where you can see the complete recipe for the use of the configuration file, which should all be reproduced or learnt from here.
 
 # What's New:
 
