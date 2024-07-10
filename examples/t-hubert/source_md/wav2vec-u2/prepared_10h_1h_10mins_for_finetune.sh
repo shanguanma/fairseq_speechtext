@@ -12,8 +12,8 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ];then
        python source_md/wav2vec-u2/wav2vec_manifest_md.py \
             $data_wav_dir/$name\
             --dest_file $tsv_dir/train-${name}.tsv\
-            --ext flac            
-    done             
+            --ext flac
+    done
 fi
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
@@ -24,8 +24,8 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
        python source_md/wav2vec-u2/text/libri_labels.py  \
             $tsv_dir/train-$name.tsv\
             --output-dir $tsv_dir\
-            --output-name train-$name 
-            
+            --output-name train-$name
+
     done
 fi
 
@@ -34,7 +34,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
     echo "prepared 10h finetune data format (train-10h.tsv,)"
     data_wav_dir=/workspace2/maduo/dataset/librispeech_finetune/librispeech_finetuning
     tsv_dir=/workspace2/maduo/dataset/format/librispeech/
-    
+
     python source_md/wav2vec-u2/two_tsv2one.py   \
             $tsv_dir/train-1h.tsv\
             $tsv_dir/train-9h.tsv\
@@ -73,7 +73,7 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ];then
             --output-dir $tsv_dir\
             --output-name train-10mins
 
-   
+
 fi
 
 

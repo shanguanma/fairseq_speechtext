@@ -21,8 +21,9 @@ if [ ${stage} -le 21 ]&& [ ${stop_stage} -ge 21 ];then
    config_dir=$fairseq_dir/examples/wav2vec/
    dir=/workspace2/maduo/exp
    #wav2vec_u2_dir=/workspace2/maduo/model_hub/librispeech/wav2vec-u2.0-trained_model_using_librispeech_libirspeech_lm_text
-   #model_path=$wav2vec_u2_dir/checkpoint_24_41000.pt # this checkpoint is reported at submit paper. 
+   #model_path=$wav2vec_u2_dir/checkpoint_24_41000.pt # this checkpoint is reported at submit paper.
    model_path=gan_english_checkpoint/checkpoint_24_41000.pt
+   # main config of the above gan model : 'smoothness_weight': 1.5, 'smoothing': 0.0, 'smoothing_one_sided': False, 'gradient_penalty': 1.5, 'probabilistic_grad_penalty_slicing': False, 'code_penalty': 0.0, 'mmi_weight': 0.5, 'target_dim': 64, 'target_downsample_rate': 2, 'gumbel': False, 'hard_gumbel': False, 'seed': 1,
    dest_dir=$dir/wav2vec-u2/frame_phonecode_hyps_newer_final
    mkdir -p $dest_dir
    testsets="dev-clean dev-other train-960"

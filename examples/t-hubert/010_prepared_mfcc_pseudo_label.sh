@@ -63,7 +63,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
   tsv_dir=/workspace2/maduo/dataset/format/librispeech
   km_path=$tsv_dir/mfcc/librispeech-960h_0.1_portion_mfcc_km_100_clusters.mdl
   nj=35
-  sample_rate=16000  
+  sample_rate=16000
   lab_dir=$tsv_dir/mfcc/mfcc_lab
   mkdir  -p $lab_dir
   for name in train-960 dev-clean dev-other ;do
@@ -72,8 +72,8 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
       --nj $nj \
       --sample-rate ${sample_rate}\
       --label-path ${lab_dir}/$name.km\
-      --km-path $km_path 
-      
+      --km-path $km_path
+
   done
 fi
 

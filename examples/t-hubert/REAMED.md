@@ -17,7 +17,7 @@ You can refer to ../README.md
 pretrain T-HuBERT model checkpoint(without finetune), pretrain and finetune data, gan model checkpoint: https://drive.google.com/drive/folders/1HFx-Z43oRKkDIlDwhC7FyptJWFxBleeR?usp=sharing
 
 # Usage
-In this recipe, We contains broken down into stages such as:prepared_mfcc_pseudo_label, train_hubert_with_mfcc_label,prepared_hubert_pseudo_label,prepared_text_for_gan,prepared_wav2vec-u_feature_with_sil,prepred_wav2vec-u2_feature_without_sil,train_gan,generate_phncode base_t-hubert_train_ft_infer, numbered in order as 010, 020, etc. These scripts are supposed to be run in order. 
+In this recipe, We contains broken down into stages such as:prepared_mfcc_pseudo_label, train_hubert_with_mfcc_label,prepared_hubert_pseudo_label,prepared_text_for_gan,prepared_wav2vec-u_feature_with_sil,prepred_wav2vec-u2_feature_without_sil,train_gan,generate_phncode base_t-hubert_train_ft_infer, numbered in order as 010, 020, etc. These scripts are supposed to be run in order.
 
 # Cation
 You need to change input data path, code path, output path in every script dependent on your environment

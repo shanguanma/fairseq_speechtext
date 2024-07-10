@@ -16,14 +16,14 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ];then
    label_dir=$tsv_dir/mfcc/mfcc_lab # ##postfix .km files folder
    config_dir=/workspace2/maduo/fairseq/examples/hubert/
    dir=/workspace2/maduo/exp
-   model_name=pretrain_on_hubert_4gpu_8update_960h_mfcc_250k_update   ## it actual runs 400k steps
+   model_name=pretrain_on_hubert_4gpu_8update_960h_mfcc_250k_update
    exp_dir=$dir/pretrain/${model_name}
    mkdir -p $exp_dir
    world_size=4
    update_freq=8
    CUDA_VISIBLE_DEVICES=4,5,6,7 python $fairseq_dir/fairseq_cli/hydra_train.py \
             --config-dir $config_dir/config/pretrain \
-            --config-name hubert_base_librispeech \
+            --config-name hubert_base_librispeech_mfcc \
             task.data=$tsv_dir\
             task.label_dir=$label_dir\
             task.labels='["km"]' \

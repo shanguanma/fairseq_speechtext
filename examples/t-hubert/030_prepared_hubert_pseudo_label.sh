@@ -16,7 +16,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
   root_dir=/workspace2/maduo/
   tsv_dir=$root_dir/dataset/format/librispeech
   feat_dir=$tsv_dir/feat_dir/huber_6layer_feat_of_0.1_960h_librispeech_250k_update_from_mfcc_offical_setting
-  ckpt_path=$root_dir/exp/pretrain/pretrain_on_hubert_4gpu_8update_960h_mfcc_250k_update_offical/checkpoint_181_250000.pt 
+  ckpt_path=$root_dir/exp/pretrain/pretrain_on_hubert_4gpu_8update_960h_mfcc_250k_update_offical/checkpoint_181_250000.pt
   portion=0.1
   sample_rate=16000
   layer=6
@@ -28,7 +28,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
       --feat-dir $feat_dir\
       --portion ${portion}\
       --sample-rate $sample_rate\
-      --layer $layer 
+      --layer $layer
   done
 fi
 
@@ -41,7 +41,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
         --n-cluster 500\
         --km-path $km_path\
         --feat-dir $feat_dir
-         
+
 fi
 
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
@@ -56,7 +56,7 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
   layer=6
   mkdir -p $label_dir
   for name in train-960 dev-clean dev-other ;do
-  #for name in train-clean-360;do 
+  #for name in train-clean-360;do
     python source_md/wav2vec-u2/dump_pseudo_label_on_hubert.py\
       --tsvfile $tsv_dir/${name}.tsv \
       --sample-rate ${sample_rate}\
@@ -64,8 +64,8 @@ if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ];then
       --km-path $km_path \
       --ckpt-path $ckpt_path\
       --layer $layer
-     
-      
+
+
   done
 fi
 

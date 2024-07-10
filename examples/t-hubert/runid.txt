@@ -1,0 +1,10 @@
+tensorboard --host 10.26.6.82 --port 12345 --logdir /mntcephfs/lab_data/maduo/exp/finetune/pretrain_on_base_imls-ssl_4gpu_8update_960h_400k_update_360h_asr_finetune
+
+
+grep -rn 'Word error rate:' logs/080_base_t-hubert_train_ft_infer_supplementary_exp_stage13-15.log
+sbatch --nodes 1 --exclude=pgpu26 --gres=gpu:1  --cpus-per-gpu=8  --ntasks-per-node 1  -p p-V100 -A t00120220002 -o logs/080_base_t-hubert_train_ft_infer_supplementary_exp_stage13-15.log 080_base_t-hubert_train_ft_infer_supplementary_exp.sh --stage 13 --stop-stage 15
+
+sbatch --nodes 1 --exclude=pgpu26 --gres=gpu:4  --cpus-per-gpu=8  --ntasks-per-node 1  -p p-A100 -A t00120220002 -o logs/080_base_t-hubert_train_ft_infer_supplementary_exp_stage4.log 080_base_t-hubert_train_ft_infer_supplementary_exp.sh --stage 4
+
+
+sbatch --nodes 1 --exclude=pgpu26 --gres=gpu:4  --cpus-per-gpu=8  --ntasks-per-node 1  -p p-A100 -A t00120220002 -o logs/080_base_t-hubert_train_ft_infer_supplementary_exp_stage2-3.log 080_base_t-hubert_train_ft_infer_supplementary_exp.sh --stage 2 --stop-stage 3
