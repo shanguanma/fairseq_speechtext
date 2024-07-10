@@ -242,6 +242,9 @@ if [ ${stage} -le 13 ] && [ ${stop_stage} -ge 13 ];then
                 dataset.gen_subset=$name
 
    done
+  # grep -rn 'Word' logs/080_base_t-hubert_train_ft_infer_supplementary_exp_stage13-15.log
+#8019:[2024-07-10 09:42:25,691][__main__][INFO] - Word error rate: 3.7419
+#16871:[2024-07-10 09:43:29,431][__main__][INFO] - Word error rate: 8.0796
 fi
 
 if [ ${stage} -le 14 ] && [ ${stop_stage} -ge 14 ];then
@@ -281,6 +284,9 @@ if [ ${stage} -le 14 ] && [ ${stop_stage} -ge 14 ];then
                 common_eval.quiet=false
 
    done
+# grep -rn 'Word' logs/080_base_t-hubert_train_ft_infer_supplementary_exp_stage13-15.log
+#24759:[2024-07-10 10:55:33,687][__main__][INFO] - Word error rate: 2.6557
+#33615:[2024-07-10 12:08:28,041][__main__][INFO] - Word error rate: 6.4289
  fi
 
 if [ ${stage} -le 15 ] && [ ${stop_stage} -ge 15 ];then
@@ -320,7 +326,10 @@ if [ ${stage} -le 15 ] && [ ${stop_stage} -ge 15 ];then
                 common_eval.quiet=false
 
    done
-   fi
+   # grep -rn 'Word' logs/080_base_t-hubert_train_ft_infer_supplementary_exp_stage13-15.log
+   # 41503:[2024-07-10 13:21:03,541][__main__][INFO] - Word error rate: 2.6195
+   # 50359:[2024-07-10 14:34:17,872][__main__][INFO] - Word error rate: 5.8519
+fi
 
 
 if [ ${stage} -le 16 ] && [ ${stop_stage} -ge 16 ];then
@@ -351,6 +360,9 @@ if [ ${stage} -le 16 ] && [ ${stop_stage} -ge 16 ];then
                 dataset.gen_subset=$name
 
    done
+# grep -rn 'Word error rate' logs/080_base_t-hubert_train_ft_infer_supplementary_exp_other_infer_stage16.log
+#8032:[2024-07-08 08:40:38,661][__main__][INFO] - Word error rate: 4.7596
+#16871:[2024-07-08 08:41:45,383][__main__][INFO] - Word error rate: 11.0179
 fi
 
 if [ ${stage} -le 17 ] && [ ${stop_stage} -ge 17 ];then
@@ -381,6 +393,9 @@ if [ ${stage} -le 17 ] && [ ${stop_stage} -ge 17 ];then
                 dataset.gen_subset=$name
 
    done
+   # grep -rn 'Word error rate:' logs/080_base_t-hubert_train_ft_infer_supplementary_exp_other_infer_stage17.log
+#8032:[2024-07-09 08:29:31,183][__main__][INFO] - Word error rate: 4.7901
+#16871:[2024-07-09 08:30:37,435][__main__][INFO] - Word error rate: 10.1295
 fi
 if [ ${stage} -le 18 ] && [ ${stop_stage} -ge 18 ];then
    echo "inference hubert  model on test-other, test-clean of librispeech with kenlm"
@@ -418,6 +433,9 @@ if [ ${stage} -le 18 ] && [ ${stop_stage} -ge 18 ];then
                 decoding.beamthreshold=100\
                 common_eval.quiet=false
    done
+   # grep -rn 'Word error rate' logs/080_base_t-hubert_train_ft_infer_supplementary_exp_other_infer_stage18-19.log
+# 8036:[2024-07-09 10:07:11,973][__main__][INFO] - Word error rate: 2.9753
+# 16879:[2024-07-09 11:19:28,527][__main__][INFO] - Word error rate: 6.7154
    fi
 
 
@@ -457,4 +475,7 @@ if [ ${stage} -le 18 ] && [ ${stop_stage} -ge 18 ];then
                 decoding.beamthreshold=100\
                 common_eval.quiet=false
    done
+#  grep -rn 'Word error rate' logs/080_base_t-hubert_train_ft_infer_supplementary_exp_other_infer_stage18-19.log
+# 24754:[2024-07-09 12:30:49,232][__main__][INFO] - Word error rate: 3.0323
+# 33597:[2024-07-09 13:44:01,718][__main__][INFO] - Word error rate: 7.1797
    fi
