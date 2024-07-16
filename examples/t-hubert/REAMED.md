@@ -1,5 +1,9 @@
 
-T-HuBERT:
+
+T-HuBERT offical repo:
+title: Text-guided HuBERT: Self-Supervised Speech Pre-training via Generative Adversarial Networks
+axriv url:https://arxiv.org/html/2402.15725v1
+
 # Installed:
 You can refer to ../README.md
 
