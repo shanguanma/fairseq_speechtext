@@ -4,7 +4,7 @@ This is T-HuBERT offical repo:
 arxiv url:https://arxiv.org/html/2402.15725v1
 
 # Installed:
-You can refer to ../README.md
+You can refer to ../../README.md
 
 # Data detail:
 - speech
