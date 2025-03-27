@@ -13,6 +13,8 @@ import logging
 import torchaudio
 import torchaudio.compliance.kaldi as Kaldi
 import torch.nn as nn
+from typing import Optional
+
 from examples.speaker_diarization.ts_vad.models.modules.ecapa_tdnn_wespeaker import (
     ECAPA_TDNN_c1024,
     ECAPA_TDNN_GLOB_c1024,
@@ -89,7 +91,7 @@ class FBank(object):
             feat = feat - feat.mean(0, keepdim=True)
         return feat
 
- 
+
 def extract_embeddings(args, batch):
 
     if torch.cuda.is_available():
@@ -104,7 +106,8 @@ def extract_embeddings(args, batch):
     pretrained_state = torch.load(args.pretrained_model, map_location=device)
 
     # Instantiate model(TODO) maduo add model choice
-    model=ECAPA_TDNN_GLOB_c1024(feat_dim=80,embed_dim=192,pooling_func="ASTP")
+    #model=ECAPA_TDNN_GLOB_c1024(feat_dim=80,embed_dim=192,pooling_func="ASTP")
+    model: Optional[nn.Module] = None
     if args.model_name=="ECAPA_TDNN_GLOB_c1024":
         model = ECAPA_TDNN_GLOB_c1024(feat_dim=80,embed_dim=192,pooling_func="ASTP")
     elif args.model_name=="ECAPA_TDNN_GLOB_c512":
@@ -114,26 +117,7 @@ def extract_embeddings(args, batch):
 
 
 
-#    model.load_state_dict(pretrained_state,strict=False)
-#    model.eval()
-#    model.to(device)
-#    # load weight of model
-#    state = model.state_dict()
-#    #for k in state:
-#    #    print(f"key: {k}")
-#    #print(f"model state: {state.keys()}")
-#    for name, param in pretrained_state.items():
-#        #print(f"load pretrain model p name: {name}")
-#        if name in state:
-#            #logging.info(f"name {name} in ")
-#            state[name].copy_(param)
-#        else:
-#            logging.info(f'name {name} not in ')
-#            logging.info(f"Not exist {name}" )
-#    for param in model.parameters():
-#        param.requires_grad = False
-
-    # load weight of model 
+    # load weight of model
     model.load_state_dict(pretrained_state,strict=False)
     model.to(device)
     model.eval()

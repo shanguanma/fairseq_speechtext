@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/bin/bash
 
 #. "/home/maduo/miniconda3/etc/profile.d/conda.sh"
 

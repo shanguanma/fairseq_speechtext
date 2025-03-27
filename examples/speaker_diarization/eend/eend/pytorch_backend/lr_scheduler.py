@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # it is from https://github.com/nttcslab-sp/EEND-vector-clustering/blob/main/eend/pytorch_backend/transformer.py#L11
 #            https://github.com/Xflick/EEND_PyTorch/blob/master/eend/pytorch_backend/models.py#L17
+from torch.optim.lr_scheduler import _LRScheduler
 class NoamScheduler(_LRScheduler):
     """
     See https://arxiv.org/pdf/1706.03762.pdf

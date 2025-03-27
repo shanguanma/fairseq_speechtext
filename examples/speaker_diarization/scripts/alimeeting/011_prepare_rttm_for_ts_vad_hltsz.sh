@@ -26,7 +26,7 @@ if [ $stage -le 0 ] && [ ${stop_stage} -ge 0 ]; then
 
     find -L $textgrid_dir -iname "*.TextGrid" >  $work_dir/textgrid.flist
     sort  $work_dir/textgrid.flist  > $work_dir/tmp
-    cp $work_dir/tmp $work_dir/textgrid.flist 
+    cp $work_dir/tmp $work_dir/textgrid.flist
     paste $work_dir/uttid $work_dir/textgrid.flist > $work_dir/uttid_textgrid.flist
     while read line;do
     #for line in $(cat $work_dir/uttid_textgrid.flist) do
@@ -40,7 +40,7 @@ if [ $stage -le 0 ] && [ ${stop_stage} -ge 0 ]; then
 		--output_rttm_file $work_dir/${text_grid}.rttm
     done < $work_dir/uttid_textgrid.flist
     cat $work_dir/*.rttm > $work_dir/all.rttm1
-    #mv tests/alimeeting/all.rttm1 tests/alimeeting/alimeeting.rttm ## it is ground truth of alimeeting eval 
+    #mv tests/alimeeting/all.rttm1 tests/alimeeting/alimeeting.rttm ## it is ground truth of alimeeting eval
     mv $work_dir/all.rttm1  $work_dir/alimeeting_eval.rttm1
     mv $work_dir/alimeeting_eval.rttm1 /home/maduo/model_hub/ts_vad/
     mv /home/maduo/model_hub/ts_vad/alimeeting_eval.rttm1  /home/maduo/model_hub/ts_vad/alimeeting_eval.rttm
@@ -76,7 +76,7 @@ if [ $stage -le 1 ] && [ ${stop_stage} -ge 1 ]; then
                 --output_rttm_file $work_dir/${text_grid}.rttm
     done < $work_dir/uttid_textgrid.flist
     cat $work_dir/*.rttm > $work_dir/all.rttm1
-    #mv tests/alimeeting/all.rttm1 tests/alimeeting/alimeeting.rttm ## it is ground truth of alimeeting eval 
+    #mv tests/alimeeting/all.rttm1 tests/alimeeting/alimeeting.rttm ## it is ground truth of alimeeting eval
     mv $work_dir/all.rttm1  $work_dir/alimeeting_test.rttm1
     mv $work_dir/alimeeting_test.rttm1 /home/maduo/model_hub/ts_vad/
     mv /home/maduo/model_hub/ts_vad/alimeeting_test.rttm1 /home/maduo/model_hub/ts_vad/alimeeting_test.rttm

@@ -14,16 +14,16 @@ export OC_CAUSE=1 # for full backtrace
 
 if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ];then
    echo "infer alimeeting eval dataset via ts_vad model trained on alimeeting train_ali_far dataset."
-	
+
 	exp_name=baseline
 	rs_len=4
 	segment_shift=1
 	gen_subset=Eval
 	speech_encoder_type=ecapa
- 
+
 	root_path=/home/maduo
         data_path=/data/alimeeting/
-		
+
 	exp_dir=${root_path}/exp/speaker_diarization/ts_vad
         ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization
 	spk_path=${root_path}/model_hub/ts_vad/spk_embed/alimeeting/SpeakerEmbedding
@@ -139,7 +139,7 @@ fi
 
 if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
    echo "infer alimeeting eval dataset via ts_vad model trained on alimeeting train_ali_far dataset with musan and rirs noise"
-       
+
         exp_name=baseline_camppluse_zh_en_common_advanced_with_musan_rirs
         rs_len=4
         segment_shift=1
@@ -584,7 +584,7 @@ if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ];then
 #Eval for threshold 0.70: DER 8.94%, MS 7.71%, FA 0.71%, SC 0.52%
 #
 #Eval for threshold 0.80: DER 11.75%, MS 11.03%, FA 0.43%, SC 0.29%
-	
+
 fi
 
 if [ ${stage} -le 9 ] && [ ${stop_stage} -ge 9 ];then
@@ -649,7 +649,7 @@ if [ ${stage} -le 9 ] && [ ${stop_stage} -ge 9 ];then
 #Eval for threshold 0.70: DER 10.83%, MS 9.27%, FA 0.36%, SC 1.21%
 #
 #Eval for threshold 0.80: DER 14.19%, MS 13.34%, FA 0.16%, SC 0.69%
-# 
+#
 fi
 
 
@@ -1058,7 +1058,7 @@ if [ ${stage} -le 16 ] && [ ${stop_stage} -ge 16 ];then
         gen_subset=Test ## choice from "Eval" and "Test"
         root_path=/home/maduo
         data_path=/data/alimeeting/
-	
+
 	speech_encoder_type="cam++"
         speaker_embedding_name_dir="cam++_zh_cn_16k_common_feature_dir"
         speaker_embed_dim=192
@@ -1117,7 +1117,7 @@ fi
 
 #(TODO) check
 if [ ${stage} -le 17 ] && [ ${stop_stage} -ge 17 ];then
-   
+
    echo "Do model average ..."
    root_path=/home/maduo
    exp_dir=${root_path}/exp/speaker_diarization/ts_vad
@@ -1344,7 +1344,7 @@ if [ ${stage} -le 34 ] && [ ${stop_stage} -ge 34 ];then
    subset="Eval Test"
    for name in $regions;do
      for c in $collar;do
-      for sub in $subset;do	
+      for sub in $subset;do
         exp_name=baseline_cam++_speech_campplus_sv_zh-cn_16k-common_200k_speakers_with_musan_rirs
         rs_len=4
         segment_shift=1
@@ -1354,7 +1354,7 @@ if [ ${stage} -le 34 ] && [ ${stop_stage} -ge 34 ];then
         speaker_embed_dim=192
         root_path=/home/maduo
         data_path=/data/alimeeting/
-        
+
         exp_dir=${root_path}/exp/speaker_diarization/ts_vad
         ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization
         spk_path=${root_path}/model_hub/ts_vad/spk_embed/alimeeting/SpeakerEmbedding

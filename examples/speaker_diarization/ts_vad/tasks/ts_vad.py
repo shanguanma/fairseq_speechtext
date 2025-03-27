@@ -16,7 +16,7 @@ from ts_vad.data.ts_vad_dataset import TSVADDataset
 logger = logging.getLogger(__name__)
 
 SPEECH_ENCODER_TYPE = ChoiceEnum(
-    ["wavlm", "ecapa", "fbank", "cam++", "ecapa_wespeaker", "resnet34_wespeaker"]
+    ["wavlm", "wavlm_large_ft","ecapa", "fbank", "cam++", "ecapa_wespeaker", "resnet34_wespeaker"]
 )
 SPEAKER_ENCODER_TYPE = ChoiceEnum(["own", "ecapa", "resnet"])
 

@@ -42,15 +42,15 @@ def load_wav(wavscp):
             paths.append((key,path))
             #paths.append(line.rstrip().split()[1])
     return paths
-def load_vads(vads):    
-    
+def load_vads(vads):
+
 
     # load vads
     intervals = dict()
     with open(vads) as f:
         for line in f:
             key, interval_ = line.rstrip().split(" ",maxsplit=1)
-            
+
             interval = [
                 [int(w.split(":")[0]), int(w.split(":")[1])] for w in interval_.split()
             ]
@@ -100,7 +100,7 @@ def write_audio_wo_silence(args,paths, intervals):
         torch.Size([39913128])
         """
         data, sr = soundfile.read(path) # data is np.float64, it is same as  stage of computing vads.
-        data = torch.from_numpy(data) # data is torch.float64 
+        data = torch.from_numpy(data) # data is torch.float64
         assert sr==16000,f"expected sample rate is 16000, however uttid is {uttid}, sample rate: {sr}"
         data_filtered = None
         if uttid in intervals.keys():
@@ -109,19 +109,19 @@ def write_audio_wo_silence(args,paths, intervals):
                 data_filtered = torch.cat([data[int(it[0]) : int(it[1])] for it in intervals[uttid]])
             else:
                 data_filtered = data
-        
+
         ## assume the wavform path is as follows:
         ## '/mntcephfs/lee_dataset/asr/WenetSpeech/untar/audio/train/youtube/B00000/Y0000000000_--5llN02F84.opus'
         # >>> os.path.dirname(path).split("/",maxsplit=6)
         # ['', 'mntcephfs', 'lee_dataset', 'asr', 'WenetSpeech', 'untar', 'audio/train/youtube/B00000']
-        # >>> os.path.splitext(path)    
+        # >>> os.path.splitext(path)
         # ('/mntcephfs/lee_dataset/asr/WenetSpeech/untar/audio/train/youtube/B00000/Y0000000000_--5llN02F84', '.opus')
-        # >>> os.path.splitext(path)[0].split("/",maxsplit=6) 
+        # >>> os.path.splitext(path)[0].split("/",maxsplit=6)
         # ['', 'mntcephfs', 'lee_dataset', 'asr', 'WenetSpeech', 'untar', 'audio/train/youtube/B00000/Y0000000000_--5llN02F84']
-        os.makedirs(args.out,exist_ok=True)            
-        out = os.path.splitext(path)[0].split("/",maxsplit=6)[-1] 
+        os.makedirs(args.out,exist_ok=True)
+        out = os.path.splitext(path)[0].split("/",maxsplit=6)[-1]
         #outpath = args.out + '/'+ out + ".wav" ## torchaudio.save don't support save as opus.
-        outpath = args.out + '/'+ out + ".opus" # soundfile support save as opus, reference:https://github.com/bastibe/python-soundfile/issues/252  
+        outpath = args.out + '/'+ out + ".opus" # soundfile support save as opus, reference:https://github.com/bastibe/python-soundfile/issues/252
         output_dir = args.out + '/' + os.path.dirname(path).split("/",maxsplit=6)[-1]
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
@@ -138,7 +138,7 @@ def main():
     args = parser.parse_args()
 
     rank = int(os.environ['LOCAL_RANK'])        ## processing id
-    threads_num = int(os.environ['WORLD_SIZE']) ## cpu numbers, is setted by --nproc_per_node 
+    threads_num = int(os.environ['WORLD_SIZE']) ## cpu numbers, is setted by --nproc_per_node
     logging.info("rank {}/{}.".format(
         rank, threads_num,
     ))
@@ -173,10 +173,10 @@ def main():
         logging.info(f"output wavform:{outpath}!")
     logging.info(f"write all {i} utterances , finish!!!")
     """
-  
-    
 
-    
+
+
+
 if __name__ == "__main__":
     import logging
     formatter = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"

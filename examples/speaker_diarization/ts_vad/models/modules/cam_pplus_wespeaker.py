@@ -389,7 +389,7 @@ class CAMPPlus(nn.Module):
         x = self.head(x)
         if get_time_out:
             #print(f"self.xvector[:-2]: {self.xvector[:-2]}")
-            x = self.xvector[:-2](x) # (B,F,T) 
+            x = self.xvector[:-2](x) # (B,F,T)
         else:
             x = self.xvector(x)
         return x
@@ -402,7 +402,7 @@ if __name__ == '__main__':
     #x = torch.zeros(10,300)
     model = CAMPPlus(feat_dim=80,embedding_size=192 )
     model.eval()
-    #out_1 = model(x,get_time_out=True) # torch.Size([10, 512, 100]) (B,F,T)  downsample is 200/100=2, 
+    #out_1 = model(x,get_time_out=True) # torch.Size([10, 512, 100]) (B,F,T)  downsample is 200/100=2,
     out_1 = model(x,get_time_out=False)
     #print(f"out_1 shape: {out_1.shape}")
     #print(f"model: {str(model)}")
@@ -413,4 +413,4 @@ if __name__ == '__main__':
     for name, v in model.named_parameters():
         print(f"name: {name}, v: {v.shape}")
     print("{} M".format(num_params / 1e6)) # 6.61M
-                                                                   
+

@@ -23,9 +23,7 @@ from fairseq.tasks.hubert_pretraining import (
 
 logger = logging.getLogger(__name__)
 
-# is is called by voicelm
-
-
+# It is called by t-hubert
 @dataclass
 class ILSHubertConfig(HubertConfig2):
     # relative position embedding

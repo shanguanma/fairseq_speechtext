@@ -5,9 +5,9 @@ The below alimeeting example, We will use ecapa-tdnn as speaker encoder for spea
 ## Data Prepare
 - Download alimeeting Train_Ali_far.tar.gz and Eval_Ali_far.tar.gz from https://www.openslr.org/119/
 
-You can use run 
+You can use run
 ```
-bash scripts/alimeeting/010_prepare_data_for_ts_vad_hltsz.sh 
+bash scripts/alimeeting/010_prepare_data_for_ts_vad_hltsz.sh
 ```
 ```
 The dataset looks like:
@@ -47,10 +47,10 @@ note: ecapa-tdnn is trained on voxceleb and finetune on alimeeting dataset.
 bash scripts/alimeeting/011_prepare_rttm_for_ts_vad_hltsz.sh
 
 
-## runing training model with RIRS_NOISZE 
+## runing training model with RIRS_NOISZE
 - Training: scripts/alimeeting/020_train_ts_vad_hltsz.sh --stage 0 --stop-stage 0
 ## Running inferene model on eval dataset
-- Inference: bash scripts/alimeeting/030_infer_eval_on_ts_vad_hltsz.sh --stage 0 --stop-stage 0 
+- Inference: bash scripts/alimeeting/030_infer_eval_on_ts_vad_hltsz.sh --stage 0 --stop-stage 0
 
 
 ## runing training model with RIRS_NOISZE and musan
@@ -58,10 +58,21 @@ bash scripts/alimeeting/011_prepare_rttm_for_ts_vad_hltsz.sh
 ## Running inferene model on eval dataset
 - Inference: bash scripts/alimeeting/030_infer_eval_on_ts_vad_hltsz.sh --stage 1 --stop-stage 1
 ```
+### wavlm+ecapa_tdnn of TS_VAD
+# reference: https://github.com/microsoft/UniSpeech/tree/main/downstreams/speaker_verification
+install s3prl:pip install s3prl
+download WavLM large(last one of the table) model from https://drive.google.com/file/d/1-aE1NfzpRCLxA4GUxX9ITI3F9LlbtEGP/view
+
+download wavlm pretrain model https://github.com/microsoft/unilm/tree/master/wavlm
+WavLM Base+ from https://drive.google.com/file/d/1-zlAj2SyVJVsbhifwpTlAfrgc9qu-HDb/view
+WavLM Larger from https://drive.google.com/file/d/12-cB34qCTvByWT-QtOcZaqwwO21FLSqU/view
+
+
+
 
 #EEND:
 Cation: The working directory is examples/speaker_diarization/, in other words, you run the below script , you need to enter  examples/speaker_diarization/.
- 
+
 ```
 code is modified from https://github.com/Xflick/EEND_PyTorch/tree/master
                       https://github.com/shanguanma/EEND/tree/master
@@ -94,14 +105,14 @@ code is modified from https://github.com/Audio-WestlakeU/FS-EEND/tree/main
 
 example on mini_librispeech
 you run this script follow number order of name:
-1. prepare kaldi format of simulation data based on mini_librispeech 
+1. prepare kaldi format of simulation data based on mini_librispeech
 bash scripts/mini_librispeech/010_prepare_mini_librispeech_kaldi_format.sh
 
 2. train fs_eend model on the above simulation data
-bash scripts/mini_librispeech/021_train_fs_eend_model.sh 
+bash scripts/mini_librispeech/021_train_fs_eend_model.sh
 
 3. infer fs_eend model on dev data of the above simulation data
-bash bash scripts/mini_librispeech/031_infer_fs_eend_model.sh 
+bash bash scripts/mini_librispeech/031_infer_fs_eend_model.sh
 
 
 trainer base on pytorch-lightning
@@ -121,4 +132,23 @@ pyannote.core
 
 ```
 
+## clustering_base
+pytorch-lightning==2.1.2
+torch==2.1.1
+pyannote.audio==3.1.1
+pip install git+https://github.com/desh2608/spyder.git@main ## for compute DER
+kaldi_io ## for xvector
+onnxruntime==1.17.1 # for xvector
+fastcluster==1.2.4 # for vbx
+pip install scikit-learn==1.4.2
+then copy the below two file into your python environment, i.e
+cp -r clustering_based/spectral/file/_spectral.py /home/maduo/.conda/envs/fsq_sptt/lib/python3.9/site-packages/sklearn/cluster/
+cp -r clustering_based/spectral/file/_spectral_embedding.py /home/maduo/.conda/envs/fsq_sptt/lib/python3.9/site-packages/sklearn/manifold/
 
+so, sklearn will support process diarization overlap case in spectral cluster method.
+you can run the below code:
+scripts/alimeeting/clustering_based/051_spectral_ovl.sh
+scripts/alimeeting/clustering_based/051_spectral.sh
+
+# for clustering_based/cder
+pip install pyannote.core

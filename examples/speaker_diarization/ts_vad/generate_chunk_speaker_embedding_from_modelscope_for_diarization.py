@@ -3,7 +3,7 @@
 
 """
 This script will download pretrained models from modelscope (https://www.modelscope.cn/models)
-based on the given model id, and extract embeddings from input audio. 
+based on the given model id, and extract embeddings from input audio.
 Please pre-install "modelscope" follow the command:
     pip install modelscope
 Usage:
@@ -133,67 +133,67 @@ EPACA_CNCeleb = {
 supports = {
     # CAM++ trained on 200k labeled speakers
     'iic/speech_campplus_sv_zh-cn_16k-common': {
-        'revision': 'v1.0.0', 
+        'revision': 'v1.0.0',
         'model': CAMPPLUS_COMMON,
         'model_pt': 'campplus_cn_common.bin',
     },
     # ERes2Net trained on 200k labeled speakers
     'iic/speech_eres2net_sv_zh-cn_16k-common': {
-        'revision': 'v1.0.5', 
+        'revision': 'v1.0.5',
         'model': ERes2Net_COMMON,
         'model_pt': 'pretrained_eres2net_aug.ckpt',
     },
     # ERes2Net_Base trained on 200k labeled speakers
     'iic/speech_eres2net_base_200k_sv_zh-cn_16k-common': {
-        'revision': 'v1.0.0', 
+        'revision': 'v1.0.0',
         'model': ERes2Net_base_COMMON,
         'model_pt': 'pretrained_eres2net.pt',
     },
     # CAM++ trained on a large-scale Chinese-English corpus
     'iic/speech_campplus_sv_zh_en_16k-common_advanced': {
-        'revision': 'v1.0.0', 
+        'revision': 'v1.0.0',
         'model': CAMPPLUS_COMMON,
         'model_pt': 'campplus_cn_en_common.pt',
     },
     # CAM++ trained on VoxCeleb
     'iic/speech_campplus_sv_en_voxceleb_16k': {
-        'revision': 'v1.0.2', 
-        'model': CAMPPLUS_VOX, 
-        'model_pt': 'campplus_voxceleb.bin', 
+        'revision': 'v1.0.2',
+        'model': CAMPPLUS_VOX,
+        'model_pt': 'campplus_voxceleb.bin',
     },
     # ERes2Net trained on VoxCeleb
     'iic/speech_eres2net_sv_en_voxceleb_16k': {
-        'revision': 'v1.0.2', 
+        'revision': 'v1.0.2',
         'model': ERes2Net_VOX,
         'model_pt': 'pretrained_eres2net.ckpt',
     },
     # ERes2Net_Base trained on 3dspeaker
     'iic/speech_eres2net_base_sv_zh-cn_3dspeaker_16k': {
-        'revision': 'v1.0.1', 
+        'revision': 'v1.0.1',
         'model': ERes2Net_Base_3D_Speaker,
         'model_pt': 'eres2net_base_model.ckpt',
     },
     # ERes2Net_large trained on 3dspeaker
     'iic/speech_eres2net_large_sv_zh-cn_3dspeaker_16k': {
-        'revision': 'v1.0.0', 
+        'revision': 'v1.0.0',
         'model': ERes2Net_Large_3D_Speaker,
         'model_pt': 'eres2net_large_model.ckpt',
     },
     # ECAPA-TDNN trained on CNCeleb
     'iic/speech_ecapa-tdnn_sv_zh-cn_cnceleb_16k': {
-        'revision': 'v1.0.0', 
+        'revision': 'v1.0.0',
         'model': EPACA_CNCeleb,
         'model_pt': 'ecapa-tdnn.ckpt',
     },
     # ECAPA-TDNN trained on 3dspeaker
     'iic/speech_ecapa-tdnn_sv_zh-cn_3dspeaker_16k': {
-        'revision': 'v1.0.0', 
+        'revision': 'v1.0.0',
         'model': EPACA_CNCeleb,
         'model_pt': 'ecapa-tdnn.ckpt',
     },
     # ECAPA-TDNN trained on VoxCeleb
     'iic/speech_ecapa-tdnn_sv_en_voxceleb_16k': {
-        'revision': 'v1.0.1', 
+        'revision': 'v1.0.1',
         'model': EPACA_CNCeleb,
         'model_pt': 'ecapa_tdnn.bin',
     },
@@ -260,7 +260,7 @@ def extract_embeddings(args,batch):
     model.eval()
 
     batch = torch.stack(batch) # expect B,T,F
-    # compute embedding 
+    # compute embedding
     embeddings = model.forward(batch.to(device))#(B,D)
     embeddings = embeddings.detach() ## it will remove requires_grad=True of output of model
     assert embeddings.requires_grad==False
@@ -281,7 +281,7 @@ def extract_embed(args, file, feature_extractor):
             stop = start + int(args.length_embedding * 16000)
             target_speech, _ = soundfile.read(file, start=start, stop=stop)
             target_speech = torch.FloatTensor(np.array(target_speech))
-            # because 3d-speaker and wespeaker are offer speaker models which are not include Fbank module, 
+            # because 3d-speaker and wespeaker are offer speaker models which are not include Fbank module,
             # We should perform fbank feature extraction before sending it to the network
 
             # compute feat

@@ -36,7 +36,7 @@ if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
       wav_id=${last_fold}_${speaker_id}
       echo "$wav_id $f" | sort >> ${data_dir}/wav.scp
       echo "$wav_id $speaker_id" | sort >> ${data_dir}/utt2spk
-  done       
- source_md/utt2spk_to_spk2utt.pl ${data_dir}/utt2spk >${data_dir}/spk2utt 
- 
+  done
+ source_md/utt2spk_to_spk2utt.pl ${data_dir}/utt2spk >${data_dir}/spk2utt
+
 fi

@@ -235,7 +235,7 @@ def get_speech_speaker_embedding(
     model,
     skip_chunk_size: float = 0.93,
     chunk_size: float = 3,
-    step_size: Optional[float] = None,
+    step_size: float = None,
 ):
     emb_dict = dict()
     vad_seg_dict = dict()
@@ -733,7 +733,7 @@ def get_argparse():
         "--predict_rttm_path", type=str, default="data/magicdata-RAMC/test/rttm_predict"
     )
     parser.add_argument("--chunk_size", type=float, default=3, help="")
-    parser.add_argument("--step_size", type=Optional[float], default=None, help="")
+    parser.add_argument("--step_size", type=float, default=None, help="")
     return parser
 
 

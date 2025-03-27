@@ -217,6 +217,7 @@ def _main(cfg: DictConfig, output_file):
         frame_len = task.cfg.embed_shift
     else:
         frame_len = 1 / task.cfg.label_rate
+    print(f"frame_len: {frame_len}")
 
     if task.cfg.rttm_name is not None:
         rttm_name = task.cfg.rttm_name

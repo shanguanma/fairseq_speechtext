@@ -94,7 +94,7 @@ def main():
 
             text_line =  person_id + '_' + name + '_' + start_time_int + '_' + end_time_int + ' ' + text + '\n'
             utt2spk_line = person_id + '_' + name + '_' + start_time_int + '_' + end_time_int + ' ' + person_id + '\n'
-            
+
             if index < 43:
                 rttm_writter_test.writelines(rttm_line)
             elif index < 332:

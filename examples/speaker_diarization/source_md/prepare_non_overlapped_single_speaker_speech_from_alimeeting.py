@@ -64,7 +64,7 @@ def get_args():
 
 def main():
     args = get_args()
-    
+
     if args.type=="Train":
         args.path=os.path.join(args.data_path,f"{args.type}_Ali_far")
     else:
@@ -87,7 +87,7 @@ def main():
                 if tg[i][j].mark:
                     if tg[i].name not in spk:
                         #spk[tg[i].name] = num_spk
-                        spk[tg[i].name] = tg[i].name.split("_")[-1] 
+                        spk[tg[i].name] = tg[i].name.split("_")[-1]
                         num_spk += 1
                     segments.append(
                         Segment(

@@ -26,7 +26,7 @@ The json format is as following:
 }
 
 Usage:
-    common/random_mixture.py \
+    source_md/random_mixture.py \
         --n_mixtures=10000 \      # number of mixtures
         data/voxceleb1_train \    # kaldi-style data dir of utterances
         data/musan_noise_bg \     # background noises
@@ -34,7 +34,7 @@ Usage:
         > mixture.scp             # output scp-like file
 
 The actual data dir and wav files are generated using make_mixture.py:
-    common/make_mixture.py \
+    source_md/make_mixture.py \
         mixture.scp \             # scp-like file for mixture
         data/mixture \            # output data dir
         wav/mixture               # output wav dir

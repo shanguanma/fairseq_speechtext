@@ -42,7 +42,7 @@ if [ $stage -le 0 ]&& [ ${stop_stage} -ge 0 ]; then
         source_md/data_prep_mini_librispeech.sh data/local/LibriSpeech/dev-clean-2 data/dev_clean_2 || exit
         touch data/dev_clean_2/.done
     fi
-    if [ ! -f data/train_clean_5/.done ]; then    
+    if [ ! -f data/train_clean_5/.done ]; then
         source_md/data_prep_mini_librispeech.sh data/local/LibriSpeech/train-clean-5 data/train_clean_5
         touch data/train_clean_5/.done
     fi
@@ -79,7 +79,7 @@ if [ $stage -le 1 ] && [ ${stop_stage} -ge 1 ]; then
         for dset in train_clean_5 dev_clean_2; do
             n_mixtures=500
             simuid=${dset}_ns${simu_opts_num_speaker}_beta${simu_opts_sil_scale}_${n_mixtures}
-	    
+
             # check if you have the simulation
             if ! validate_data_dir.sh --no-text --no-feats $simudir/data/$simuid; then
                 # random mixture generation

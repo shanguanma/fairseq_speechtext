@@ -218,14 +218,16 @@ class ECAPA_TDNN(nn.Module):
                 ),
             ),
             dim=1,
-        )
-
-        w = self.attention(global_x)
-
-        mu = torch.sum(x * w, dim=2)
-        sg = torch.sqrt((torch.sum((x**2) * w, dim=2) - mu**2).clamp(min=1e-4))
-
-        x = torch.cat((mu, sg), 1)
+        ) # (B, D, T)
+        print(f"global_x shape: {global_x.shape}")
+        w = self.attention(global_x)#(B,D_1,T)
+        print(f"after attention shape: {w.shape}")
+        mu = torch.sum(x * w, dim=2)#(B,D_1)
+        print(f"after sum shape: {mu.shape}")
+        sg = torch.sqrt((torch.sum((x**2) * w, dim=2) - mu**2).clamp(min=1e-4))#(B,D_1)
+        print(f"after sqrt shape: {sg.shape}")
+        x = torch.cat((mu, sg), 1)#(B,2D_1)
+        print(f"after cat x shape: {x.shape}")
         x = self.bn5(x)
         x = self.fc6(x)
         x = self.bn6(x)
@@ -233,7 +235,7 @@ class ECAPA_TDNN(nn.Module):
         return x
 if __name__ == "__main__":
     x = torch.zeros(10, 25*300)
-    
+
     model = ECAPA_TDNN(C=1024)
     model.eval()
     out = model(x)

@@ -91,7 +91,7 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ];then
         ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization/ts_vad
         #speech_encoder_path=${root_path}/model_hub/ts_vad/ecapa-tdnn.model # Speaker encoder path
 	speech_encoder_path=${root_path}/.cache/modelscope/hub/iic/speech_campplus_sv_zh_en_16k-common_advanced/campplus_cn_en_common.pt # Speaker encoder path
-	                   ## this is download from ts_vad/generate_speaker_embedding_from_modelscope.py 
+	                   ## this is download from ts_vad/generate_speaker_embedding_from_modelscope.py
 			   ## you can download this model manual follow commands
 			   ##  git lfs install
                            ##  git clone https://www.modelscope.cn/iic/speech_campplus_sv_zh_en_16k-common_advanced.git
@@ -353,7 +353,7 @@ if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ];then
         #speech_encoder_path=${root_path}/model_hub/ts_vad/ecapa-tdnn.model # Speaker encoder path
         #speech_encoder_path=${root_path}/.cache/modelscope/hub/iic/speech_campplus_sv_zh_en_16k-common_advanced/campplus_cn_en_common.pt # Speaker encoder path
 
-	# (TODO) maduo copy model from sribd 
+	# (TODO) maduo copy model from sribd
         speech_encoder_path=/home/maduo/model_hub/speaker_pretrain_model/zh/wespeaker/ecapa_tdnn_wespeaker_cnceleb1-2-LM/final_model.pt
 
         #spk_path=${root_path}/model_hub/ts_vad/spk_embed/SpeakerEmbedding
@@ -561,7 +561,7 @@ if [ ${stage} -le 11 ] && [ ${stop_stage} -ge 11 ];then
         spk_path=${root_path}/model_hub/ts_vad/spk_embed/alimeeting/SpeakerEmbedding
         speech_encoder_type="ecapa_wespeaker"
         speaker_embedding_name_dir="ecapa_tdnn_based_DINO_ft_on_CNCeleb1-2_devset-LM_feature_dir_debug"
-        
+
 	speaker_embed_dim=192
         rir_path=/data/rirs_noises/RIRS_NOISES
         musan_path=/data/musan
@@ -603,7 +603,7 @@ if [ ${stage} -le 12 ] && [ ${stop_stage} -ge 12 ];then
 
         exp_dir=${root_path}/exp/speaker_diarization/ts_vad
         ts_vad_path=${root_path}/codebase/fairseq_speechtext/examples/speaker_diarization/ts_vad
-        #speech_encoder_path=${root_path}/model_hub/ts_vad/ecapa-tdnn.model # Speaker encoder path 
+        #speech_encoder_path=${root_path}/model_hub/ts_vad/ecapa-tdnn.model # Speaker encoder path
 	speech_encoder_path=${root_path}/.cache/modelscope/hub/iic/speech_campplus_sv_zh-cn_16k-common/campplus_cn_common.bin # Speaker encoder path
                            ## this is download from ts_vad/generate_chunk_speaker_embedding_from_modelscope_for_diarization.py
                            ## you can download this model manual follow commands

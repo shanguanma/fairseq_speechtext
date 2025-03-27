@@ -18,7 +18,7 @@ if [ ${stage} -le 0 ] && [ ${stop_stage} -ge 0 ];then
    file=$input_dir/wavs.txt
     python source_md/prepare_alimeeting_target_audio_list.py \
 	    $input_dir $file
-      
+
 fi
 
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ];then
@@ -118,7 +118,7 @@ if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ];then
    #for name in Eval;do
    for name in Test Eval;do
     input_dir=/data/alimeeting/${name}_Ali/${name}_Ali_far/target_audio/
-    
+
     file=$input_dir/wavs.txt
     wav_path=$file
     #save_dir=/home/maduo/model_hub/ts_vad/spk_embed/alimeeting/SpeakerEmbedding/${name}/ResNet34-TSTP-emb256-fbank80-num_frms200-aug0.6-spTrue-saFalse-ArcMargin-SGD-epoch150_exp2_on_CNCeleb1-2-LM_feature_dir
@@ -127,7 +127,7 @@ if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ];then
            --pretrained_model ${pretrained_model} \
            --wavs $wav_path\
            --save_dir $save_dir\
-	   --model_name ResNet34  
+	   --model_name ResNet34
    done
 fi
 
@@ -138,7 +138,7 @@ if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ];then
    file=$input_dir/wavs.txt
     python source_md/prepare_alimeeting_target_audio_list.py \
             $input_dir $file
-	
+
 fi
 
 if [ ${stage} -le 9 ] && [ ${stop_stage} -ge 9 ];then
@@ -151,7 +151,7 @@ if [ ${stage} -le 9 ] && [ ${stop_stage} -ge 9 ];then
    #for name in Eval;do
    for name in Train;do
     input_dir=/data/alimeeting/Train_Ali_far/target_audio/
-   
+
     file=$input_dir/wavs.txt
     wav_path=$file
     #save_dir=/home/maduo/model_hub/ts_vad/spk_embed/alimeeting/SpeakerEmbedding/${name}/ResNet34-TSTP-emb256-fbank80-num_frms200-aug0.6-spTrue-saFalse-ArcMargin-SGD-epoch150_exp2_on_CNCeleb1-2-LM_feature_dir

@@ -413,6 +413,23 @@ class WavLM(nn.Module):
             feature = (feature, res["layer_results"])
         return feature, res["padding_mask"]
 
+    def foward(
+        self,
+        source: torch.Tensor,
+        padding_mask: Optional[torch.Tensor] = None,
+        mask: bool = False,
+        ret_conv: bool = False,
+        output_layer: Optional[int] = None,
+        ret_layer_results: bool = False,
+    ) -> Tuple[torch.Tensor]:
+        feature, feature_padding_mask = self.extract_features(
+            source,
+            padding_mask=padding_mask,
+            mask=False,
+            output_layer=12,
+            ret_layer_results=True,
+        )
+        return feature
 
 class ConvFeatureExtractionModel(nn.Module):
     def __init__(

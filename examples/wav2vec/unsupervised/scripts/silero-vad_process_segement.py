@@ -123,7 +123,7 @@ def load_data_list_ref(wavscp) -> List[tuple[str,str]]:
 def load_audio_ref(audio) -> torch.float32:
     ## soundfile read audio, get float64 data, however torchaudio.load get float32 data.
     data, sr = soundfile.read(audio) # data is np.float64, it is same as  stage of computing vads.
-    data = torch.from_numpy(data).to(torch.float32) # data is torch.float32 
+    data = torch.from_numpy(data).to(torch.float32) # data is torch.float32
     assert sr==16000,f"expected sample rate is 16000, however uttid is {uttid}, sample rate: {sr}"
     return data
 
@@ -136,23 +136,23 @@ def write_audio(path: str, data: torch.Tensor, sampling_rate: int=16000):
         soundfile.write(path,data,samplerate=sampling_rate, format='OGG', subtype='OPUS')
 
 
-        
+
 def creat_output_wavname_ref(args,path)->str:
     ## assume the wavform path is as follows:
     ## '/mntcephfs/lee_dataset/asr/WenetSpeech/untar/audio/train/youtube/B00000/Y0000000000_--5llN02F84.opus'
     # >>> os.path.dirname(path).split("/",maxsplit=6)
     # ['', 'mntcephfs', 'lee_dataset', 'asr', 'WenetSpeech', 'untar', 'audio/train/youtube/B00000']
-    # >>> os.path.splitext(path)    
+    # >>> os.path.splitext(path)
     # ('/mntcephfs/lee_dataset/asr/WenetSpeech/untar/audio/train/youtube/B00000/Y0000000000_--5llN02F84', '.opus')
-    # >>> os.path.splitext(path)[0].split("/",maxsplit=6) 
+    # >>> os.path.splitext(path)[0].split("/",maxsplit=6)
     # ['', 'mntcephfs', 'lee_dataset', 'asr', 'WenetSpeech', 'untar', 'audio/train/youtube/B00000/Y0000000000_--5llN02F84']
-    os.makedirs(args.out,exist_ok=True)            
-    out = os.path.splitext(path)[0].split("/",maxsplit=6)[-1] 
+    os.makedirs(args.out,exist_ok=True)
+    out = os.path.splitext(path)[0].split("/",maxsplit=6)[-1]
     #outpath = args.out + '/'+ out + ".wav" ## torchaudio.save don't support save as opus.
-    outpath = args.out + '/'+ out + ".opus" # soundfile support save as opus, reference:https://github.com/bastibe/python-soundfile/issues/252  
+    outpath = args.out + '/'+ out + ".opus" # soundfile support save as opus, reference:https://github.com/bastibe/python-soundfile/issues/252
     output_dir = args.out + '/' + os.path.dirname(path).split("/",maxsplit=6)[-1]
     if not os.path.isdir(output_dir):
-        os.makedirs(output_dir,exist_ok=True)   
+        os.makedirs(output_dir,exist_ok=True)
     return outpath
 
 
@@ -214,7 +214,7 @@ def load_audio(item, no_segments,resample=16000)-> torch.float32:
     if no_segments:
         key, txt, wav = item
     else:
-        key, txt, wav, start, end = item    
+        key, txt, wav, start, end = item
     suffix = wav.split('.')[-1]
     assert suffix in AUDIO_FORMAT_SETS
     if no_segments:
@@ -259,11 +259,11 @@ from torch.distributed.elastic.multiprocessing.errors import record
 def main():
     parser = get_parser()
     args = parser.parse_args()
-     
+
 
     ## prepared mulit-process utils
     rank = int(os.environ['LOCAL_RANK'])        ## processing id
-    threads_num = int(os.environ['WORLD_SIZE']) ## cpu numbers, is setted by --nproc_per_node 
+    threads_num = int(os.environ['WORLD_SIZE']) ## cpu numbers, is setted by --nproc_per_node
     logging.info("rank {}/{}.".format(
         rank, threads_num,
     ))
@@ -286,7 +286,7 @@ def main():
     ## split data on rank
     data_list, no_segments = load_data_list(args)
     #paths.sort(key=lambda x: x[0])
-    local_data_list = data_list[rank::threads_num] 
+    local_data_list = data_list[rank::threads_num]
 
     i=0
     #for i, (uttid, path) in tqdm(enumerate(local_all_paths), total=len(local_all_paths),ascii=True):
@@ -308,14 +308,14 @@ def main():
     logging.info(f"write {i} utterances , finish!!!!!")
 
 if __name__ == "__main__":
-    
+
     formatter = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 
     logging.basicConfig(format=formatter, level=logging.INFO)
     main()
 
     """
-    onnx=True, I use torchrun multi processing 
+    onnx=True, I use torchrun multi processing
     it consums about 9mins processing 20 utterances and write without silence audio.
      torchrun --nproc_per_node=5 --master_port=12345  codebase/fairseq_speechtext/examples/wav2vec/unsupervised/scripts/silero-vad.py --wavscp tests/wav20.scp --onnx true --out tests/wenetspeech_wo_silence_silero_vad
 WARNING:torch.distributed.run:
@@ -391,7 +391,7 @@ Setting OMP_NUM_THREADS environment variable for each process to be 1 in default
 100%|##############################################################################################################################################################| 4/4 [07:11<00:00, 107.87s/it]
 2024-01-11 17:13:33,543 INFO [silero-vad.py:164] write 4 utterances , finish!!!!!
 100%|##############################################################################################################################################################| 4/4 [08:44<00:00, 131.22s/it]
-2024-01-11 17:15:06,933 INFO [silero-vad.py:164] write 4 utterances , finish!!!!! 
+2024-01-11 17:15:06,933 INFO [silero-vad.py:164] write 4 utterances , finish!!!!!
     """
 
 

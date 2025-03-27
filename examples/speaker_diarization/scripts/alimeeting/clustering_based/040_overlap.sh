@@ -58,7 +58,7 @@ if [ $stage -le 1 ] && [ ${stop_stage} -ge 1 ]; then
     do
       filename=$(echo "${audio}" | cut -f 1 -d '.')
       echo ${filename} > exp/list_${filename}.txt
-      
+
       $train_cmd $EXP_DIR/${part}/log/ovl/ovl_${filename}.log \
         python clustering_based/overlap/pyannote_overlap.py \
           --model $model_dir/alimeeting_epoch0_step2600.ckpt \
@@ -67,7 +67,7 @@ if [ $stage -le 1 ] && [ ${stop_stage} -ge 1 ]; then
           --out-dir $EXP_DIR/${part}/ovl \
           --onset ${onset} --offset ${offset} \
           --min-duration-on ${min_duration_on} \
-          --min-duration-off ${min_duration_off} & 
+          --min-duration-off ${min_duration_off} &
     done
     wait
     )
@@ -80,7 +80,7 @@ if [ $stage -le 2 ] && [ ${stop_stage} -ge 0 ]; then
   for part in eval test; do
     echo "Evaluating ${part} overlap detector output"
     cat $DATA_DIR/${part}/rttm/* | clustering_based/get_overlap_segments.py | grep overlap > $EXP_DIR/ref_${part}_overlap.rttm
-    cat $EXP_DIR/${part}/ovl/*.rttm > $EXP_DIR/hyp_${part}_overlap.rttm 
+    cat $EXP_DIR/${part}/ovl/*.rttm > $EXP_DIR/hyp_${part}_overlap.rttm
     #$sctk_dir/md-eval.pl -r $EXP_DIR/ref_${part}_overlap.rttm -s $EXP_DIR/hyp_${part}_overlap.rttm -c 0.25 |\
     #  awk 'or(/MISSED SPEAKER TIME/,/FALARM SPEAKER TIME/)'
     echo "its score detail:"
@@ -88,7 +88,7 @@ if [ $stage -le 2 ] && [ ${stop_stage} -ge 0 ]; then
     # pip install git+https://github.com/desh2608/spyder.git@main
     #LC_ALL= spyder  $EXP_DIR/ref_${part}_overlap.rttm $EXP_DIR/hyp_${part}_overlap.rttm -r single -p -c 0.25
     sctk_dir=SCTK-2.4.12/src/md-eval/
-    $sctk_dir/md-eval.pl -c 0.25 -r $EXP_DIR/ref_${part}_overlap.rttm -s $EXP_DIR/hyp_${part}_overlap.rttm 
+    $sctk_dir/md-eval.pl -c 0.25 -r $EXP_DIR/ref_${part}_overlap.rttm -s $EXP_DIR/hyp_${part}_overlap.rttm
 done
 fi
 # Onset: 0.5 Offset: 0.6 Min_duration_on: 0.4 Min_duration_off: 0.5

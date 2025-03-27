@@ -183,7 +183,7 @@ class ECAPA_TDNN(nn.Module):
         #        window_fn=torch.hamming_window,
         #        n_mels=80,
         #    ),
-        #) 
+        #)
         self.layer1 = Conv1dReluBn(feat_dim,
                                    channels,
                                    kernel_size=5,
@@ -210,7 +210,7 @@ class ECAPA_TDNN(nn.Module):
         cat_channels = channels * 3
         out_channels = 512 * 3
         self.conv = nn.Conv1d(cat_channels, out_channels, kernel_size=1)
-        
+
         if not speech_encoder:
             self.pool = getattr(pooling_layers, pooling_func)(
                 in_dim=out_channels, global_context_att=global_context_att)
@@ -237,8 +237,8 @@ class ECAPA_TDNN(nn.Module):
 
         # (B,samples) -> (B,F,T)
         #x = self.get_fbank(x)
-        
-        x = x.permute(0, 2, 1)  # (B,T,F) -> (B,F,T) 
+
+        x = x.permute(0, 2, 1)  # (B,T,F) -> (B,F,T)
         out1 = self.layer1(x)
         out2 = self.layer2(out1)
         out3 = self.layer3(out2)
@@ -316,7 +316,7 @@ if __name__ == '__main__':
     #model = ECAPA_TDNN_GLOB_c512(feat_dim=80,
     #                             embed_dim=256,
     #                             pooling_func='ASTP')
-    model = ECAPA_TDNN_GLOB_c1024(feat_dim=80,embed_dim=192,pooling_func="ASTP") 
+    model = ECAPA_TDNN_GLOB_c1024(feat_dim=80,embed_dim=192,pooling_func="ASTP")
     model.eval()
     out = model(x)
     out_1 = model(x, get_time_out=True) # torch.Size([1, 1536, 200]) #(B,F,T) downsampe is 200/200=1

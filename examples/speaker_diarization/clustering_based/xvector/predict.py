@@ -346,7 +346,7 @@ class ResNet(nn.Module):
             self.embedding = nn.Linear(int(feat_dim/8) * m_channels * 16 * block.expansion, embed_dim)
         else:
             raise ValueError(f'Unexpected class {type(block)}.')
-           
+
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
@@ -371,7 +371,7 @@ class ResNet(nn.Module):
                          torch.flatten(pooling_std, start_dim=1)), 1)
 
         embedding = self.embedding(out)
-        return embedding 
+        return embedding
 
 
 def ResNet101(feat_dim, embed_dim, squeeze_excitation=False):

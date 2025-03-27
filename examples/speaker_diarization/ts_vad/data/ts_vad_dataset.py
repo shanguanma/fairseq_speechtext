@@ -286,7 +286,7 @@ class TSVADDataset(FairseqDataset):
         # target_speech: 4, 16000 * (T / 25)
         file, num_speaker, start, stop, _ = self.data_list[index]
         speaker_ids = self.get_ids(num_speaker) # num_speaker means that it contains number of speaker in current mixture utterance.
-                                               
+
         ref_speech, labels, new_speaker_ids, _ = self.load_rs(
             file, speaker_ids, start, stop
         )
@@ -356,7 +356,7 @@ class TSVADDataset(FairseqDataset):
 #                support_mc=self.support_mc,
 #            )
 #            if len(ref_speech.shape) == 1:
-#                ref_speech = np.expand_dims(np.array(ref_speech), axis=0)       
+#                ref_speech = np.expand_dims(np.array(ref_speech), axis=0)
 #
     def load_rs(self, file, speaker_ids, start, stop):
         audio_start = self.sample_rate // self.label_rate * start
@@ -542,7 +542,7 @@ class TSVADDataset(FairseqDataset):
 #                    np.random.choice(2, p=[1 - self.zero_ratio, self.zero_ratio]) == 1
 #                    or not self.is_train
 #                ):
-#                      
+#
 #                    #feature = torch.zeros(192)
 #                    feature = torch.zeros(self.speaker_embed_dim) # speaker embedding dimension of speaker model
 #                else:
